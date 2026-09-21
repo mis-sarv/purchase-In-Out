@@ -1,0 +1,1514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mobile Approvals Panel</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+
+    <style>
+        :root {
+            --primary: #007bff;
+            --secondary: #6c757d;
+            --success: #28a745;
+            --bg: #f4f6f9;
+            --card-bg: #fff;
+            --border: #dee2e6;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+        }
+
+        body {
+            background-color: #333;
+            display: flex;
+            justify-content: center;
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 480px;
+            height: 100vh;
+            background-color: var(--bg);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+
+        header {
+            background-color: var(--primary);
+            color: white;
+            padding: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 1.1rem;
+            font-weight: bold;
+        }
+
+        #roleBadge {
+            font-size: 0.7rem;
+            font-weight: 600;
+            background: rgba(255,255,255,0.18);
+            padding: 4px 10px;
+            border-radius: 20px;
+            cursor: pointer;
+        }
+
+        .module-selector {
+            display: flex;
+            background-color: #fff;
+            padding: 8px;
+            border-bottom: 1px solid var(--border);
+            gap: 8px;
+        }
+
+        .module-btn {
+            flex: 1;
+            padding: 8px;
+            text-align: center;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: 1px solid var(--border);
+            background: #f8f9fa;
+            color: var(--secondary);
+        }
+
+        .module-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .tabs {
+            display: flex;
+            background-color: var(--card-bg);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .tab {
+            flex: 1;
+            padding: 10px 0;
+            text-align: center;
+            font-weight: 600;
+            color: #666;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            font-size: 0.9rem;
+        }
+
+        .tab.active {
+            color: var(--primary);
+            border-bottom: 3px solid var(--primary);
+        }
+
+        .list-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            padding: 14px;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            border: 1px solid var(--border);
+            cursor: pointer;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            font-weight: bold;
+            color: var(--primary);
+            font-size: 0.95rem;
+        }
+
+        .card-detail {
+            font-size: 0.85rem;
+            color: #555;
+            margin-bottom: 4px;
+        }
+
+        .modal-overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(0,0,0,0.5);
+            display: none;
+            justify-content: center;
+            align-items: flex-end;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background-color: white;
+            width: 100%;
+            max-height: 92vh;
+            overflow-y: auto;
+            border-radius: 16px 16px 0 0;
+            padding: 18px;
+            animation: slideUp 0.3s ease-out;
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+
+        .modal-title {
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.4rem;
+            color: #888;
+            cursor: pointer;
+        }
+
+        .req-meta-info {
+            background: #eef5ff;
+            border-left: 4px solid var(--primary);
+            padding: 8px 12px;
+            font-size: 0.85rem;
+            margin-bottom: 12px;
+            border-radius: 4px;
+            color: #333;
+        }
+
+        .pdf-link {
+            display: inline-block;
+            margin-top: 6px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        .table-container {
+            width: 100%;
+            overflow-x: auto;
+            margin-bottom: 14px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+        }
+
+        .item-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+            text-align: left;
+        }
+
+        .item-table th {
+            background-color: #f1f3f5;
+            color: #333;
+            padding: 8px 6px;
+            font-weight: 600;
+            border-bottom: 1px solid var(--border);
+            white-space: nowrap;
+        }
+
+        .item-table td {
+            padding: 8px 6px;
+            border-bottom: 1px solid #f0f0f0;
+            vertical-align: middle;
+            color: #444;
+        }
+
+        .form-select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 0.95rem;
+            background-color: #fff;
+            color: #333;
+        }
+
+        .form-group {
+            margin-bottom: 14px;
+        }
+
+        .form-group label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            color: #333;
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+
+        .form-group textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+
+        .signature-pad-container {
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: #fafafa;
+            overflow: hidden;
+        }
+
+        canvas {
+            width: 100%;
+            height: 130px;
+            cursor: crosshair;
+            touch-action: none;
+        }
+
+        .clear-btn {
+            background: none;
+            border: none;
+            color: #dc3545;
+            font-size: 0.8rem;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--success);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        .status-tag {
+            background: #e8f5e9;
+            color: var(--success);
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            display: inline-block;
+            margin-top: 6px;
+        }
+
+        .stage-tag {
+            background: #eef2ff;
+            color: #3730a3;
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-size: 0.72rem;
+            font-weight: bold;
+            display: inline-block;
+            margin-top: 6px;
+        }
+
+        .err-banner {
+            display: none;
+            background: #fef2f2;
+            border: 1px solid #fca5a5;
+            color: #dc2626;
+            font-size: 0.8rem;
+            font-weight: 600;
+            padding: 8px 10px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+        }
+
+        .empty-msg { text-align:center; color:#999; margin-top:20px; font-size: 0.85rem; }
+
+        #loginScreen { z-index: 3000; }
+        #loginScreen .modal-content { border-radius: 16px; }
+
+        #busyOverlay {
+            position: absolute; inset: 0; background: rgba(255,255,255,0.75);
+            display: none; align-items: center; justify-content: center;
+            flex-direction: column; gap: 10px; z-index: 2500; font-weight: 700; color: #333; font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <div class="modal-overlay" id="loginScreen" style="display:flex; align-items:center;">
+        <div class="modal-content">
+            <div class="modal-title"><span>🔐 Approver Login</span></div>
+            <div class="form-group">
+                <label>Approving As</label>
+                <select id="loginRole" class="form-select">
+                    <option value="">-- Select Role --</option>
+                    <option value="gmCeo">GM / CEO</option>
+                    <option value="md">MD</option>
+                    <option value="vendor">Vendor Verified</option>
+                </select>
+            </div>
+            <div class="form-group" id="loginVendorGroup" style="display:none;">
+                <label>Vendor Name</label>
+                <select id="loginVendor" class="form-select">
+                    <option value="">-- Select Vendor --</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>PIN</label>
+                <input type="password" id="loginPin" class="form-select" placeholder="Enter PIN" inputmode="numeric" autocomplete="off">
+            </div>
+            <div class="err-banner" id="loginError"></div>
+            <button class="btn" id="loginBtn">Unlock</button>
+        </div>
+    </div>
+
+    <div id="busyOverlay"><div>⏳</div><div id="busyText">Working...</div></div>
+
+    <header>
+        <span>Approval Dashboard</span>
+        <span id="roleBadge" onclick="logoutRole()">-</span>
+    </header>
+
+    <div class="module-selector">
+        <div class="module-btn active" onclick="switchModule('PR')">Purchase Requirements</div>
+        <div class="module-btn" onclick="switchModule('PO')">Purchase Orders</div>
+    </div>
+
+    <div class="tabs">
+        <div class="tab active" onclick="switchTab('pending')">Pending</div>
+        <div class="tab" onclick="switchTab('completed')">Completed</div>
+    </div>
+
+    <div class="list-container" id="list"></div>
+
+    <div class="modal-overlay" id="approvalModal">
+        <div class="modal-content">
+            <div class="modal-title">
+                <span id="modal-header-title">Approval Details</span>
+                <button class="close-btn" onclick="closeModal()">×</button>
+            </div>
+
+            <div class="req-meta-info" id="modal-meta-info"></div>
+
+            <label style="font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; display: block;">Item Details</label>
+            <div class="table-container">
+                <table class="item-table">
+                    <thead>
+                        <tr>
+                            <th>Sr</th>
+                            <th>Item Name</th>
+                            <th>Description</th>
+                            <th>Category</th>
+                            <th>Make</th>
+                            <th>Qty/UOM</th>
+                            <th id="rate-col-header" style="display:none;">Rate</th>
+                            <th id="disc-col-header" style="display:none;">Disc%</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modal-item-tbody">
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="form-group" id="vendorSelectGroup" style="display:none;">
+                <label>Select Approved Vendor</label>
+                <select id="vendorSelect" class="form-select">
+                    <option value="">-- Choose Vendor --</option>
+                </select>
+            </div>
+
+            <div class="req-meta-info" id="approvedVendorInfo" style="display:none;"></div>
+
+            <div class="form-group">
+                <label>Remarks / Notes</label>
+                <textarea id="remarksInput" rows="2" placeholder="Enter remarks (optional)..."></textarea>
+            </div>
+
+            <div class="form-group">
+                <label>
+                    <span>Signature Pad</span>
+                    <button class="clear-btn" onclick="clearSignature()">Clear</button>
+                </label>
+                <div class="signature-pad-container">
+                    <canvas id="sigPad"></canvas>
+                </div>
+            </div>
+
+            <button class="btn" id="approveBtn" onclick="approveEntry()">✔ Approve & Sign</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ── Same Supabase project as STORE.html ─────────────────────
+    const SUPABASE_URL = 'https://kjqhhfngtrlutowvwsyb.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtqcWhoZm5ndHJsdXRvd3Z3c3liIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxMzQyMzAsImV4cCI6MjEwMjcxMDIzMH0.KcEBGTJCkFadHDSg6ajaUh_ApauU91TapDb6QL8orPk';
+    const SB = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const SARV_PDF_BUCKET = 'sarv-pdfs';
+    const SARV_PDF_SCHEMA_VERSION = 'apps-script-compatible-v1';
+
+    const SARV_COMPANY = {
+        fullName: 'SARV INDIA HOME FURNISHING',
+        unit:     'UNIT 2',
+        tagline:  'Manufactures of : ALL KINDS OF BLANKETS',
+        address:  'Sanoli Road, 11K.M Stone, Near Kurar Village, V.P.O Jalalpur-1, Distt. Panipat- 132103 (Haryana)',
+        gstin:    '06ACSFS1161L1ZP',
+        juris:    'Subject to Panipat Jurisdiction'
+    };
+
+    // ── Shared helpers (ported verbatim from STORE.html) ────────
+    const pNum = v => Number.isFinite(Number(v)) ? Number(v) : 0;
+    const pEsc = v => String(v ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const escText = pEsc;
+    const nNum_ = v => pNum(v).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
+    const nMoney_ = v => 'Rs. ' + nNum_(v);
+    function pStamp(v = new Date()) {
+        const d = new Date(v); if (Number.isNaN(d.getTime())) return String(v || '');
+        const z = n => String(n).padStart(2, '0');
+        return `${z(d.getDate())}/${z(d.getMonth() + 1)}/${d.getFullYear()} ${z(d.getHours())}:${z(d.getMinutes())}:${z(d.getSeconds())}`;
+    }
+    function fmtDate_(v) {
+        if (!v) return '-';
+        const mo = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        if (v instanceof Date) return String(v.getDate()).padStart(2,'0')+'-'+mo[v.getMonth()]+'-'+v.getFullYear();
+        const s = String(v).trim(), m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (m) { const mi=parseInt(m[2],10)-1; if (mi>=0&&mi<=11) return m[3]+'-'+mo[mi]+'-'+m[1]; }
+        return s;
+    }
+    function jspdfNativeReady_(){ return typeof window.jspdf!=='undefined' && typeof window.jspdf.jsPDF!=='undefined'; }
+    function pdfSafeName_(value){
+        return String(value??'').trim().replace(/[\/\\:]+/g,'_').replace(/\s+/g,'_').replace(/[^\w.-]+/g,'_').replace(/_+/g,'_').replace(/^_+|_+$/g,'')||'NA';
+    }
+    async function sha256Hex(text){
+        const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(text)));
+        return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
+    }
+    async function uploadPdfArtifact(blob,kind,recordNo,variant,filenameOverride=''){
+        const safe=pdfSafeName_(recordNo||kind), name=filenameOverride||safe+'_'+variant+'.pdf', path=`${kind.toLowerCase()}/${safe}/${name}`;
+        try{
+            const up=await SB.storage.from(SARV_PDF_BUCKET).upload(path,blob,{upsert:true,contentType:'application/pdf',cacheControl:'3600'});
+            if(up.error)throw up.error;
+            const pub=SB.storage.from(SARV_PDF_BUCKET).getPublicUrl(path);
+            // Same storage path every regeneration (upsert overwrite) means
+            // the same public URL — with cacheControl:3600 the browser/CDN
+            // keeps serving the OLD bytes for up to an hour after a new PDF
+            // is uploaded. Cache-bust with a version query param so every
+            // regeneration is always fetched fresh.
+            const rawUrl=pub?.data?.publicUrl||'';
+            return {blob,path,url:rawUrl?rawUrl+'?v='+Date.now():'',name};
+        }catch(e){
+            console.warn('[MOBILE PDF] Storage upload skipped:',e.message||e);
+            return {blob,path,url:'',name};
+        }
+    }
+    async function indexPdfArtifact(kind,recordId,recordNo,variant,artifact){
+        if(!artifact)return;
+        const row={document_type:kind,document_id:recordId||null,document_no:recordNo,variant,file_path:artifact.path,public_url:artifact.url||null,schema_version:SARV_PDF_SCHEMA_VERSION};
+        try{
+            const idx=await SB.from('pdf_documents').upsert(row,{onConflict:'document_no,variant'});
+            if(idx.error)throw idx.error;
+        }catch(e){console.warn('[MOBILE PDF] pdf_documents index unavailable:',e.message||e);}
+        const table=kind==='REQUIREMENT'?'purchase_requirements':kind==='PO'?'purchase_orders':null;
+        if(table&&recordId&&artifact.url){
+            try{
+                const upd=await SB.from(table).update({pdf_url:artifact.url}).eq('id',recordId);
+                if(upd.error)throw upd.error;
+            }catch(e){console.warn('[MOBILE PDF] parent PDF URL column unavailable (non-fatal):',e.message||e);}
+        }
+    }
+
+    // ── Native PDF renderers — ported verbatim from STORE.html so a
+    //    signature captured here regenerates the exact same PDF. ──
+    async function buildRequirementNativePdfBlob(d){
+        if(!jspdfNativeReady_())throw new Error('jsPDF not available');
+        const {jsPDF}=window.jspdf;
+        const doc=new jsPDF({unit:'mm',format:'a4',orientation:'landscape'});
+        const pageW=doc.internal.pageSize.getWidth(), pageH=doc.internal.pageSize.getHeight();
+        const M=8, W=pageW-M*2;
+        doc.setTextColor(0,0,0);
+
+        const items=(d.items||[]).filter(it=>it&&(String(it.name||it.itemName||'').trim()||pNum(it.qty)>0)).map((it,i)=>({
+            sr:i+1, name:it.name||it.itemName||'', desc:it.desc||it.itemDesc||it.description||'',
+            make:it.make||'NA', cat:it.category||it.cat||'', machineNo:it.machineNo||it.machine||'',
+            qty:pNum(it.qty), issued:pNum(it.issued||it.qtyIssued||0), uom:it.uom||'',
+            grossWeight:(it.grossWeight!=null&&it.grossWeight!=='')?pNum(it.grossWeight):null,
+            rates:it.rates||{}, discounts:it.discounts||{}
+        }));
+        const totalGW=items.reduce((s,r)=>s+(r.grossWeight!=null?r.grossWeight:0),0);
+        const totalQty=items.reduce((s,r)=>s+r.qty,0);
+        const totalIssued=items.reduce((s,r)=>s+r.issued,0);
+
+        let y=M;
+        doc.setFillColor(255,242,0);doc.setDrawColor(0,0,0);doc.setLineWidth(0.35);
+        doc.rect(M,y,W,9,'FD');
+        doc.setFont(undefined,'bold');doc.setFontSize(16);doc.setTextColor(10,58,94);
+        doc.text(SARV_COMPANY.fullName+' UNIT-2',pageW/2,y+6.3,{align:'center'});
+        y+=9;
+        doc.setFillColor(217,234,211);doc.rect(M,y,W,6.5,'FD');
+        doc.setFontSize(11);
+        doc.text('PURCHASE REQUIREMENT',pageW/2,y+4.6,{align:'center'});
+        doc.setTextColor(0,0,0);
+        y+=8;
+
+        const priColor={urgent:[220,38,38],critical:[220,38,38],high:[234,88,12]}[String(d.priority||'').toLowerCase()]||[0,0,0];
+        const infoRows=[
+            ['Timestamp',pStamp(d.ts||new Date()),'Department',d.department||''],
+            ['Requirement No',d.reqNo||'','Contact No',d.contact||d.contact_no||''],
+            ['Request Date',fmtDate_(d.date||d.request_date),'Machine / Line',d.machine||''],
+            ['Required By Date',fmtDate_(d.requiredByDate||d.required_by),'Purpose',d.purpose||''],
+            ['Priority',d.priority||'Normal','Overall Remarks',d.overallRemarks||d.notes||''],
+            ['Person Name',d.personName||d.requested_by||'','Total Items',String(items.length)],
+            ['Employee Code',d.empCode||d.employee_code||'','Total Qty',String(totalQty)],
+            ['Designation',d.designation||'','Status',d.status||'Pending'],
+            ['Purchaser Name',d.generatedBy||d.purchaserName||'','Printed On',pStamp()],
+            ['Last Date Used',fmtDate_(d.lastDateUsed),'',''],
+        ];
+        const lw=W*0.15,vw=W*0.35;
+        doc.autoTable({
+            startY:y, body:infoRows, theme:'grid',
+            margin:{left:M,right:pageW-(M+W)}, tableWidth:W,
+            styles:{fontSize:7.5,cellPadding:1.3,lineColor:[0,0,0],lineWidth:0.15,textColor:[0,0,0],valign:'middle'},
+            columnStyles:{
+                0:{cellWidth:lw,fillColor:[243,243,243],fontStyle:'bold',halign:'center'},
+                1:{cellWidth:vw,fontStyle:'bold'},
+                2:{cellWidth:lw,fillColor:[243,243,243],fontStyle:'bold',halign:'center'},
+                3:{cellWidth:vw,fontStyle:'bold'},
+            },
+            didParseCell:(hook)=>{
+                if(hook.row.index===4&&hook.column.index===1)hook.cell.styles.textColor=priColor;
+            }
+        });
+        y=doc.lastAutoTable.finalY+4;
+
+        const TEAL=[13,92,83],SUBTOTAL_BG=[207,226,247];
+        const head=[
+            [
+                {content:'SUBTOTAL >>',colSpan:6,styles:{fillColor:SUBTOTAL_BG,textColor:[10,58,94],fontStyle:'bold',halign:'center'}},
+                {content:String(totalQty),styles:{fillColor:SUBTOTAL_BG,textColor:[10,58,94],fontStyle:'bold',halign:'center'}},
+                {content:String(totalIssued),styles:{fillColor:SUBTOTAL_BG,textColor:[10,58,94],fontStyle:'bold',halign:'center'}},
+                {content:'',styles:{fillColor:SUBTOTAL_BG}},
+                {content:totalGW>0?totalGW+' kg':'',styles:{fillColor:SUBTOTAL_BG,textColor:[10,58,94],fontStyle:'bold',halign:'center'}},
+                {content:'VENDOR RATE',colSpan:4,styles:{fillColor:SUBTOTAL_BG,textColor:[10,58,94],fontStyle:'bold',halign:'center'}},
+            ],
+            ['Sr No','Item Name','Item Description','Make / Brand','Category','Machine','Qty','Qty Issued','UOM','Gross Wt (kg)','V1','V2','V3','V4']
+        ];
+        const rateTxt=v=>(v!=null&&pNum(v)>0)?nNum_(v):'';
+        const discTxt=v=>(v!=null&&pNum(v)>0)?' (-'+pNum(v)+'%)':'';
+        const body=items.map(r=>[String(r.sr),r.name,r.desc,r.make,r.cat,r.machineNo,String(r.qty),String(r.issued),r.uom,(r.grossWeight!=null?String(r.grossWeight):''),rateTxt(r.rates.V1)+discTxt(r.discounts.V1),rateTxt(r.rates.V2)+discTxt(r.discounts.V2),rateTxt(r.rates.V3)+discTxt(r.discounts.V3),rateTxt(r.rates.V4)+discTxt(r.discounts.V4)]);
+        const approvedIdx=(d.approvedVendorIndex!=null&&d.approvedVendorIndex>=0)?d.approvedVendorIndex:-1;
+        const APPROVED_YELLOW=[255,241,118];
+        doc.autoTable({
+            head,body,startY:y,
+            margin:{left:M,right:pageW-(M+W)}, tableWidth:W,
+            styles:{fontSize:7,cellPadding:1.3,overflow:'linebreak',textColor:[0,0,0],lineColor:[0,0,0],lineWidth:0.2,valign:'middle'},
+            headStyles:{fillColor:TEAL,textColor:[255,255,255],fontStyle:'bold',halign:'center',lineWidth:0.2,lineColor:[0,0,0]},
+            columnStyles:{0:{cellWidth:9,halign:'center'},6:{cellWidth:12,halign:'center',fontStyle:'bold'},7:{cellWidth:12,halign:'center',fontStyle:'bold'},8:{cellWidth:10,halign:'center'},9:{cellWidth:14,halign:'center'},10:{cellWidth:18},11:{cellWidth:18},12:{cellWidth:18},13:{cellWidth:18}},
+            theme:'grid',
+            didParseCell:(hook)=>{
+                if(hook.section==='body'&&approvedIdx>=0&&hook.column.index===10+approvedIdx){
+                    hook.cell.styles.fillColor=APPROVED_YELLOW;hook.cell.styles.fontStyle='bold';
+                }
+            }
+        });
+        y=doc.lastAutoTable.finalY+5;
+        if(y>pageH-40){doc.addPage();y=M;}
+
+        const vendors=d.vendors||[];
+        const vHead=[['Sr No','Vendor Name','Email ID','Contact','Remarks']];
+        const vBody=['V1','V2','V3','V4'].map((v,i)=>{const info=vendors[i]||{};return [v,info.name||'',info.email||'',info.contact||'',info.remarks||'']});
+        doc.autoTable({
+            head:vHead,body:vBody,startY:y,
+            margin:{left:M,right:pageW-(M+W)},tableWidth:W,
+            styles:{fontSize:7.5,cellPadding:1.6,minCellHeight:6,lineColor:[0,0,0],lineWidth:0.2,textColor:[0,0,0]},
+            headStyles:{fillColor:TEAL,textColor:[255,255,255],fontStyle:'bold',halign:'center',lineWidth:0.2,lineColor:[0,0,0]},
+            columnStyles:{0:{cellWidth:12,halign:'center',fontStyle:'bold',fillColor:TEAL,textColor:[255,255,255]},1:{cellWidth:W*0.30},2:{cellWidth:W*0.20},3:{cellWidth:W*0.15},4:{cellWidth:'auto'}},
+            theme:'grid',
+            didParseCell:(hook)=>{
+                if(hook.section==='body'&&approvedIdx>=0&&hook.row.index===approvedIdx){
+                    hook.cell.styles.fillColor=APPROVED_YELLOW;hook.cell.styles.textColor=[0,0,0];hook.cell.styles.fontStyle='bold';
+                }
+            }
+        });
+        y=doc.lastAutoTable.finalY+16;
+        if(y>pageH-20){doc.addPage();y=M+16;}
+
+        const sigs=d.signatures||{};
+        const segW=W/4;
+        const sigCols=[
+            {label:'Store Incharge',sign:sigs.store},
+            {label:'GM / CEO',sign:sigs.gmCeo},
+            {label:'MD',sign:sigs.md},
+            {label:'Vendor Verified',sign:sigs.vendor},
+        ];
+        doc.setDrawColor(0,0,0);doc.setLineWidth(0.3);
+        sigCols.forEach((col,i)=>{
+            const cx=M+segW*i;
+            const data=String((col.sign&&col.sign.name)||'').trim();
+            const time=(col.sign&&col.sign.time)||'';
+            if(data.indexOf('data:image/')===0){
+                try{
+                    const dim=doc.getImageProperties(data);
+                    const maxW=segW-10,maxH=10;
+                    let iw=maxW,ih=iw*dim.height/dim.width;
+                    if(ih>maxH){ih=maxH;iw=ih*dim.width/dim.height;}
+                    doc.addImage(data,dim.fileType||'PNG',cx+(segW-iw)/2,y-4-ih,iw,ih);
+                }catch(e){}
+            }else if(!col.staticText&&!data){
+                doc.setFont(undefined,'italic');doc.setFontSize(6.8);doc.setTextColor(180,83,9);
+                doc.text('PENDING APPROVAL',cx+segW/2,y-6,{align:'center'});
+                doc.setTextColor(0,0,0);
+            }else if(!col.staticText&&data){
+                doc.setFont(undefined,'bold');doc.setFontSize(7.5);doc.setTextColor(4,120,87);
+                doc.text(data,cx+segW/2,y-6,{align:'center'});
+                doc.setTextColor(0,0,0);
+            }
+            doc.line(cx+3,y-4,cx+segW-3,y-4);
+            doc.setFont(undefined,'bold');doc.setFontSize(7.5);doc.setTextColor(0,0,0);
+            doc.text(col.label,cx+segW/2,y,{align:'center'});
+            if(time){doc.setFont(undefined,'normal');doc.setFontSize(5.8);doc.setTextColor(100,116,139);doc.text(String(time),cx+segW/2,y+3,{align:'center'});doc.setTextColor(0,0,0);}
+        });
+        y+=6;
+        doc.setFont(undefined,'normal');doc.setFontSize(7.5);doc.setTextColor(71,85,105);
+        doc.text(String(SARV_COMPANY.juris||''),pageW/2,y,{align:'center'});
+        doc.setTextColor(0,0,0);
+
+        return doc.output('blob');
+    }
+
+    async function buildPoNativePdfBlob(d, images=[]){
+        if(!jspdfNativeReady_())throw new Error('jsPDF not available');
+        const {jsPDF}=window.jspdf;
+        const doc=new jsPDF({unit:'mm',format:'a4',orientation:'portrait'});
+        const pageW=doc.internal.pageSize.getWidth(), pageH=doc.internal.pageSize.getHeight();
+        const M=8, W=pageW-M*2;
+        const AMBER=[253,230,138];
+        doc.setTextColor(0,0,0);
+
+        const items=(d.items||[]).map((it,i)=>{
+            const up=pNum(it.unitPrice),disc=pNum(it.discountPercent),qty=pNum(it.qty);
+            const netUp=disc>0?Math.round(up*(1-disc/100)*100)/100:up;
+            const total=pNum(it.total)||Math.round(netUp*qty*100)/100;
+            const gw=(it.grossWeight!=null&&it.grossWeight!=='')?pNum(it.grossWeight):null;
+            return{sr:i+1,desc:(it.itemName||'')+(it.itemDesc?' - '+it.itemDesc:''),make:it.make||'',qty,uom:it.uom||'',up,disc,netUp,total,gw};
+        });
+        const totalGW=items.reduce((s,r)=>s+(r.gw!=null?r.gw:0),0);
+        const totalQty=items.reduce((s,r)=>s+r.qty,0);
+        const subtotal=items.reduce((s,x)=>s+x.total,0);
+        const freight=pNum(d.freight),other=pNum(d.otherExpense),gstPct=pNum(d.gstPercent);
+        const taxable=subtotal+freight+other;
+        const gstAmt=pNum(d.gstAmount)||Math.round(taxable*gstPct/100*100)/100;
+        const grand=pNum(d.grandTotal)||(taxable+gstAmt);
+
+        let y=M;
+        doc.setFontSize(9);doc.setFont(undefined,'bold');
+        doc.text('GST IN: '+(SARV_COMPANY.gstin||''),M,y+4);
+        doc.setFontSize(12);
+        doc.text('PURCHASE ORDER',pageW/2,y+4.5,{align:'center'});
+        y+=10;
+        doc.setFontSize(18);doc.setFont(undefined,'bold');
+        doc.text(SARV_COMPANY.fullName,pageW/2,y,{align:'center'});
+        y+=6;
+        doc.setFontSize(10);
+        doc.text(SARV_COMPANY.unit,pageW/2,y,{align:'center'});
+        y+=4.5;
+        doc.setFontSize(8.5);doc.setFont(undefined,'normal');
+        doc.text(SARV_COMPANY.tagline,pageW/2,y,{align:'center'});
+        y+=4;
+        doc.text(SARV_COMPANY.address,pageW/2,y,{align:'center'});
+        y+=5;
+        doc.setLineWidth(0.4);doc.line(M,y,pageW-M,y);
+        y+=5;
+
+        doc.setFontSize(9);doc.setFont(undefined,'bold');
+        doc.text('No. '+(d.poNo||''),M,y);
+        doc.text('Date: '+fmtDate_(d.poDate),pageW-M,y,{align:'right'});
+        y+=6;
+
+        doc.setFont(undefined,'bold');doc.text('M/s:',M,y);
+        doc.setFont(undefined,'normal');doc.text(String(d.vendorName||''),M+10,y);
+        doc.setLineWidth(0.15);doc.line(M+10,y+0.8,pageW-M,y+0.8);
+        y+=5;
+        doc.text(String(d.vendorAddress||'NA'),M+10,y);
+        doc.line(M+10,y+0.8,pageW-M,y+0.8);
+        y+=5;
+        doc.text('Mail ID: '+(d.vendorMail||'NA')+' | Contact: '+(d.vendorContact||'NA'),M+10,y);
+        doc.line(M+10,y+0.8,pageW-M,y+0.8);
+        y+=6;
+
+        doc.setFillColor(249,250,251);doc.setDrawColor(0,0,0);doc.setLineWidth(0.3);
+        doc.rect(M,y,W,6,'FD');
+        doc.setFont(undefined,'bold');doc.setFontSize(8.5);
+        doc.text('Note : Do Not Start Production Before Approved Sample',M+2,y+4);
+        y+=6;
+
+        const c1=W*0.42,c2=W*0.25,c3=W-c1-c2;
+        doc.setFillColor(243,244,246);
+        doc.rect(M,y,c1,6,'FD');doc.rect(M+c1,y,c2,6,'FD');doc.rect(M+c1+c2,y,c3,6,'FD');
+        doc.setFontSize(8);doc.setFont(undefined,'bold');
+        doc.text('Shipping Address:',M+c1/2,y+4,{align:'center'});
+        doc.text('Delivery Date :',M+c1+c2/2,y+4,{align:'center'});
+        doc.text('Contact For Location',M+c1+c2+c3/2,y+4,{align:'center'});
+        y+=6;
+        const rowH=12;
+        doc.setFillColor(255,255,255);
+        doc.rect(M,y,c1,rowH);doc.rect(M+c1,y,c2,rowH);doc.rect(M+c1+c2,y,c3,rowH);
+        doc.setFont(undefined,'normal');doc.setFontSize(7.5);
+        const shipLines=doc.splitTextToSize(String(d.shippingAddress||SARV_COMPANY.address),c1-4);
+        doc.text(shipLines,M+2,y+4.5);
+        doc.setFont(undefined,'bold');doc.setFontSize(9);
+        doc.text(fmtDate_(d.deliveryDate),M+c1+c2/2,y+rowH/2+1.5,{align:'center'});
+        doc.setFontSize(8.5);
+        doc.text(String(d.locationContact||'-'),M+c1+c2+c3/2,y+rowH/2+1.5,{align:'center'});
+        y+=rowH;
+
+        doc.setFillColor(255,247,230);
+        doc.rect(M,y,W,6,'FD');
+        doc.setFont(undefined,'bold');doc.setFontSize(8.5);
+        doc.text('**'+(d.paymentTerms||'Payment terms 30 days after receipt of bill')+'**',pageW/2,y+4,{align:'center'});
+        y+=9;
+
+        // Always render Rate/Disc%/Net Rate/Amount — a fixed column set avoids
+        // a PO with 0% discount on every line silently losing the Disc%/Net
+        // Rate columns whenever this PDF gets regenerated after a GM/CEO/MD
+        // approval here.
+        const head=[['Sr.','Description','Make','Quantity','Gross Wt (kg)','Rate','Disc%','Net Rate','Amount']];
+        const body=items.map(r=>[String(r.sr),r.desc,r.make,pNum(r.qty)+' '+r.uom,r.gw!=null?String(r.gw):'',nNum_(r.up),r.disc>0?r.disc+'%':'-',nNum_(r.netUp),nNum_(r.total)]);
+        const columnStyles={0:{cellWidth:9},2:{cellWidth:18},3:{cellWidth:17},4:{cellWidth:17},5:{cellWidth:19},6:{cellWidth:13},7:{cellWidth:19},8:{cellWidth:22}};
+        const foot=[[{content:'Grand Total (Subtotal)',colSpan:3},String(totalQty),(totalGW>0?totalGW+' kg':''),{content:'',colSpan:3},nNum_(subtotal)]];
+        doc.autoTable({
+            head,body,foot,startY:y,
+            margin:{left:M,right:pageW-(M+W)},
+            tableWidth:W,
+            styles:{fontSize:7.5,cellPadding:1.4,overflow:'linebreak',textColor:[0,0,0],lineColor:[0,0,0],lineWidth:0.25,valign:'middle'},
+            headStyles:{fillColor:AMBER,textColor:[0,0,0],fontStyle:'bold',halign:'center',lineWidth:0.3,lineColor:[0,0,0]},
+            footStyles:{fillColor:AMBER,textColor:[0,0,0],fontStyle:'bold',lineWidth:0.3,lineColor:[0,0,0]},
+            columnStyles,
+            theme:'grid'
+        });
+        y=doc.lastAutoTable.finalY+4;
+        if(y>pageH-90){doc.addPage();y=M;}
+
+        const labelW=W*0.7;
+        const sumRows=[
+            ['Subtotal',nNum_(subtotal)],
+            ['Freight / Transport',nNum_(freight)],
+            [String(d.otherExpenseLabel||'Labour Other Exp.'),nNum_(other)],
+            ['Taxable Value',nNum_(taxable)],
+            ['GST @ '+gstPct+'%',nNum_(gstAmt)],
+        ];
+        doc.setFontSize(8.5);
+        sumRows.forEach(([l,v])=>{
+            doc.setFillColor(249,250,251);doc.rect(M,y,W,5.5,'F');
+            doc.setDrawColor(0,0,0);doc.setLineWidth(0.2);doc.rect(M,y,W,5.5);
+            doc.setFont(undefined,'bold');
+            doc.text(l,M+labelW-2,y+3.8,{align:'right'});
+            doc.text(String(v),M+W-2,y+3.8,{align:'right'});
+            y+=5.5;
+        });
+        doc.setFillColor(AMBER[0],AMBER[1],AMBER[2]);doc.rect(M,y,W,7,'F');doc.rect(M,y,W,7);
+        doc.setFont(undefined,'bold');doc.setFontSize(10.5);
+        doc.text('GRAND TOTAL',M+labelW-2,y+5,{align:'right'});
+        doc.text(nMoney_(grand),M+W-2,y+5,{align:'right'});
+        y+=11;
+
+        doc.setFont(undefined,'bold');doc.setFontSize(8.5);
+        doc.text('IMPORTANT NOTES:',M,y);
+        y+=2;
+        doc.setFontSize(8);
+        const notesLines=doc.splitTextToSize(String(d.importantNotes||''),W-4);
+        const notesH=Math.max(8,notesLines.length*3.6+3);
+        doc.setFillColor(255,242,0);doc.rect(M,y,W,notesH,'F');
+        doc.setDrawColor(212,184,0);doc.setLineWidth(0.3);doc.rect(M,y,W,notesH);
+        doc.setFont(undefined,'bold');doc.setTextColor(0,0,0);
+        doc.text(notesLines,M+2,y+4.5);
+        y+=notesH+6;
+
+        if(y>pageH-42){doc.addPage();y=M;}
+        const sigs=d.signatures||{};
+        const sigRoles=[['Store Incharge',sigs.store],['GM / CEO',sigs.gmCeo],['MD',sigs.md],['Vendor Verified',sigs.vendor]];
+        const segW=W/4,sigTop=y;
+        doc.setDrawColor(0,0,0);doc.setLineWidth(0.4);doc.rect(M,sigTop,W,26);
+        sigRoles.forEach(([role,sign],i)=>{
+            const cx=M+segW*i;
+            const data=String((sign&&sign.name)||'').trim();
+            const time=(sign&&sign.time)||'';
+            if(!data){
+                doc.setFont(undefined,'italic');doc.setFontSize(7.5);doc.setTextColor(180,83,9);
+                doc.text('PENDING APPROVAL',cx+segW/2,sigTop+9,{align:'center'});
+                doc.setTextColor(0,0,0);
+            } else if(data.indexOf('data:image/')===0){
+                try{
+                    const dim=doc.getImageProperties(data);
+                    const maxW=segW-8,maxH=10;
+                    let iw=maxW,ih=iw*dim.height/dim.width;
+                    if(ih>maxH){ih=maxH;iw=ih*dim.width/dim.height;}
+                    doc.addImage(data,dim.fileType||'PNG',cx+(segW-iw)/2,sigTop+2,iw,ih);
+                }catch(e){}
+                if(time){doc.setFont(undefined,'normal');doc.setFontSize(6.5);doc.setTextColor(100,116,139);doc.text(String(time),cx+segW/2,sigTop+13,{align:'center'});doc.setTextColor(0,0,0);}
+            } else {
+                doc.setFont(undefined,'bold');doc.setFontSize(8.5);doc.setTextColor(4,120,87);
+                doc.text(data,cx+segW/2,sigTop+8,{align:'center'});
+                doc.setTextColor(0,0,0);
+                if(time){doc.setFont(undefined,'normal');doc.setFontSize(6.5);doc.setTextColor(100,116,139);doc.text(String(time),cx+segW/2,sigTop+12,{align:'center'});doc.setTextColor(0,0,0);}
+            }
+            doc.setDrawColor(0,0,0);doc.setLineWidth(0.3);doc.line(cx+4,sigTop+16,cx+segW-4,sigTop+16);
+            doc.setFont(undefined,'bold');doc.setFontSize(7.5);
+            doc.text(role.toUpperCase(),cx+segW/2,sigTop+20,{align:'center'});
+            if(i>0){doc.setLineWidth(0.25);doc.line(cx,sigTop,cx,sigTop+26);}
+        });
+        y=sigTop+26+6;
+
+        doc.setFont(undefined,'normal');doc.setFontSize(7.5);doc.setTextColor(71,85,105);
+        doc.text(String(SARV_COMPANY.juris||''),pageW/2,y,{align:'center'});
+        doc.setTextColor(0,0,0);
+
+        for(const img of images){
+            if(!img||!img.dataUrl||String(img.dataUrl).indexOf('data:image')!==0)continue;
+            doc.addPage();
+            doc.setFont(undefined,'bold');doc.setFontSize(12);
+            doc.text('ATTACHMENTS',pageW/2,M+6,{align:'center'});
+            doc.setDrawColor(0,0,0);doc.setLineWidth(0.4);doc.line(M,M+9,pageW-M,M+9);
+            try{
+                const dim=doc.getImageProperties(img.dataUrl);
+                const maxW=W,maxH=pageH-M*2-20;
+                let iw=maxW,ih=iw*dim.height/dim.width;
+                if(ih>maxH){ih=maxH;iw=ih*dim.width/dim.height;}
+                doc.addImage(img.dataUrl,dim.fileType||'JPEG',M+(W-iw)/2,M+14,iw,ih);
+            }catch(e){}
+            if(img.name){doc.setFont(undefined,'normal');doc.setFontSize(8);doc.setTextColor(100,116,139);doc.text(String(img.name),pageW/2,pageH-M-4,{align:'center'});doc.setTextColor(0,0,0);}
+        }
+
+        return doc.output('blob');
+    }
+
+    // ── Approval chain config ────────────────────────────────────
+    const STAGE_LABEL = {gmCeo:'GM / CEO', md:'MD', vendor:'Vendor Verified'};
+    const STAGE_ROLE_PIN = {gmCeo:'USER_GM_PIN', md:'USER_MD_PIN', vendor:'VENDOR_VERIFY_PIN'};
+    const STAGE_RESULT_STATUS = {gmCeo:'GM/CEO Approved', md:'MD Approved', vendor:'Vendor Verified'};
+
+    let myStage = null;         // 'gmCeo' | 'md' | 'vendor'
+    let myVendorName = null;    // selected Supplier Master name, only when myStage === 'vendor'
+    let currentModule = 'PR';
+    let currentTab = 'pending';
+    let currentEntry = null;    // the record row currently open in the modal
+    let hasDrawn = false;
+    let listCache = [];
+
+    // ── Login / PIN gate ─────────────────────────────────────────
+    function setBusy(on, text){
+        const el = document.getElementById('busyOverlay');
+        document.getElementById('busyText').textContent = text || 'Working...';
+        el.style.display = on ? 'flex' : 'none';
+    }
+    async function loadLoginVendorOptions(){
+        const sel = document.getElementById('loginVendor');
+        if(!sel) return;
+        sel.innerHTML = '<option value="">-- Select Vendor --</option>';
+        try{
+            const q = await SB.from('suppliers').select('supplier_name').order('supplier_name');
+            if(q.error) throw q.error;
+            (q.data||[]).forEach(s=>{
+                const opt = document.createElement('option');
+                opt.value = s.supplier_name; opt.textContent = s.supplier_name;
+                sel.appendChild(opt);
+            });
+        }catch(e){ console.warn('[MOBILE] Vendor list load failed:', e.message||e); }
+    }
+    document.getElementById('loginRole').addEventListener('change', function(){
+        const isVendor = this.value === 'vendor';
+        document.getElementById('loginVendorGroup').style.display = isVendor ? 'block' : 'none';
+        if(isVendor) loadLoginVendorOptions();
+    });
+    async function attemptLogin(){
+        const role = document.getElementById('loginRole').value;
+        const vendorName = document.getElementById('loginVendor').value;
+        const pin = document.getElementById('loginPin').value;
+        const err = document.getElementById('loginError');
+        err.style.display = 'none';
+        if(!role){ err.textContent = 'Role select karo'; err.style.display='block'; return; }
+        if(role==='vendor' && !vendorName){ err.textContent = 'Vendor Name select karo'; err.style.display='block'; return; }
+        if(!pin){ err.textContent = 'PIN enter karo'; err.style.display='block'; return; }
+        try{
+            let pinHash;
+            if(role==='vendor'){
+                const q = await SB.from('suppliers').select('pin_hash').eq('supplier_name', vendorName).maybeSingle();
+                if(q.error) throw q.error;
+                if(!q.data || !q.data.pin_hash){ err.textContent = 'Is vendor ke liye PIN set nahi hai — desktop app ke Supplier Master me set karo.'; err.style.display='block'; return; }
+                pinHash = q.data.pin_hash;
+            }else{
+                const roleKey = STAGE_ROLE_PIN[role];
+                const q = await SB.from('role_pins').select('pin_hash').eq('role', roleKey).maybeSingle();
+                if(q.error) throw q.error;
+                if(!q.data){ err.textContent = 'Is role ke liye PIN set nahi hai — pehle desktop app ke Settings > Change Passwords me set karo.'; err.style.display='block'; return; }
+                pinHash = q.data.pin_hash;
+            }
+            const hash = await sha256Hex(pin);
+            if(hash !== pinHash){ err.textContent = 'Galat PIN'; err.style.display='block'; return; }
+            myStage = role;
+            myVendorName = role==='vendor' ? vendorName : null;
+            document.getElementById('roleBadge').textContent = STAGE_LABEL[role] + (myVendorName?' — '+myVendorName:'') + ' ⏻';
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('loginPin').value = '';
+            renderList();
+        }catch(e){
+            if(/does not exist|relation/i.test(e.message||'')) err.textContent = '⚠️ role_pins / suppliers table missing — migration run karein';
+            else err.textContent = e.message || String(e);
+            err.style.display = 'block';
+        }
+    }
+    function logoutRole(){
+        myStage = null;
+        myVendorName = null;
+        document.getElementById('loginRole').value = '';
+        document.getElementById('loginVendorGroup').style.display = 'none';
+        document.getElementById('loginVendor').innerHTML = '<option value="">-- Select Vendor --</option>';
+        document.getElementById('loginScreen').style.display = 'flex';
+    }
+    document.getElementById('loginBtn').addEventListener('click', attemptLogin);
+    document.getElementById('loginPin').addEventListener('keydown', e=>{ if(e.key==='Enter') attemptLogin(); });
+
+    // ── Module / tab switching ───────────────────────────────────
+    function switchModule(module) {
+        currentModule = module;
+        document.querySelectorAll('.module-btn').forEach(btn => btn.classList.remove('active'));
+        event.target.classList.add('active');
+        renderList();
+    }
+    function switchTab(tab) {
+        currentTab = tab;
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        event.target.classList.add('active');
+        renderList();
+    }
+
+    // ── Data fetch ───────────────────────────────────────────────
+    async function fetchList(){
+        if(!myStage) return [];
+        const table = currentModule === 'PR' ? 'purchase_requirements' : 'purchase_orders';
+        const dateCol = currentModule === 'PR' ? 'request_date' : 'po_date';
+        let q = SB.from(table).select('*').order(dateCol, {ascending:false}).limit(200);
+        if(currentTab === 'pending'){
+            if(myStage === 'gmCeo'){
+                q = currentModule === 'PR'
+                    ? q.or('status.is.null,status.eq.Pending')
+                    : q.eq('status','Generated');
+            } else if(myStage === 'md'){
+                q = q.eq('status','GM/CEO Approved');
+            } else {
+                q = q.eq('status','MD Approved');
+            }
+        } else {
+            q = q.not('approvals->'+myStage, 'is', null);
+        }
+        if(myStage === 'vendor' && myVendorName && currentModule === 'PO'){
+            q = q.ilike('vendor_name', myVendorName);
+        }
+        const {data, error} = await q;
+        if(error){ console.error(error); return []; }
+        let rows = data || [];
+        // purchase_requirements has no vendor_name column — the approved
+        // vendor lives inside pdf_snapshot, so a logged-in vendor's PR list
+        // is filtered client-side instead of via the query above.
+        if(myStage === 'vendor' && myVendorName && currentModule === 'PR'){
+            rows = rows.filter(r=>{
+                const snap = r.pdf_snapshot || {};
+                const idx = snap.approvedVendorIndex;
+                const v = (idx!=null && idx>=0) ? (snap.vendors||[])[idx] : null;
+                return v && String(v.name||'').trim().toUpperCase() === myVendorName.trim().toUpperCase();
+            });
+        }
+        // Same canonical PDF source STORE.html's PO Generation panel uses
+        // (pdf_documents, not the parent table's own pdf_url column) —
+        // that column doesn't reliably get patched on every regenerate,
+        // which is exactly why the two apps could show different PDFs.
+        const docNos = [...new Set(rows.map(r => currentModule === 'PR' ? r.req_no : r.po_no).filter(Boolean))];
+        if(docNos.length){
+            try{
+                const variant = currentModule === 'PR' ? 'REQUIREMENT' : 'PO';
+                const docType = currentModule === 'PR' ? 'REQUIREMENT' : 'PO';
+                const pdfq = await SB.from('pdf_documents').select('document_no,public_url')
+                    .eq('document_type', docType).eq('variant', variant).in('document_no', docNos);
+                if(!pdfq.error){
+                    const map = {};
+                    (pdfq.data||[]).forEach(p => { if(p.public_url) map[p.document_no] = p.public_url; });
+                    rows.forEach(r => {
+                        const no = currentModule === 'PR' ? r.req_no : r.po_no;
+                        if(map[no]) r.pdf_url = map[no];
+                    });
+                }
+            }catch(e){ console.warn('[MOBILE] pdf_documents lookup skipped:', e.message||e); }
+        }
+        return rows;
+    }
+
+    async function fetchItems(record){
+        if(currentModule === 'PR'){
+            const {data, error} = await SB.from('purchase_requirement_lines')
+                .select('*, items(name,description,make,category,uom)')
+                .eq('requirement_id', record.id).order('id');
+            if(error){ console.error(error); return []; }
+            return (data||[]).map(l=>({
+                name: l.item_name || l.items?.name || '',
+                desc: l.specification || l.items?.description || '',
+                make: l.items?.make || '',
+                category: l.items?.category || '',
+                qty: l.requested_qty, uom: l.uom || l.items?.uom || '',
+            }));
+        }
+        const {data, error} = await SB.from('purchase_order_lines').select('*').eq('purchase_order_id', record.id).order('line_no');
+        if(error){ console.error(error); return []; }
+        return (data||[]).map(l=>({
+            name: l.item_name, desc: l.item_description, make: l.make,
+            category: l.department || '', qty: l.ordered_qty, uom: l.uom, rate: l.unit_price, disc: l.discount_pct||0,
+        }));
+    }
+
+    // ── List rendering ───────────────────────────────────────────
+    const STATUS_COLORS = {'Pending':'#64748b','Generated':'#64748b','GM/CEO Approved':'#0284c7','MD Approved':'#7c3aed','Vendor Verified':'#16a34a','Partially Received':'#d97706','Received':'#16a34a','Rejected':'#dc2626','Cancelled':'#dc2626'};
+    function statusBadge(status){
+        const val = status || 'Pending';
+        const c = STATUS_COLORS[val] || '#64748b';
+        return `<span style="background:${c}18;color:${c};border:1px solid ${c}33;border-radius:4px;padding:2px 8px;font-size:0.72rem;font-weight:800;white-space:nowrap;">${escText(val)}</span>`;
+    }
+
+    async function renderList() {
+        const listDiv = document.getElementById('list');
+        if(!myStage){ listDiv.innerHTML = ''; return; }
+        listDiv.innerHTML = `<p class="empty-msg">⏳ Loading...</p>`;
+        listCache = await fetchList();
+
+        if(listCache.length === 0) {
+            listDiv.innerHTML = `<p class="empty-msg">No ${currentTab} ${currentModule}s waiting on ${STAGE_LABEL[myStage]}.</p>`;
+            return;
+        }
+
+        listDiv.innerHTML = '';
+        listCache.forEach(item => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            const docNo = currentModule === 'PR' ? item.req_no : item.po_no;
+            const requestedBy = currentModule === 'PR' ? (item.requested_by||'-') : (item.vendor_name||'-');
+            if(currentTab === 'pending') card.onclick = () => openModal(item);
+
+            let html = `<div class="card-header"><span>${escText(docNo)}</span>`;
+            if (currentModule === 'PO') {
+                html += `<span>${escText(nMoney_(item.grand_total))}</span></div><div class="card-detail">Vendor: <b>${escText(item.vendor_name||'-')}</b></div>`;
+            } else {
+                html += `<span style="font-size:0.75rem; color:#d9534f;">${escText(item.priority||'Normal')}</span></div>`;
+            }
+            html += `<div class="card-detail">${currentModule==='PO'?'Requested By':'Requested By'}: <b>${escText(requestedBy)}</b></div>`;
+            html += `<div class="card-detail">Status: ${statusBadge(item.status)}</div>`;
+            if(item.pdf_url) html += `<a class="pdf-link" href="${escText(item.pdf_url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">📄 View Updated PDF</a>`;
+
+            if(currentTab === 'completed') {
+                html += `<div class="status-tag">✔ Signed by ${escText(STAGE_LABEL[myStage])}</div>`;
+            } else {
+                html += `<div class="stage-tag">Waiting on ${escText(STAGE_LABEL[myStage])}</div>`;
+            }
+            card.innerHTML = html;
+            if(currentTab === 'completed' && canCancelApproval(item)){
+                const cancelBtn = document.createElement('button');
+                cancelBtn.className = 'clear-btn';
+                cancelBtn.style.cssText = 'margin-top:8px;display:block;width:100%;text-align:center;padding:8px;border:1px solid #dc3545;border-radius:6px;background:#fff5f5;font-weight:700;';
+                cancelBtn.textContent = '↩ Cancel My Approval';
+                cancelBtn.onclick = (e) => { e.stopPropagation(); cancelMyApproval(item); };
+                card.appendChild(cancelBtn);
+            }
+            listDiv.appendChild(card);
+        });
+    }
+
+    // ── Modal ────────────────────────────────────────────────────
+    let currentSnapshotVendors = [];   // vendors[] from the PR's pdf_snapshot
+    let currentItemRates = [];         // per-item {V1,V2,V3,V4} aligned with rendered item rows
+    let currentItemDiscs = [];         // per-item {V1,V2,V3,V4} discount% aligned with rendered item rows (PR)
+    let selectedVendorIndex = -1;      // GM/CEO's in-progress pick (-1 = none yet)
+
+    function renderItemRows(items, rates, forcedVendorIndex, showRateColumn, discs){
+        const tbody = document.getElementById('modal-item-tbody');
+        tbody.innerHTML = items.map((item,i) => {
+            let rateCell = '', discCell = '';
+            if(currentModule === 'PO'){
+                rateCell = `<td><b>${escText(nNum_(item.rate))}</b></td>`;
+                discCell = `<td>${pNum(item.disc)>0?escText(item.disc)+'%':'-'}</td>`;
+            } else if(showRateColumn){
+                const r = forcedVendorIndex >= 0 ? (rates[i]||{})['V'+(forcedVendorIndex+1)] : null;
+                rateCell = `<td><b>${r!=null&&pNum(r)>0?escText(nNum_(r)):'-'}</b></td>`;
+                const dc = forcedVendorIndex >= 0 ? pNum((discs[i]||{})['V'+(forcedVendorIndex+1)]) : 0;
+                discCell = `<td>${dc>0?escText(dc)+'%':'-'}</td>`;
+            }
+            return `<tr>
+                <td>${i+1}</td>
+                <td><b>${escText(item.name)}</b></td>
+                <td>${escText(item.desc||'-')}</td>
+                <td>${escText(item.category||'General')}</td>
+                <td>${escText(item.make||'-')}</td>
+                <td><b>${escText(item.qty)} ${escText(item.uom)}</b></td>
+                ${rateCell}
+                ${discCell}
+            </tr>`;
+        }).join('') || `<tr><td colspan="8" style="text-align:center;color:#999;">No items</td></tr>`;
+    }
+
+    async function openModal(entry) {
+        currentEntry = entry;
+        selectedVendorIndex = -1;
+        const docNo = currentModule === 'PR' ? entry.req_no : entry.po_no;
+        document.getElementById('modal-header-title').innerText = `${docNo} Details`;
+
+        let metaHtml = currentModule === 'PO'
+            ? `<strong>Vendor:</strong> ${escText(entry.vendor_name||'-')} | <strong>Grand Total:</strong> ${escText(nMoney_(entry.grand_total))}`
+            : `<strong>Requested By:</strong> ${escText(entry.requested_by||'-')} | <strong>Priority:</strong> ${escText(entry.priority||'Normal')}`;
+        if(entry.pdf_url) metaHtml += `<br><a href="${escText(entry.pdf_url)}" target="_blank" rel="noopener" style="display:block;margin-top:8px;padding:9px;text-align:center;background:#eff6ff;border:1px solid #93c5fd;border-radius:6px;color:#1d4ed8;font-weight:700;font-size:0.85rem;text-decoration:none;">📄 View Updated PDF (with latest signatures)</a>`;
+        else if(currentModule === 'PR') metaHtml += `<br><span style="display:block;margin-top:8px;font-size:0.75rem;color:#94a3b8;">PDF not generated yet.</span>`;
+        document.getElementById('modal-meta-info').innerHTML = metaHtml;
+
+        const rateHeader = document.getElementById('rate-col-header');
+        const discHeader = document.getElementById('disc-col-header');
+        const vendorGroup = document.getElementById('vendorSelectGroup');
+        const vendorSelect = document.getElementById('vendorSelect');
+        const approvedInfo = document.getElementById('approvedVendorInfo');
+        vendorGroup.style.display = 'none';
+        approvedInfo.style.display = 'none';
+
+        const snapshot = (currentModule === 'PR' && entry.pdf_snapshot) || {};
+        currentSnapshotVendors = snapshot.vendors || [];
+        const approvedIdx = (snapshot.approvedVendorIndex != null) ? snapshot.approvedVendorIndex : -1;
+
+        const tbody = document.getElementById('modal-item-tbody');
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#999;">Loading items...</td></tr>';
+        const items = await fetchItems(entry);
+        // pdf_snapshot.items is always rebuilt from these same DB lines in
+        // this same order (see approvePR / STORE.html's saveVendorInfo), so
+        // index correspondence is safe here — same convention used there.
+        currentItemRates = (snapshot.items || []).map(it => it.rates || {});
+        currentItemDiscs = (snapshot.items || []).map(it => it.discounts || {});
+
+        let showRateColumn = false;
+        if(currentModule === 'PR' && myStage === 'gmCeo'){
+            const options = currentSnapshotVendors
+                .map((v,i) => v && v.name ? {i, name:v.name} : null)
+                .filter(Boolean);
+            if(options.length){
+                showRateColumn = true;
+                vendorGroup.style.display = 'block';
+                vendorSelect.innerHTML = '<option value="">-- Choose Vendor --</option>' +
+                    options.map(o => `<option value="${o.i}">${escText(o.name)}</option>`).join('');
+                vendorSelect.onchange = () => {
+                    selectedVendorIndex = vendorSelect.value === '' ? -1 : Number(vendorSelect.value);
+                    renderItemRows(items, currentItemRates, selectedVendorIndex, true, currentItemDiscs);
+                };
+            }
+        } else if(currentModule === 'PR' && approvedIdx >= 0){
+            showRateColumn = true;
+            const v = currentSnapshotVendors[approvedIdx] || {};
+            approvedInfo.style.display = 'block';
+            approvedInfo.innerHTML = `<strong>✅ Approved Vendor:</strong> ${escText(v.name||'-')}` +
+                (v.contact ? ` | <strong>Contact:</strong> ${escText(v.contact)}` : '');
+        } else if(currentModule === 'PO'){
+            showRateColumn = true;
+        }
+        rateHeader.style.display = showRateColumn ? '' : 'none';
+        discHeader.style.display = showRateColumn ? '' : 'none';
+
+        renderItemRows(items, currentItemRates, currentModule === 'PR' ? approvedIdx : -1, showRateColumn, currentItemDiscs);
+
+        document.getElementById('remarksInput').value = '';
+        clearSignature();
+        document.getElementById('approvalModal').style.display = 'flex';
+        resizeCanvas();
+    }
+
+    function closeModal() {
+        document.getElementById('approvalModal').style.display = 'none';
+        currentEntry = null;
+    }
+
+    // ── Approve: write approvals + advance status + regenerate PDF ─
+    async function approvePR(req, stage, sig, vendorIndex){
+        const newApprovals = {...(req.approvals||{}), [stage]: sig};
+        const newStatus = STAGE_RESULT_STATUS[stage];
+        const lq = await SB.from('purchase_requirement_lines')
+            .select('*, items(name,description,make,category,uom)')
+            .eq('requirement_id', req.id).order('id');
+        if(lq.error) throw lq.error;
+        const lines = lq.data || [];
+        const base = req.pdf_snapshot || {};
+        // GM/CEO's vendor pick is made once and carried forward untouched
+        // through MD and Vendor Verified — only the gmCeo stage can set it.
+        const approvedVendorIndex = (stage==='gmCeo' && vendorIndex!=null && vendorIndex>=0)
+            ? vendorIndex
+            : (base.approvedVendorIndex!=null ? base.approvedVendorIndex : -1);
+        const d = {
+            ...base,
+            reqNo: req.req_no,
+            department: base.department || req.department,
+            requiredByDate: base.requiredByDate || req.required_by,
+            date: base.date || req.request_date,
+            priority: base.priority || req.priority,
+            personName: base.personName || req.requested_by,
+            empCode: base.empCode || req.employee_code,
+            purpose: base.purpose || req.purpose,
+            overallRemarks: base.overallRemarks || req.notes,
+            status: newStatus,
+            approvedVendorIndex,
+            items: lines.map((line,i)=>({
+                name: line.item_name || line.items?.name || '',
+                desc: line.specification || line.items?.description || '',
+                make: line.items?.make || '',
+                category: line.items?.category || '',
+                machine: line.machine || '',
+                qty: line.requested_qty,
+                uom: line.uom || line.items?.uom || '',
+                grossWeight: line.gross_weight || 0,
+                rates: (base.items && base.items[i] && base.items[i].rates) || {},
+                discounts: (base.items && base.items[i] && base.items[i].discounts) || {},
+            })),
+            vendors: base.vendors || [],
+            signatures: newApprovals,
+        };
+        if(base.signatures && base.signatures.store) d.signatures.store = base.signatures.store;
+
+        const updErr = await SB.from('purchase_requirements').update({status:newStatus, approvals:newApprovals, pdf_snapshot:d}).eq('id', req.id);
+        if(updErr.error) throw updErr.error;
+
+        try{
+            const blob = await buildRequirementNativePdfBlob(d);
+            const artifact = await uploadPdfArtifact(blob,'REQUIREMENT',req.req_no,'REQUIREMENT');
+            await indexPdfArtifact('REQUIREMENT', req.id, req.req_no, 'REQUIREMENT', artifact);
+        }catch(e){ console.warn('[MOBILE] PR PDF regen failed (approval still saved):', e); }
+    }
+
+    async function approvePO(po, stage, sig){
+        const newApprovals = {...(po.approvals||{}), [stage]: sig};
+        const newStatus = STAGE_RESULT_STATUS[stage];
+        const lq = await SB.from('purchase_order_lines').select('*').eq('purchase_order_id', po.id).order('line_no');
+        if(lq.error) throw lq.error;
+        const lines = lq.data || [];
+        const d = {
+            poNo: po.po_no, poDate: po.po_date, deliveryDate: po.delivery_date,
+            vendorName: po.vendor_name, vendorMail: po.vendor_mail, vendorContact: po.vendor_contact, vendorAddress: po.vendor_address,
+            paymentTerms: po.payment_terms, locationContact: '', freight: po.freight, otherExpense: po.other_expense,
+            otherExpenseLabel: 'Labour Other Exp.', gstPercent: po.gst_percent, grandTotal: po.grand_total,
+            importantNotes: po.important_notes,
+            items: lines.map(l=>({
+                reqNo: l.req_no, itemName: l.item_name, itemDesc: l.item_description, make: l.make,
+                qty: l.ordered_qty, uom: l.uom, unitPrice: l.unit_price, discountPercent: l.discount_pct||0,
+                netUnitPrice: l.unit_price, total: l.line_total, grossWeight: 0,
+            })),
+            signatures: newApprovals,
+        };
+
+        const updErr = await SB.from('purchase_orders').update({status:newStatus, approvals:newApprovals}).eq('id', po.id);
+        if(updErr.error) throw updErr.error;
+
+        try{
+            const blob = await buildPoNativePdfBlob(d, []);
+            const artifact = await uploadPdfArtifact(blob,'PO',po.po_no,'PO');
+            await indexPdfArtifact('PO', po.id, po.po_no, 'PO', artifact);
+        }catch(e){ console.warn('[MOBILE] PO PDF regen failed (approval still saved):', e); }
+    }
+
+    // ── Cancel a completed approval — only allowed while no later stage
+    //    has signed yet (and, for POs, before Store has started receiving
+    //    goods against it), reverting the record back to the status it had
+    //    just before this stage signed. ──────────────────────────────────
+    const STAGE_ORDER = ['gmCeo', 'md', 'vendor'];
+    const PREV_STATUS_PR = {gmCeo: 'Pending', md: 'GM/CEO Approved', vendor: 'MD Approved'};
+    const PREV_STATUS_PO = {gmCeo: 'Generated', md: 'GM/CEO Approved', vendor: 'MD Approved'};
+
+    function canCancelApproval(item){
+        if(!myStage) return false;
+        const idx = STAGE_ORDER.indexOf(myStage);
+        if(idx < 0) return false;
+        const approvals = item.approvals || {};
+        if(!approvals[myStage]) return false;
+        const laterSigned = STAGE_ORDER.slice(idx+1).some(s => approvals[s]);
+        if(laterSigned) return false;
+        if(currentModule === 'PO' && ['Partially Received','Received'].includes(item.status)) return false;
+        return true;
+    }
+
+    async function cancelPRApproval(req){
+        const newApprovals = {...(req.approvals||{})};
+        delete newApprovals[myStage];
+        const newStatus = PREV_STATUS_PR[myStage];
+        const lq = await SB.from('purchase_requirement_lines')
+            .select('*, items(name,description,make,category,uom)')
+            .eq('requirement_id', req.id).order('id');
+        if(lq.error) throw lq.error;
+        const lines = lq.data || [];
+        const base = req.pdf_snapshot || {};
+        // Cancelling GM/CEO's approval also clears the vendor pick made
+        // alongside it — the next GM/CEO sign-off picks fresh.
+        const approvedVendorIndex = myStage === 'gmCeo' ? -1 : (base.approvedVendorIndex!=null ? base.approvedVendorIndex : -1);
+        const d = {
+            ...base,
+            reqNo: req.req_no,
+            department: base.department || req.department,
+            requiredByDate: base.requiredByDate || req.required_by,
+            date: base.date || req.request_date,
+            priority: base.priority || req.priority,
+            personName: base.personName || req.requested_by,
+            empCode: base.empCode || req.employee_code,
+            purpose: base.purpose || req.purpose,
+            overallRemarks: base.overallRemarks || req.notes,
+            status: newStatus,
+            approvedVendorIndex,
+            items: lines.map((line,i)=>({
+                name: line.item_name || line.items?.name || '',
+                desc: line.specification || line.items?.description || '',
+                make: line.items?.make || '',
+                category: line.items?.category || '',
+                machine: line.machine || '',
+                qty: line.requested_qty,
+                uom: line.uom || line.items?.uom || '',
+                grossWeight: line.gross_weight || 0,
+                rates: (base.items && base.items[i] && base.items[i].rates) || {},
+                discounts: (base.items && base.items[i] && base.items[i].discounts) || {},
+            })),
+            vendors: base.vendors || [],
+            signatures: newApprovals,
+        };
+        if(base.signatures && base.signatures.store) d.signatures.store = base.signatures.store;
+
+        const updErr = await SB.from('purchase_requirements').update({status:newStatus, approvals:newApprovals, pdf_snapshot:d}).eq('id', req.id);
+        if(updErr.error) throw updErr.error;
+
+        try{
+            const blob = await buildRequirementNativePdfBlob(d);
+            const artifact = await uploadPdfArtifact(blob,'REQUIREMENT',req.req_no,'REQUIREMENT');
+            await indexPdfArtifact('REQUIREMENT', req.id, req.req_no, 'REQUIREMENT', artifact);
+        }catch(e){ console.warn('[MOBILE] PR PDF regen failed (cancel still saved):', e); }
+    }
+
+    async function cancelPOApproval(po){
+        const newApprovals = {...(po.approvals||{})};
+        delete newApprovals[myStage];
+        const newStatus = PREV_STATUS_PO[myStage];
+        const lq = await SB.from('purchase_order_lines').select('*').eq('purchase_order_id', po.id).order('line_no');
+        if(lq.error) throw lq.error;
+        const lines = lq.data || [];
+        const d = {
+            poNo: po.po_no, poDate: po.po_date, deliveryDate: po.delivery_date,
+            vendorName: po.vendor_name, vendorMail: po.vendor_mail, vendorContact: po.vendor_contact, vendorAddress: po.vendor_address,
+            paymentTerms: po.payment_terms, locationContact: '', freight: po.freight, otherExpense: po.other_expense,
+            otherExpenseLabel: 'Labour Other Exp.', gstPercent: po.gst_percent, grandTotal: po.grand_total,
+            importantNotes: po.important_notes,
+            items: lines.map(l=>({
+                reqNo: l.req_no, itemName: l.item_name, itemDesc: l.item_description, make: l.make,
+                qty: l.ordered_qty, uom: l.uom, unitPrice: l.unit_price, discountPercent: l.discount_pct||0,
+                netUnitPrice: l.unit_price, total: l.line_total, grossWeight: 0,
+            })),
+            signatures: newApprovals,
+        };
+
+        const updErr = await SB.from('purchase_orders').update({status:newStatus, approvals:newApprovals}).eq('id', po.id);
+        if(updErr.error) throw updErr.error;
+
+        try{
+            const blob = await buildPoNativePdfBlob(d, []);
+            const artifact = await uploadPdfArtifact(blob,'PO',po.po_no,'PO');
+            await indexPdfArtifact('PO', po.id, po.po_no, 'PO', artifact);
+        }catch(e){ console.warn('[MOBILE] PO PDF regen failed (cancel still saved):', e); }
+    }
+
+    async function cancelMyApproval(item){
+        if(!canCancelApproval(item)) return;
+        const docNo = currentModule === 'PR' ? item.req_no : item.po_no;
+        if(!confirm(`Cancel your ${STAGE_LABEL[myStage]} approval on ${docNo}? It will go back to pending for you.`)) return;
+        setBusy(true, 'Cancelling approval...');
+        try{
+            if(currentModule === 'PR') await cancelPRApproval(item);
+            else await cancelPOApproval(item);
+            await renderList();
+        }catch(e){
+            alert('Error: ' + (e.message || e));
+        }finally{
+            setBusy(false);
+        }
+    }
+
+    async function approveEntry() {
+        if(!hasDrawn) { alert('Please provide a signature before approving.'); return; }
+        if(!currentEntry || !myStage) return;
+        if(currentModule === 'PR' && myStage === 'gmCeo' && currentSnapshotVendors.some(v=>v&&v.name) && selectedVendorIndex < 0) {
+            alert('Please select the approved vendor before approving.');
+            return;
+        }
+        const remarks = document.getElementById('remarksInput').value;
+        const sig = { name: canvas.toDataURL('image/png'), time: pStamp(), remarks };
+        document.getElementById('approveBtn').disabled = true;
+        setBusy(true, 'Saving signature & regenerating PDF...');
+        try{
+            if(currentModule === 'PR') await approvePR(currentEntry, myStage, sig, selectedVendorIndex);
+            else await approvePO(currentEntry, myStage, sig);
+            closeModal();
+            await renderList();
+        }catch(e){
+            alert('Error: ' + (e.message || e));
+        }finally{
+            setBusy(false);
+            document.getElementById('approveBtn').disabled = false;
+        }
+    }
+
+    // ── Canvas signature logic ───────────────────────────────────
+    const canvas = document.getElementById('sigPad');
+    const ctx = canvas.getContext('2d');
+    let isDrawing = false;
+
+    function resizeCanvas() {
+        const ratio = Math.max(window.devicePixelRatio || 1, 1);
+        canvas.width = canvas.offsetWidth * ratio;
+        canvas.height = canvas.offsetHeight * ratio;
+        ctx.scale(ratio, ratio);
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.lineWidth = 2.5;
+        ctx.strokeStyle = '#000';
+    }
+
+    function getCoordinates(e) {
+        const rect = canvas.getBoundingClientRect();
+        if (e.touches && e.touches.length > 0) {
+            return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
+        }
+        return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    }
+
+    function startDrawing(e) { e.preventDefault(); isDrawing = true; hasDrawn = true; const coords = getCoordinates(e); ctx.beginPath(); ctx.moveTo(coords.x, coords.y); }
+    function draw(e) { e.preventDefault(); if (!isDrawing) return; const coords = getCoordinates(e); ctx.lineTo(coords.x, coords.y); ctx.stroke(); }
+    function stopDrawing(e) { if(e) e.preventDefault(); isDrawing = false; ctx.closePath(); }
+    function clearSignature() { ctx.clearRect(0, 0, canvas.width, canvas.height); hasDrawn = false; }
+
+    canvas.addEventListener('mousedown', startDrawing);
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseup', stopDrawing);
+    canvas.addEventListener('mouseout', stopDrawing);
+    canvas.addEventListener('touchstart', startDrawing, { passive: false });
+    canvas.addEventListener('touchmove', draw, { passive: false });
+    canvas.addEventListener('touchend', stopDrawing, { passive: false });
+
+    window.addEventListener('resize', resizeCanvas);
+</script>
+</body>
+</html>
