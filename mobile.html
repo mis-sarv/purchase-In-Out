@@ -452,7 +452,10 @@
                 </div>
             </div>
 
-            <button class="btn" id="approveBtn" onclick="approveEntry()">✔ Approve & Sign</button>
+            <div style="display:flex; gap:8px;">
+                <button class="btn" id="approveBtn" onclick="approveEntry()" style="flex:1; width:auto;">✔ Approve & Sign</button>
+                <button class="btn" id="rejectBtn" onclick="rejectEntry()" style="flex:1; width:auto; background:#dc3545;">✖ Reject</button>
+            </div>
         </div>
     </div>
 </div>
@@ -1327,6 +1330,107 @@
         }catch(e){ console.warn('[MOBILE] PO PDF regen failed (approval still saved):', e); }
     }
 
+    // ── Reject: send a PENDING item back to the stage that approved it just
+    //    before the current one (that stage re-reviews it from their own
+    //    pending list). The very first stage (gmCeo) has nobody before it,
+    //    so rejecting there marks the record terminally 'Rejected'. ───────
+    async function rejectPR(req, stage, remarks){
+        const prevStage = PREV_STAGE_OF[stage];
+        const newApprovals = {...(req.approvals||{})};
+        let newStatus;
+        if(prevStage){
+            delete newApprovals[prevStage];
+            newStatus = PREV_STATUS_PR[prevStage];
+        } else {
+            newStatus = 'Rejected';
+        }
+        const lq = await SB.from('purchase_requirement_lines')
+            .select('*, items(name,description,make,category,uom)')
+            .eq('requirement_id', req.id).order('id');
+        if(lq.error) throw lq.error;
+        const lines = lq.data || [];
+        const base = req.pdf_snapshot || {};
+        // Sending it back past GM/CEO also clears their vendor pick — the
+        // next GM/CEO sign-off picks fresh, same as cancelPRApproval.
+        const approvedVendorIndex = (!prevStage || prevStage === 'gmCeo') ? -1 : (base.approvedVendorIndex!=null ? base.approvedVendorIndex : -1);
+        const d = {
+            ...base,
+            reqNo: req.req_no,
+            department: base.department || req.department,
+            requiredByDate: base.requiredByDate || req.required_by,
+            date: base.date || req.request_date,
+            priority: base.priority || req.priority,
+            personName: base.personName || req.requested_by,
+            empCode: base.empCode || req.employee_code,
+            purpose: base.purpose || req.purpose,
+            overallRemarks: base.overallRemarks || req.notes,
+            status: newStatus,
+            approvedVendorIndex,
+            items: lines.map((line,i)=>({
+                name: line.item_name || line.items?.name || '',
+                desc: line.specification || line.items?.description || '',
+                make: line.items?.make || '',
+                category: line.items?.category || '',
+                machine: line.machine || '',
+                qty: line.requested_qty,
+                uom: line.uom || line.items?.uom || '',
+                grossWeight: line.gross_weight || 0,
+                rates: (base.items && base.items[i] && base.items[i].rates) || {},
+                discounts: (base.items && base.items[i] && base.items[i].discounts) || {},
+            })),
+            vendors: base.vendors || [],
+            signatures: newApprovals,
+            lastRejection: {stage, by: STAGE_LABEL[stage], at: pStamp(), remarks: remarks||''},
+        };
+        if(base.signatures && base.signatures.store) d.signatures.store = base.signatures.store;
+
+        const updErr = await SB.from('purchase_requirements').update({status:newStatus, approvals:newApprovals, pdf_snapshot:d}).eq('id', req.id);
+        if(updErr.error) throw updErr.error;
+
+        try{
+            const blob = await buildRequirementNativePdfBlob(d);
+            const artifact = await uploadPdfArtifact(blob,'REQUIREMENT',req.req_no,'REQUIREMENT');
+            await indexPdfArtifact('REQUIREMENT', req.id, req.req_no, 'REQUIREMENT', artifact);
+        }catch(e){ console.warn('[MOBILE] PR PDF regen failed (reject still saved):', e); }
+    }
+
+    async function rejectPO(po, stage, remarks){
+        const prevStage = PREV_STAGE_OF[stage];
+        const newApprovals = {...(po.approvals||{})};
+        let newStatus;
+        if(prevStage){
+            delete newApprovals[prevStage];
+            newStatus = PREV_STATUS_PO[prevStage];
+        } else {
+            newStatus = 'Rejected';
+        }
+        const lq = await SB.from('purchase_order_lines').select('*').eq('purchase_order_id', po.id).order('line_no');
+        if(lq.error) throw lq.error;
+        const lines = lq.data || [];
+        const d = {
+            poNo: po.po_no, poDate: po.po_date, deliveryDate: po.delivery_date,
+            vendorName: po.vendor_name, vendorMail: po.vendor_mail, vendorContact: po.vendor_contact, vendorAddress: po.vendor_address,
+            paymentTerms: po.payment_terms, locationContact: '', freight: po.freight, otherExpense: po.other_expense,
+            otherExpenseLabel: 'Labour Other Exp.', gstPercent: po.gst_percent, grandTotal: po.grand_total,
+            importantNotes: po.important_notes,
+            items: lines.map(l=>({
+                reqNo: l.req_no, itemName: l.item_name, itemDesc: l.item_description, make: l.make,
+                qty: l.ordered_qty, uom: l.uom, unitPrice: l.unit_price, discountPercent: l.discount_pct||0,
+                netUnitPrice: l.unit_price, total: l.line_total, grossWeight: 0,
+            })),
+            signatures: newApprovals,
+        };
+
+        const updErr = await SB.from('purchase_orders').update({status:newStatus, approvals:newApprovals}).eq('id', po.id);
+        if(updErr.error) throw updErr.error;
+
+        try{
+            const blob = await buildPoNativePdfBlob(d, []);
+            const artifact = await uploadPdfArtifact(blob,'PO',po.po_no,'PO');
+            await indexPdfArtifact('PO', po.id, po.po_no, 'PO', artifact);
+        }catch(e){ console.warn('[MOBILE] PO PDF regen failed (reject still saved):', e); }
+    }
+
     // ── Cancel a completed approval — only allowed while no later stage
     //    has signed yet (and, for POs, before Store has started receiving
     //    goods against it), reverting the record back to the status it had
@@ -1334,6 +1438,10 @@
     const STAGE_ORDER = ['gmCeo', 'md', 'vendor'];
     const PREV_STATUS_PR = {gmCeo: 'Pending', md: 'GM/CEO Approved', vendor: 'MD Approved'};
     const PREV_STATUS_PO = {gmCeo: 'Generated', md: 'GM/CEO Approved', vendor: 'MD Approved'};
+    // Stage that signed immediately before the given stage — used by Reject
+    // to send a pending item back into THAT stage's pending list. gmCeo has
+    // no earlier approver, so rejecting there is a terminal 'Rejected'.
+    const PREV_STAGE_OF = {md: 'gmCeo', vendor: 'md'};
 
     function canCancelApproval(item){
         if(!myStage) return false;
@@ -1468,6 +1576,31 @@
         }finally{
             setBusy(false);
             document.getElementById('approveBtn').disabled = false;
+        }
+    }
+
+    async function rejectEntry() {
+        if(!currentEntry || !myStage) return;
+        const remarks = document.getElementById('remarksInput').value.trim();
+        if(!remarks) { alert('Please enter a remark explaining the rejection.'); return; }
+        const prevStage = PREV_STAGE_OF[myStage];
+        const docNo = currentModule === 'PR' ? currentEntry.req_no : currentEntry.po_no;
+        const backMsg = prevStage
+            ? `It will go back to ${STAGE_LABEL[prevStage]}'s pending list for review.`
+            : `This is the first approval stage, so it will be marked Rejected.`;
+        if(!confirm(`Reject ${docNo}?\n\n${backMsg}`)) return;
+        document.getElementById('rejectBtn').disabled = true;
+        setBusy(true, 'Rejecting...');
+        try{
+            if(currentModule === 'PR') await rejectPR(currentEntry, myStage, remarks);
+            else await rejectPO(currentEntry, myStage, remarks);
+            closeModal();
+            await renderList();
+        }catch(e){
+            alert('Error: ' + (e.message || e));
+        }finally{
+            setBusy(false);
+            document.getElementById('rejectBtn').disabled = false;
         }
     }
 
