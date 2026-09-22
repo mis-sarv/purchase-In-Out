@@ -1646,6 +1646,12 @@ body {
         #fullPurchasePanel .po-pending-table td.po-itemcell { white-space: normal; min-width: 140px; }
         #fullPurchasePanel #p_poBuildTable input { width: 100%; padding: 4px 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; height: 28px; }
         #fullPurchasePanel #p_poBuildTable .po-total { text-align:right; font-weight:700; color:#0f172a; }
+        /* Give every column enough real pixel width to show its value in
+           full — with 14 columns, percentage widths inside a narrow modal
+           squeeze text down to unreadable slivers. The table-container's
+           existing overflow:auto lets it scroll horizontally on smaller
+           screens instead of shrinking columns further. */
+        #fullPurchasePanel #p_poBuildTable { min-width: 1500px; }
 
         #fullPurchasePanel /* Toast */
         #p_toastContainer {
@@ -2072,7 +2078,7 @@ body {
                     </div>
                     <div class="form-group">
                         <label>Supplier Name <span style="color:#dc2626; font-weight:800;">★</span></label>
-                        <input type="text" class="form-control" id="supplierName" placeholder="Type to search or add new..." list="dl-supplierName" autocomplete="off" style="cursor:text; text-transform:uppercase;">
+                        <input type="text" class="form-control" id="supplierName" placeholder="Select from Supplier Master..." list="dl-supplierName" autocomplete="off" style="cursor:text; text-transform:uppercase;">
                     </div>
                 </div>
                 <div id="inwardPoDetails" style="display:none;margin:-2px 0 12px;background:#eff6ff;border:1px solid #93c5fd;border-radius:7px;padding:7px 10px;color:#1e3a8a;font-size:11px;font-weight:600;"></div>
@@ -2234,7 +2240,7 @@ body {
                 <div class="grid-4">
                     <div class="form-group">
                         <label>Party Name <span style="color:#dc2626; font-weight:800;">★</span></label>
-                        <input type="text" class="form-control" id="outPartyName" placeholder="Type to search or add new..." list="dl-outPartyName" autocomplete="off" style="cursor:text; text-transform:uppercase;">
+                        <input type="text" class="form-control" id="outPartyName" placeholder="Select from Supplier Master..." list="dl-outPartyName" autocomplete="off" style="cursor:text; text-transform:uppercase;">
                     </div>
                     <div class="form-group">
                         <label>Location <span style="color:#dc2626; font-weight:800;">★</span></label>
@@ -3410,45 +3416,36 @@ body {
 
                 <div class="grid-4">
                     <div class="form-group">
-                        <label>Person Name <span class="req">*</span></label>
-                        <input type="text" class="form-control" id="p_reqPersonName" placeholder="Full name of requester" list="dl-emp-names" autocomplete="off">
-                        <datalist id="dl-emp-names"></datalist>
-                    </div>
-                    <div class="form-group">
                         <label>Employee Code</label>
                         <input type="text" class="form-control" id="p_reqEmpCode" placeholder="e.g. EMP-007" list="dl-emp-codes" autocomplete="off" oninput="onEmpCodeInput(this.value)" style="text-transform:uppercase;">
                         <datalist id="dl-emp-codes"></datalist>
                     </div>
-                    <div class="form-group">
-                        <label>Designation</label>
-                        <input type="text" class="form-control" id="p_reqDesignation" placeholder="e.g. Production Supervisor">
+                    <div class="form-group" style="grid-column:span 3;">
+                        <label>Employee Details <span class="req">*</span> <small style="font-weight:400;color:#94a3b8;">(auto-fill from Master Data)</small></label>
+                        <div id="p_reqEmpDetails" class="form-control" style="background:#f8fafc;display:flex;align-items:center;font-size:11.5px;font-weight:600;color:#334155;min-height:30px;"><span style="color:#94a3b8;font-weight:400;">Employee Code enter karein — Name / Designation / Department / Contact yahan auto-fill honge</span></div>
                     </div>
-                    <div class="form-group">
-                        <label>Department <span class="req">*</span></label>
-                        <select class="form-control" id="p_reqDepartment">
-                            <option value="">-- Select --</option>
-                            <option>Weaving</option>
-                            <option>Dyeing</option>
-                            <option>Finishing</option>
-                            <option>Raising</option>
-                            <option>Cutting / Stitching</option>
-                            <option>Packing</option>
-                            <option>Quality Control</option>
-                            <option>Maintenance</option>
-                            <option>Store</option>
-                            <option>Dispatch</option>
-                            <option>Admin / HR</option>
-                            <option>Accounts</option>
-                            <option>Other</option>
-                        </select>
-                    </div>
+                    <input type="hidden" id="p_reqPersonName">
+                    <input type="hidden" id="p_reqDesignation">
+                    <select id="p_reqDepartment" style="display:none;">
+                        <option value="">-- Select --</option>
+                        <option>Weaving</option>
+                        <option>Dyeing</option>
+                        <option>Finishing</option>
+                        <option>Raising</option>
+                        <option>Cutting / Stitching</option>
+                        <option>Packing</option>
+                        <option>Quality Control</option>
+                        <option>Maintenance</option>
+                        <option>Store</option>
+                        <option>Dispatch</option>
+                        <option>Admin / HR</option>
+                        <option>Accounts</option>
+                        <option>Other</option>
+                    </select>
+                    <input type="hidden" id="p_reqContact">
                 </div>
 
                 <div class="grid-3">
-                    <div class="form-group">
-                        <label>Contact No.</label>
-                        <input type="tel" class="form-control" id="p_reqContact" placeholder="10-digit mobile" maxlength="15">
-                    </div>
                     <div class="form-group">
                         <label>Purpose / Reason <span class="req">*</span></label>
                         <input type="text" class="form-control" id="p_reqPurpose" placeholder="e.g. Loom maintenance, sample run">
@@ -3748,7 +3745,7 @@ body {
 
     <!-- ============ PO BUILD MODAL ============ -->
     <div class="modal-overlay" id="p_poBuildModal">
-        <div class="modal-box" style="max-width: 1000px; width: 100%; max-height: 92vh; overflow-y: auto;">
+        <div class="modal-box" style="max-width: 1400px; width: 96vw; max-height: 92vh; overflow-y: auto;">
             <h3 class="modal-title">🛒 Build New Purchase Order</h3>
             <p class="modal-sub">Fill vendor &amp; pricing details. PDF will auto-generate &amp; save to Drive.</p>
 
@@ -3823,12 +3820,12 @@ body {
                             <th style="width:8%;">Make</th>
                             <th style="width:6%; text-align:center; background:#fef9c3; color:#854d0e; font-weight:800;" title="Original PR requirement quantity">REQ QTY</th>
                             <th style="width:6%; text-align:center;" title="Available qty for this PO">Avail</th>
-                            <th style="width:9%; background:#dbeafe; color:#1d4ed8;">PO Qty <span style="color:#dc2626;">*</span></th>
-                            <th style="width:7%; background:#fef2f2; color:#b91c1c;" title="Cancel remaining qty now (optional)">Cancel</th>
+                            <th style="width:6%; background:#dbeafe; color:#1d4ed8;">PO Qty <span style="color:#dc2626;">*</span></th>
+                            <th style="width:5%; background:#fef2f2; color:#b91c1c;" title="Cancel remaining qty now (optional)">Cancel</th>
                             <th style="width:5%;">UOM</th>
                             <th style="width:7%; background:#fef9c3; color:#854d0e;">Gross Wt (kg)</th>
-                            <th style="width:10%;">Unit Price <span style="color:#dc2626;">*</span></th>
-                            <th style="width:6%; background:#e0e7ff; color:#3730a3;" title="Discount % per item">Disc%</th>
+                            <th style="width:7%;">Unit Price <span style="color:#dc2626;">*</span></th>
+                            <th style="width:8%; background:#e0e7ff; color:#3730a3;" title="Discount % per item">Disc%</th>
                             <th style="width:8%; text-align:right;">Total</th>
                         </tr>
                     </thead>
@@ -4660,8 +4657,55 @@ function lookupEmployee(code){
   const c=(code||'').trim().toUpperCase();
   return sarvEmployeeCatalog.find(e=>(e.emp_code||'').toUpperCase()===c)||null;
 }
+function lookupSupplier(name){
+  const n=(name||'').trim().toLowerCase();
+  return sarvSupplierCatalog.find(s=>(s.supplier_name||'').toLowerCase()===n)||null;
+}
+// Master Data lock: outside the Master Data tab itself, any field tied to an
+// Item / Supplier / Employee master dropdown may only hold a value that
+// already exists in that master list — anything else is cleared on blur so
+// stray/typo values can't sneak into transactions. New values must be added
+// via the Master Data tab first.
+function lockToMasterList(el,getValidValues){
+  if(!el||el.dataset.masterLock)return;
+  el.dataset.masterLock='1';
+  el.addEventListener('blur',function(){
+    const val=(this.value||'').trim();
+    if(!val)return;
+    const ok=getValidValues().some(v=>(v||'').trim().toLowerCase()===val.toLowerCase());
+    if(!ok){
+      this.value='';
+      showToast(`❌ "${val}" Master Data mein nahi mila — pehle Master Data tab se add karein`,'warn');
+    }
+  });
+}
+function renderReqEmpDetails(){
+  const box=byId('p_reqEmpDetails');if(!box)return;
+  const name=(byId('p_reqPersonName')?.value||'').trim();
+  const desig=(byId('p_reqDesignation')?.value||'').trim();
+  const dept=(byId('p_reqDepartment')?.value||'').trim();
+  const contact=(byId('p_reqContact')?.value||'').trim();
+  if(!name&&!desig&&!dept&&!contact){
+    box.innerHTML='<span style="color:#94a3b8;font-weight:400;">Employee Code enter karein — Name / Designation / Department / Contact yahan auto-fill honge</span>';
+    return;
+  }
+  const parts=[];
+  if(name)parts.push('&#128100; <b>'+escText(name)+'</b>');
+  if(desig)parts.push(escText(desig));
+  if(dept)parts.push(escText(dept));
+  if(contact)parts.push('&#128222; '+escText(contact));
+  box.innerHTML=parts.join(' &nbsp;&middot;&nbsp; ');
+}
 function onEmpCodeInput(val){
-  const emp=lookupEmployee(val); if(!emp)return;
+  const emp=lookupEmployee(val);
+  if(!emp){
+    if(!(val||'').trim()){
+      ['p_reqPersonName','p_reqDesignation','p_reqContact'].forEach(id=>{const e=byId(id);if(e)e.value='';});
+      if(byId('p_reqDepartment'))byId('p_reqDepartment').value='';
+      renderReqEmpDetails();
+    }
+    return;
+  }
   const s=(id,v)=>{const e=byId(id);if(e&&v!=null)e.value=v;};
   s('p_reqPersonName', emp.person_name||'');
   s('p_reqDesignation', emp.designation||'');
@@ -4673,6 +4717,7 @@ function onEmpCodeInput(val){
     if(idx>=0)dept.selectedIndex=idx;
   }
   s('p_reqContact', emp.contact_no||'');
+  renderReqEmpDetails();
   showToast(`✅ ${emp.person_name} — ${emp.designation||''} (${emp.department||''})`, 'success');
 }
 
@@ -4903,7 +4948,10 @@ function addNewRow(){
  if(niName){
    niName.addEventListener('change',function(){applyItemAutofill(this.value,tr,'inward');});
    niName.addEventListener('input',function(){if(lookupItem(this.value))applyItemAutofill(this.value,tr,'inward');});
+   lockToMasterList(niName,()=>sarvItemCatalog.map(it=>it.name));
  }
+ const niMake=tr.querySelector('.item-make');
+ if(niMake)lockToMasterList(niMake,()=>[...new Set(sarvItemCatalog.map(it=>it.make).filter(Boolean))]);
  updateStoreTotals();
 }
 function addOutwardItemRow(){
@@ -4920,6 +4968,7 @@ function addOutwardItemRow(){
  if(oiName){
    oiName.addEventListener('change',function(){applyItemAutofill(this.value,tr,'outward');});
    oiName.addEventListener('input',function(){if(lookupItem(this.value))applyItemAutofill(this.value,tr,'outward');});
+   lockToMasterList(oiName,()=>sarvItemCatalog.map(it=>it.name));
  }
  updateOutTotals();
 }
@@ -5011,6 +5060,7 @@ function addPurchaseMainRow(){
  if(pcName){
    pcName.addEventListener('change',function(){applyItemAutofill(this.value,tr,'purchase');});
    pcName.addEventListener('input',function(){if(lookupItem(this.value))applyItemAutofill(this.value,tr,'purchase');});
+   lockToMasterList(pcName,()=>sarvItemCatalog.map(it=>it.name));
  }
  refreshPurchaseTotals();
 }
@@ -5792,6 +5842,12 @@ window.addEventListener('DOMContentLoaded',()=>{
   bindNavigation();
   bindOriginalControls();
   populateNatureOfDispatch();
+  // Master Data lock on static (non-row) fields — see lockToMasterList()
+  lockToMasterList(byId('supplierName'),()=>sarvSupplierCatalog.map(s=>s.supplier_name));
+  lockToMasterList(byId('outPartyName'),()=>sarvSupplierCatalog.map(s=>s.supplier_name));
+  lockToMasterList(byId('p_poVendorField'),()=>sarvSupplierCatalog.map(s=>s.supplier_name));
+  lockToMasterList(byId('p_reqEmpCode'),()=>sarvEmployeeCatalog.map(e=>e.emp_code));
+  lockToMasterList(byId('outReceiverEmpCode'),()=>sarvEmployeeCatalog.map(e=>e.emp_code));
   // Invoice Date and Target Return Date must start blank/un-selected so the
   // mandatory-field check below actually forces the user to pick one.
   document.querySelectorAll('input[type=date]').forEach(e=>{if(!e.value&&e.id!=='invoiceDate'&&e.id!=='outTargetReturnDate')e.value=today()});
@@ -5844,7 +5900,12 @@ window.addEventListener('DOMContentLoaded',()=>{
   let poDrawing=false,poCtx=null,poCanvas=null;
   function getPoCanvas(){return poCanvas||(poCanvas=byId('p_poStoreSignCanvas'));}
   function getPoCtx(){if(poCtx)return poCtx;const c=getPoCanvas();if(!c)return null;poCtx=c.getContext('2d');poCtx.strokeStyle='#0f172a';poCtx.lineWidth=2;poCtx.lineCap='round';poCtx.lineJoin='round';return poCtx;}
-  function poPos(e,c){const r=c.getBoundingClientRect();const s=e.touches?e.touches[0]:e;return{x:s.clientX-r.left,y:s.clientY-r.top};}
+  // The canvas has a fixed backing-store size (width=900 height=140) but is
+  // CSS-stretched to width:100% of the modal — now up to ~1350px after the
+  // popup was widened. Without scaling, a click at CSS x=450 draws at
+  // internal x=450 too, which then renders back out at 450*(1350/900)=675 —
+  // visibly offset from the pointer. Scale clientX/Y into canvas space.
+  function poPos(e,c){const r=c.getBoundingClientRect();const s=e.touches?e.touches[0]:e;const sx=c.width/r.width,sy=c.height/r.height;return{x:(s.clientX-r.left)*sx,y:(s.clientY-r.top)*sy};}
   function bindPoCanvas(){
     const c=getPoCanvas();if(!c||c.dataset.poBound)return;
     c.addEventListener('mousedown',e=>{e.preventDefault();poDrawing=true;const cx=getPoCtx();if(!cx)return;const p=poPos(e,c);cx.beginPath();cx.moveTo(p.x,p.y);});
@@ -5904,7 +5965,9 @@ window.addEventListener('DOMContentLoaded',()=>{
   let viDrawing=false,viCtx=null,viCanvas=null;
   function getViCanvas(){return viCanvas||(viCanvas=byId('p_viSignCanvas'));}
   function getViCtx(){if(viCtx)return viCtx;const c=getViCanvas();if(!c)return null;viCtx=c.getContext('2d');viCtx.strokeStyle='#0f172a';viCtx.lineWidth=2;viCtx.lineCap='round';viCtx.lineJoin='round';return viCtx;}
-  function viPos(e,c){const r=c.getBoundingClientRect();const s=e.touches?e.touches[0]:e;return{x:s.clientX-r.left,y:s.clientY-r.top};}
+  // Same fixed-backing-store-vs-CSS-stretch issue as the Store Incharge pad
+  // (canvas width=820 but CSS width:100%) — scale into canvas space.
+  function viPos(e,c){const r=c.getBoundingClientRect();const s=e.touches?e.touches[0]:e;const sx=c.width/r.width,sy=c.height/r.height;return{x:(s.clientX-r.left)*sx,y:(s.clientY-r.top)*sy};}
   function bindViCanvas(){
     const c=getViCanvas();if(!c||c.dataset.viBound)return;
     c.addEventListener('mousedown',e=>{e.preventDefault();viDrawing=true;const cx=getViCtx();if(!cx)return;const p=viPos(e,c);cx.beginPath();cx.moveTo(p.x,p.y);});
@@ -7377,6 +7440,7 @@ window.addEventListener('DOMContentLoaded',()=>{
  }
  function clearPrForm(){
    ['p_reqDate','p_requiredByDate','p_reqPersonName','p_reqEmpCode','p_reqDesignation','p_reqDepartment','p_reqContact','p_reqPurpose','p_overallRemarks'].forEach(id=>{const e=byId(id);if(e)e.value='';});
+   renderReqEmpDetails();
    if(byId('p_priority'))byId('p_priority').value='Normal';
    if(byId('p_reqNoField'))byId('p_reqNoField').value='';
    const tb=byId('p_itemTableBody');if(tb){tb.innerHTML='';addPurchaseMainRow();}
@@ -7471,7 +7535,11 @@ window.addEventListener('DOMContentLoaded',()=>{
    if(!SB_READY)return;
    const [rq,lq,iq,pq]=await Promise.all([
      SB.from('purchase_requirements').select('*').order('request_date',{ascending:false}),
-     SB.from('purchase_requirement_lines').select('*'),
+     // Must match the .order('id') used when pdf_snapshot.items was built
+     // (Vendor Rate & Info save / approvePR) — this array's row order is
+     // matched to snapshot.items by position below, so a different order
+     // here silently pairs each line with the WRONG item's rate/discount.
+     SB.from('purchase_requirement_lines').select('*').order('id'),
      SB.from('items').select('id,name,description,make,category'),
      SB.from('purchase_order_lines').select('req_no,item_id,item_name,ordered_qty')
    ]);
@@ -7697,6 +7765,7 @@ window.addEventListener('DOMContentLoaded',()=>{
    const entry=byId('p_tab-entry');if(entry){entry.style.display='block';entry.classList.add('active')}
    const set=(id,v)=>{if(byId(id))byId(id).value=v??''};
    sarvEditingRequirementId=req.id;set('p_reqDate',req.request_date);set('p_requiredByDate',req.required_by);set('p_priority',req.priority||'Normal');set('p_reqPersonName',req.requested_by);set('p_reqEmpCode',req.employee_code);set('p_reqDepartment',req.department);set('p_reqPurpose',req.purpose);set('p_overallRemarks',req.notes);set('p_reqNoField',req.req_no);
+   renderReqEmpDetails();
    const tb=byId('p_itemTableBody');if(tb)tb.innerHTML='';
    const lines=sarvPendingRequirements.filter(y=>y.req.id===req.id).map(y=>({...y.line,item_name:y.name,item:y.item}));
    lines.forEach(line=>{addPurchaseMainRow();const tr=tb?.lastElementChild;if(!tr)return;const setRow=(s,v)=>{const e=tr.querySelector(s);if(e)e.value=v??''};setRow('.col-name',line.item_name);setRow('.col-desc',line.specification||line.item?.description||'');setRow('.col-make',line.item?.make||'');setRow('.col-cat',line.item?.category||'General');setRow('.col-machine',line.machine||'');setRow('.col-qty',line.requested_qty);setRow('.col-uom',line.uom||'Pcs');setRow('.col-rem',line.specification||'')});
@@ -7826,10 +7895,10 @@ window.addEventListener('DOMContentLoaded',()=>{
    const mailEl=byId('p_poVendorMailField'),contactEl=byId('p_poVendorContactField'),addrEl=byId('p_poVendorAddressField');
    if(mailEl&&!mailEl.value.trim())mailEl.value=supplier.email||'';
    if(contactEl&&!contactEl.value.trim())contactEl.value=supplier.phone||'';
-   if(addrEl&&!addrEl.value.trim()){
-     const cityState=[supplier.city,supplier.state].filter(Boolean).join(', ');
-     if(cityState)addrEl.value=cityState;
-   }
+   // Address auto-fills with the Supplier Master's city on every vendor
+   // pick (overwriting the previous vendor's city) but stays a normal
+   // editable field afterwards, so Store can add/adjust the full address.
+   if(addrEl)addrEl.value=supplier.city||'';
  }
  function recomputePoBuildTotals(){
    const subtotal=pRows('#p_poBuildBody tr').reduce((s,tr)=>{
@@ -7846,7 +7915,13 @@ window.addEventListener('DOMContentLoaded',()=>{
    const tr=document.createElement('tr');
    const locked=x.approvedRate!=null;
    const rateAttrs=locked?' readonly style="background:#fef9c3;font-weight:800;color:#854d0e;"':'';
-   tr.innerHTML='<td style="text-align:center;">'+(tb.children.length+1)+'</td><td><input class="table-input po-req-no" value="'+pEsc(x.req.req_no)+'" readonly></td><td><input class="table-input po-item-name" value="'+pEsc(x.name)+'" readonly></td><td><input class="table-input po-item-desc" value="'+pEsc(x.line.specification||x.item.description||'')+'" readonly></td><td><input class="table-input po-make" value="'+pEsc(x.item.make||'')+'" readonly></td><td class="po-req-qty" style="text-align:center;font-weight:800;color:#854d0e;background:#fef9c3;">'+pNum(x.line.requested_qty)+'</td><td class="po-available">'+pNum(x.available)+'</td><td><input type="number" class="table-input po-qty" min="0" max="'+pNum(x.available)+'" value="'+pNum(x.available)+'"></td><td><input type="number" class="table-input po-cancel" min="0" value="0"></td><td><input class="table-input po-uom" value="'+pEsc(x.line.uom||x.item.uom||'PCS')+'"></td><td><input type="number" class="table-input po-grossweight" min="0" value="0"></td><td><input type="number" class="table-input po-unitprice" min="0" step=".01" value="'+pNum(x.approvedRate||0)+'"'+rateAttrs+' title="'+(locked?'Approved rate — GM/CEO chosen vendor, cannot change':'')+'"></td><td><input type="number" class="table-input po-discount" min="0" max="100" step=".01" value="'+pNum(x.approvedDiscount||0)+'" readonly style="background:#f1f5f9;cursor:not-allowed;" title="Discount was fixed during Vendor Rate approval — cannot change here"></td><td class="po-line-total">₹0.00</td>';
+   // Disc% is only locked when a Vendor-Rate approval actually fixed a
+   // discount for this item — otherwise (item never went through that
+   // flow) it must stay editable, same as Unit Price above, so Store can
+   // enter the real negotiated discount instead of being stuck at 0.
+   const discAttrs=locked?' readonly style="background:#fef9c3;font-weight:800;color:#854d0e;"':' style="background:#f1f5f9;"';
+   const discTitle=locked?'Approved discount — GM/CEO chosen vendor, cannot change':'Enter discount %';
+   tr.innerHTML='<td style="text-align:center;">'+(tb.children.length+1)+'</td><td><input class="table-input po-req-no" value="'+pEsc(x.req.req_no)+'" readonly></td><td><input class="table-input po-item-name" value="'+pEsc(x.name)+'" readonly></td><td><input class="table-input po-item-desc" value="'+pEsc(x.line.specification||x.item.description||'')+'" readonly></td><td><input class="table-input po-make" value="'+pEsc(x.item.make||'')+'" readonly></td><td class="po-req-qty" style="text-align:center;font-weight:800;color:#854d0e;background:#fef9c3;">'+pNum(x.line.requested_qty)+'</td><td class="po-available">'+pNum(x.available)+'</td><td><input type="number" class="table-input po-qty" min="0" max="'+pNum(x.available)+'" value="'+pNum(x.available)+'"></td><td><input type="number" class="table-input po-cancel" min="0" value="0"></td><td><input class="table-input po-uom" value="'+pEsc(x.line.uom||x.item.uom||'PCS')+'" readonly style="background:#f1f5f9;cursor:not-allowed;" title="UOM Item Master se locked hai"></td><td><input type="number" class="table-input po-grossweight" min="0" value="0"></td><td><input type="number" class="table-input po-unitprice" min="0" step=".01" value="'+pNum(x.approvedRate||0)+'"'+rateAttrs+' title="'+(locked?'Approved rate — GM/CEO chosen vendor, cannot change':'')+'"></td><td><input type="number" class="table-input po-discount" min="0" max="100" step=".01" value="'+pNum(x.approvedDiscount||0)+'"'+discAttrs+' title="'+discTitle+'"></td><td class="po-line-total">₹0.00</td>';
    tb.appendChild(tr);
    if(x.approvedVendor)tr.dataset.approvedVendor=JSON.stringify(x.approvedVendor);
    const recalc=()=>{const qty=pNum(tr.querySelector('.po-qty')?.value),price=pNum(tr.querySelector('.po-unitprice')?.value),disc=pNum(tr.querySelector('.po-discount')?.value);tr.querySelector('.po-line-total').textContent=pMoney(qty*price*(1-disc/100));recomputePoBuildTotals();};
@@ -7865,6 +7940,10 @@ window.addEventListener('DOMContentLoaded',()=>{
    }else{
      lockFields.forEach(id=>{const e=byId(id);if(e){e.readOnly=false;e.style.background='';e.title='';}});
    }
+   // Vendor Name/Mail/Contact above are pre-filled programmatically (no
+   // 'change' event fires), so also run the Address autofill here instead
+   // of only waiting on the user to manually reselect the vendor field.
+   applyPoVendorAutofill();
  }
  function buildSelectedPoRows(){
    const tb=byId('p_poBuildBody');if(!tb)return;tb.innerHTML='';
