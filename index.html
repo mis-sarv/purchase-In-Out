@@ -2627,6 +2627,7 @@ body {
                     <button class="btn master-sub-tab active" data-subtab="itemMasterSub" onclick="switchMasterSubTab('itemMasterSub')" style="border-radius:6px 6px 0 0; border-bottom:2px solid #0284c7; font-weight:700; padding:6px 16px; font-size:12px; background:#eff6ff; color:#0369a1;">&#128230; Item Master</button>
                     <button class="btn master-sub-tab" data-subtab="supplierMasterSub" onclick="switchMasterSubTab('supplierMasterSub')" style="border-radius:6px 6px 0 0; font-weight:600; padding:6px 16px; font-size:12px; background:#f8fafc; color:#64748b;">&#127981; Supplier Master</button>
                     <button class="btn master-sub-tab" data-subtab="employeeMasterSub" onclick="switchMasterSubTab('employeeMasterSub')" style="border-radius:6px 6px 0 0; font-weight:600; padding:6px 16px; font-size:12px; background:#f8fafc; color:#64748b;">&#128100; Employee Master</button>
+                    <button class="btn master-sub-tab" data-subtab="machineMasterSub" onclick="switchMasterSubTab('machineMasterSub')" style="border-radius:6px 6px 0 0; font-weight:600; padding:6px 16px; font-size:12px; background:#f8fafc; color:#64748b;">&#9881; Machine List</button>
                     <button class="btn master-sub-tab" data-subtab="settingsSub" onclick="switchMasterSubTab('settingsSub')" style="border-radius:6px 6px 0 0; font-weight:600; padding:6px 16px; font-size:12px; background:#f8fafc; color:#64748b;">&#9881;&#65039; Settings</button>
                 </div>
 
@@ -2703,12 +2704,22 @@ body {
                     </div>
 
                     <!-- Item List -->
-                    <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
-                        <input type="text" class="form-control" id="itemMasterSearch" placeholder="&#128269; Search items..." style="flex:1; height:30px; font-size:11px;" oninput="filterMasterTable('itemMasterSearch','itemMasterBody')">
+                    <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px; flex-wrap:wrap;">
+                        <input type="text" class="form-control" id="itemMasterSearch" placeholder="&#128269; Search items..." style="flex:1; min-width:160px; height:30px; font-size:11px;" oninput="renderItemMasterTable()">
+                        <div style="position:relative;">
+                            <button type="button" class="btn" id="itemMasterCatFilterBtn" onclick="toggleItemMasterCatFilter()" style="background:#eef2ff; color:#4338ca; font-size:10px; height:28px; padding:0 10px; white-space:nowrap;">&#127991;&#65039; Category: All &#9662;</button>
+                            <div id="itemMasterCatFilterPanel" style="display:none; position:absolute; top:32px; right:0; z-index:20; background:#fff; border:1px solid #cbd5e1; border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,0.15); padding:8px 10px; min-width:210px; max-height:280px; overflow-y:auto;">
+                                <div style="display:flex; justify-content:space-between; margin-bottom:6px; gap:6px;">
+                                    <button type="button" onclick="setAllItemMasterCatFilter(true)" style="font-size:10px; background:#f0fdf4; color:#166534; border:1px solid #bbf7d0; border-radius:4px; padding:2px 8px; cursor:pointer;">All</button>
+                                    <button type="button" onclick="setAllItemMasterCatFilter(false)" style="font-size:10px; background:#fef2f2; color:#b91c1c; border:1px solid #fecaca; border-radius:4px; padding:2px 8px; cursor:pointer;">None</button>
+                                </div>
+                                <div id="itemMasterCatFilterList" style="display:flex; flex-direction:column; gap:2px; font-size:11px;"></div>
+                            </div>
+                        </div>
                         <span id="itemMasterCount" style="font-size:11px; font-weight:700; color:#64748b;">0 items</span>
                         <button class="btn" onclick="loadItemMaster()" style="background:#e0f2fe; color:#0369a1; font-size:10px; height:28px; padding:0 10px;">&#128260; Refresh</button>
                     </div>
-                    <div class="table-container" style="max-height:350px; overflow-y:auto;">
+                    <div class="table-container" style="max-height:calc(100vh - 320px); min-height:340px; overflow-y:auto;">
                         <table style="width:100%; border-collapse:collapse; font-size:11px;">
                             <thead><tr style="background:#0f172a; color:#fff; position:sticky; top:0;">
                                 <th style="padding:6px; width:4%;">#</th>
@@ -2843,6 +2854,47 @@ body {
                             </tr></thead>
                             <tbody id="employeeMasterBody">
                                 <tr><td colspan="8" style="text-align:center; padding:20px; color:#94a3b8;">Loading employees...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- ═══ MACHINE MASTER SUB-TAB ═══ -->
+                <div id="machineMasterSub" style="display:none;">
+                    <!-- Add Machine Form -->
+                    <div style="background:#fff7ed; border:1px solid #fdba74; border-radius:8px; padding:12px; margin-bottom:12px;">
+                        <div style="font-size:11px; font-weight:700; color:#9a3412; text-transform:uppercase; margin-bottom:8px;">&#10133; Add New Machine</div>
+                        <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px;">
+                            <div class="form-group" style="margin:0;">
+                                <label style="font-size:9px;">Machine Name <span style="color:#dc2626;">★</span></label>
+                                <input type="text" class="form-control" id="mm_machineName" placeholder="e.g. RASCHEL LOOM">
+                            </div>
+                            <div class="form-group" style="margin:0;">
+                                <label style="font-size:9px;">Machine No. <span style="color:#dc2626;">★</span></label>
+                                <input type="text" class="form-control" id="mm_machineNo" placeholder="e.g. M-12">
+                            </div>
+                            <div class="form-group" style="margin:0; display:flex; align-items:flex-end;">
+                                <button class="btn btn-primary" onclick="addMasterMachine()" style="width:100%; height:32px; font-size:11px; background:linear-gradient(135deg,#c2410c,#9a3412);">&#10133; Add Machine</button>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Machine List -->
+                    <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+                        <input type="text" class="form-control" id="machineMasterSearch" placeholder="&#128269; Search machines..." style="flex:1; height:30px; font-size:11px;" oninput="filterMasterTable('machineMasterSearch','machineMasterBody')">
+                        <span id="machineMasterCount" style="font-size:11px; font-weight:700; color:#64748b;">0 machines</span>
+                        <button class="btn" onclick="loadMachineMaster()" style="background:#ffedd5; color:#9a3412; font-size:10px; height:28px; padding:0 10px;">&#128260; Refresh</button>
+                    </div>
+                    <div class="table-container" style="max-height:350px; overflow-y:auto;">
+                        <table style="width:100%; border-collapse:collapse; font-size:11px;">
+                            <thead><tr style="background:#7c2d12; color:#fff; position:sticky; top:0;">
+                                <th style="padding:6px; width:6%;">#</th>
+                                <th style="padding:6px; width:44%;">Machine Name</th>
+                                <th style="padding:6px; width:30%;">Machine No.</th>
+                                <th style="padding:6px; width:12%;">Status</th>
+                                <th style="padding:6px; width:8%;">&#128465;</th>
+                            </tr></thead>
+                            <tbody id="machineMasterBody">
+                                <tr><td colspan="5" style="text-align:center; padding:20px; color:#94a3b8;">Loading machines...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -3524,7 +3576,7 @@ body {
                     <div class="form-group"><label>Requested By <span class="req">*</span></label><input type="text" class="form-control" id="p_spReqBy" placeholder="Person / team"></div>
                     <div class="form-group"><label>Employee Code</label><input type="text" class="form-control" id="p_spReqEmpCode" placeholder="EMP-0234"></div>
                     <div class="form-group"><label>Department</label><input type="text" class="form-control" id="p_spReqDepartment" placeholder="Maintenance / Store"></div>
-                    <div class="form-group"><label>Machine / Line</label><input type="text" class="form-control" id="p_spReqMachine" placeholder="Machine / line no."></div>
+                    <div class="form-group"><label>Machine / Line</label><input type="text" class="form-control" id="p_spReqMachine" placeholder="Machine / line no." list="dl-inw-machine-name" autocomplete="off"></div>
                 </div>
                 <div class="grid-3" style="margin-top:8px;">
                     <div class="form-group"><label>Contact No.</label><input type="tel" class="form-control" id="p_spReqContact" placeholder="10-digit mobile"></div>
@@ -3615,6 +3667,34 @@ body {
                 <h2 class="panel-title">PURCHASE ORDER (PO) GENERATION</h2>
                 <div class="panel-subtitle">Combine pending items from multiple requirements &middot; auto-generate professional PO PDF</div>
 
+                <!-- PO lifecycle KPI cards -->
+                <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; margin-bottom:14px;">
+                    <div class="repair-card" style="background:#eff6ff; border:1.5px solid #bae6fd; border-radius:8px; padding:12px; text-align:center;">
+                        <div style="font-size:11px; color:#0369a1; font-weight:700; margin-bottom:4px;">PO GENERATION PENDING</div>
+                        <div id="p_kpiPoGenPending" style="font-size:22px; font-weight:800; color:#0284c7;">0</div>
+                    </div>
+                    <div class="repair-card" style="background:#f5f3ff; border:1.5px solid #ddd6fe; border-radius:8px; padding:12px; text-align:center;">
+                        <div style="font-size:11px; color:#5b21b6; font-weight:700; margin-bottom:4px;">PO GM APPROVAL PENDING</div>
+                        <div id="p_kpiPoGmPending" style="font-size:22px; font-weight:800; color:#7c3aed;">0</div>
+                    </div>
+                    <div class="repair-card" style="background:#fdf4ff; border:1.5px solid #f5d0fe; border-radius:8px; padding:12px; text-align:center;">
+                        <div style="font-size:11px; color:#86198f; font-weight:700; margin-bottom:4px;">PO MD APPROVAL PENDING</div>
+                        <div id="p_kpiPoMdPending" style="font-size:22px; font-weight:800; color:#c026d3;">0</div>
+                    </div>
+                    <div class="repair-card" style="background:#fef3c7; border:1.5px solid #fde68a; border-radius:8px; padding:12px; text-align:center;">
+                        <div style="font-size:11px; color:#92400e; font-weight:700; margin-bottom:4px;">PO PARTY SEND PENDING</div>
+                        <div id="p_kpiPoPartyPending" style="font-size:22px; font-weight:800; color:#d97706;">0</div>
+                    </div>
+                    <div class="repair-card" style="background:#fef2f2; border:1.5px solid #fecaca; border-radius:8px; padding:12px; text-align:center;">
+                        <div style="font-size:11px; color:#991b1b; font-weight:700; margin-bottom:4px;">PO TOTAL QTY RECEIVED PENDING</div>
+                        <div id="p_kpiPoTotalRecvPending" style="font-size:22px; font-weight:800; color:#dc2626;">0</div>
+                    </div>
+                    <div class="repair-card" style="background:#f0fdf4; border:1.5px solid #bbf7d0; border-radius:8px; padding:12px; text-align:center;">
+                        <div style="font-size:11px; color:#14532d; font-weight:700; margin-bottom:4px;">PO PARTIAL QTY RECEIVING PENDING</div>
+                        <div id="p_kpiPoPartialRecvPending" style="font-size:22px; font-weight:800; color:#16a34a;">0</div>
+                    </div>
+                </div>
+
                 <!-- PO sub-nav -->
                 <div style="display:flex; gap:6px; margin-bottom:12px; border-bottom:1px solid #e2e8f0; padding-bottom:8px;">
                     <button class="btn btn-primary btn-sm" id="p_poSubPendingBtn">📦 Pending Items (Build PO)</button>
@@ -3623,6 +3703,24 @@ body {
 
                 <!-- ==== Sub-panel A: Pending items selection ==== -->
                 <div id="p_poPendingPanel">
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; margin-bottom:14px;">
+                        <div class="repair-card" style="background:#f5f3ff; border:1.5px solid #ddd6fe; border-radius:8px; padding:12px; text-align:center;">
+                            <div style="font-size:11px; color:#5b21b6; font-weight:700; margin-bottom:4px;">PR PENDING FOR VENDOR INFO FILLING</div>
+                            <div id="p_kpiPrVendorInfoPending" style="font-size:22px; font-weight:800; color:#7c3aed;">0</div>
+                        </div>
+                        <div class="repair-card" style="background:#eff6ff; border:1.5px solid #bae6fd; border-radius:8px; padding:12px; text-align:center;">
+                            <div style="font-size:11px; color:#0369a1; font-weight:700; margin-bottom:4px;">PR GM/CEO APPROVAL PENDING</div>
+                            <div id="p_kpiPrGmApprovalPending" style="font-size:22px; font-weight:800; color:#0284c7;">0</div>
+                        </div>
+                        <div class="repair-card" style="background:#fff7ed; border:1.5px solid #fed7aa; border-radius:8px; padding:12px; text-align:center;">
+                            <div style="font-size:11px; color:#9a3412; font-weight:700; margin-bottom:4px;">PR GM/CEO APPROVED BUT PO GENERATION PENDING</div>
+                            <div id="p_kpiPrApprovedPoPending" style="font-size:22px; font-weight:800; color:#ea580c;">0</div>
+                        </div>
+                        <div class="repair-card" style="background:#fef2f2; border:1.5px solid #fecaca; border-radius:8px; padding:12px; text-align:center;">
+                            <div style="font-size:11px; color:#991b1b; font-weight:700; margin-bottom:4px;">PR 5 DAYS OLD PENDING</div>
+                            <div id="p_kpiPr5DaysOld" style="font-size:22px; font-weight:800; color:#dc2626;">0</div>
+                        </div>
+                    </div>
                     <div class="filter-bar">
                         <div class="form-group">
                             <label>Search (Req / Item / Vendor)</label>
@@ -4587,8 +4685,8 @@ body { min-width: 0; }
 </style>
 <script>
 /* Combined original UI: Supabase data layer only. The legacy screens and fields are intentionally unchanged. */
-const SUPABASE_URL = 'https://kjqhhfngtrlutowvwsyb.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtqcWhoZm5ndHJsdXRvd3Z3c3liIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxMzQyMzAsImV4cCI6MjEwMjcxMDIzMH0.KcEBGTJCkFadHDSg6ajaUh_ApauU91TapDb6QL8orPk';
+const SUPABASE_URL = 'https://jdlzgjgxxjkjejkhvdij.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpkbHpnamd4eGpramVqa2h2ZGlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAwODUwMDcsImV4cCI6MjEwNTY2MTAwN30.ow4i6e78i-dGoJJh2-N4FX6EQE7f2FRQDgCMJHpxAWk';
 const SB_READY = !SUPABASE_URL.includes('YOUR_PROJECT') && !SUPABASE_ANON_KEY.includes('YOUR_SUPABASE');
 const SB = SB_READY ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 const byId = id => document.getElementById(id);
@@ -4644,7 +4742,7 @@ async function nextNo(kind){
     return prefix+'001';
   }
 }
-let sarvPoCatalog=[],sarvPendingRequirements=[],sarvEditingRequirementId=null;
+let sarvPoCatalog=[],sarvPendingRequirements=[],sarvEditingRequirementId=null,sarvGeneratedPos=[];
 let sarvItemCatalog=[];     // Global item master cache for auto-fill
 let sarvEmployeeCatalog=[]; // Global employee cache for PR form auto-fill
 let sarvSupplierCatalog=[]; // Global supplier master cache for auto-fill
@@ -4857,6 +4955,123 @@ async function loadRepairOutwardIntoInward(outNo){
   });
   updateStoreTotals();
 }
+
+/* ================================================================
+   REPAIR ITEMS TRACKER — every Outward saved with Nature of Dispatch
+   = "Repair" shows up here, matched against Repair-Return Inward
+   entries (nature_of_inward='Repaired', gate_pass_no = outward doc no)
+   the same way the Material Inward "Repair Return" dropdown matches
+   them (see loadRepairOutwardDropdown above).
+================================================================ */
+let sarvRepairTrackerRows=[];
+window.loadRepairTracker=async function(){
+  const tb=byId('repairTrackerBody');
+  if(!tb)return;
+  if(!SB_READY){tb.innerHTML='<tr><td colspan="12" style="text-align:center;padding:24px;color:#f59e0b;">⚠️ Supabase not configured</td></tr>';return;}
+  const statusText=byId('repairStatusText');
+  tb.innerHTML='<tr><td colspan="12" style="text-align:center;padding:24px;color:#94a3b8;">⏳ Loading repair tracker...</td></tr>';
+  if(statusText)statusText.textContent='Loading...';
+  try{
+    const outwards=await fetchAllRows('outward_entries','*','outward_date',q=>q.eq('nature_of_dispatch','Repair'));
+    if(!outwards.length){
+      sarvRepairTrackerRows=[];
+      renderRepairTrackerTable();
+      return;
+    }
+    const outIds=outwards.map(o=>o.id);
+    const lines=await fetchAllRows('outward_lines','*, items(name)','id',q=>q.in('outward_id',outIds));
+    const linesByOut={};
+    lines.forEach(l=>{(linesByOut[l.outward_id]=linesByOut[l.outward_id]||[]).push(l);});
+    const docNos=outwards.map(o=>o.document_no);
+    const inwards=docNos.length?await fetchAllRows('inward_entries','*','id',q=>q.eq('nature_of_inward','Repaired').in('gate_pass_no',docNos)):[];
+    const inwardsByDoc={};
+    inwards.forEach(e=>{(inwardsByDoc[e.gate_pass_no]=inwardsByDoc[e.gate_pass_no]||[]).push(e);});
+    const inwardIds=inwards.map(e=>e.id);
+    const inwardLines=inwardIds.length?await fetchAllRows('inward_lines','inward_id,qty','id',q=>q.in('inward_id',inwardIds)):[];
+    const receivedByInward={};
+    inwardLines.forEach(l=>{receivedByInward[l.inward_id]=(receivedByInward[l.inward_id]||0)+pNum(l.qty);});
+    // Best-effort PDF links for the outward itself + any linked repair-return inward(s)
+    const allDocNos=[...docNos,...inwards.map(e=>e.document_no)];
+    const pdfMap={};
+    if(allDocNos.length){
+      try{
+        const pdfq=await SB.from('pdf_documents').select('document_no,public_url').in('document_no',allDocNos);
+        (pdfq.data||[]).forEach(p=>{if(p.public_url)pdfMap[p.document_no]=p.public_url;});
+      }catch(e){/* pdf lookup is best-effort — tracker still works without links */}
+    }
+    sarvRepairTrackerRows=outwards.map(o=>{
+      const oLines=linesByOut[o.id]||[];
+      const sent=oLines.reduce((s,l)=>s+pNum(l.qty),0);
+      const itemNames=[...new Set(oLines.map(l=>l.items?.name).filter(Boolean))];
+      const recvEntries=inwardsByDoc[o.document_no]||[];
+      const received=recvEntries.reduce((s,e)=>s+(receivedByInward[e.id]||0),0);
+      const balance=Math.max(0,sent-received);
+      const status=(sent>0&&balance<=0)?'COMPLETE':(received>0?'PARTIAL':'PENDING');
+      return {o,itemNames,sent,received,balance,status,recvEntries,pdfMap};
+    });
+    renderRepairTrackerTable();
+  }catch(e){
+    dbError(e);
+    tb.innerHTML='<tr><td colspan="12" style="text-align:center;padding:16px;color:#ef4444;">❌ Error loading repair tracker</td></tr>';
+  }
+};
+window.renderRepairTrackerTable=function(){
+  const tb=byId('repairTrackerBody'),statusText=byId('repairStatusText');
+  if(!tb)return;
+  const q=(byId('repairSearchQuery')?.value||'').toLowerCase().trim();
+  const statusFilter=byId('repairStatusFilter')?.value||'ALL';
+  const rows=sarvRepairTrackerRows.filter(r=>{
+    if(statusFilter!=='ALL'&&r.status!==statusFilter)return false;
+    if(q){
+      const hay=[r.o.document_no,r.o.party_name,...r.itemNames].map(x=>String(x||'').toLowerCase()).join(' ');
+      if(!hay.includes(q))return false;
+    }
+    return true;
+  });
+  const total=sarvRepairTrackerRows.length;
+  const set=(id,v)=>{const e=byId(id);if(e)e.textContent=v};
+  set('rtTotalEntries',total);
+  set('rtPending',sarvRepairTrackerRows.filter(r=>r.status==='PENDING').length);
+  set('rtPartial',sarvRepairTrackerRows.filter(r=>r.status==='PARTIAL').length);
+  set('rtComplete',sarvRepairTrackerRows.filter(r=>r.status==='COMPLETE').length);
+  set('rtTotalSent',sarvRepairTrackerRows.reduce((s,r)=>s+r.sent,0));
+  set('rtTotalReceived',sarvRepairTrackerRows.reduce((s,r)=>s+r.received,0));
+  set('rtTotalBalance',sarvRepairTrackerRows.reduce((s,r)=>s+r.balance,0));
+  if(statusText)statusText.textContent=(total?`${rows.length} of ${total} shown`:'');
+  if(!total){
+    tb.innerHTML='<tr><td colspan="12" style="text-align:center;padding:30px;color:#94a3b8;">No repair outward entries yet — items sent with Nature of Dispatch = Repair will show up here.</td></tr>';
+    return;
+  }
+  if(!rows.length){
+    tb.innerHTML='<tr><td colspan="12" style="text-align:center;padding:24px;color:#94a3b8;">No entries match this search / status filter.</td></tr>';
+    return;
+  }
+  const statusBadge=s=>{
+    if(s==='COMPLETE')return '<span style="background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;border-radius:4px;padding:2px 8px;font-size:10px;font-weight:800;white-space:nowrap;">✅ Complete</span>';
+    if(s==='PARTIAL')return '<span style="background:#fff7ed;color:#ea580c;border:1px solid #fed7aa;border-radius:4px;padding:2px 8px;font-size:10px;font-weight:800;white-space:nowrap;">◔ Partial</span>';
+    return '<span style="background:#fef3c7;color:#d97706;border:1px solid #fde68a;border-radius:4px;padding:2px 8px;font-size:10px;font-weight:800;white-space:nowrap;">⬤ Pending</span>';
+  };
+  tb.innerHTML=rows.map((r,i)=>{
+    const o=r.o;
+    const outPdf=r.pdfMap[o.document_no]?`<a href="${escText(r.pdfMap[o.document_no])}" target="_blank" rel="noopener" style="color:#1d4ed8;font-weight:700;text-decoration:none;">📄 View PDF</a>`:'<span style="color:#cbd5e1;">—</span>';
+    const inwardLinks=r.recvEntries.length?r.recvEntries.map(e=>r.pdfMap[e.document_no]?`<a href="${escText(r.pdfMap[e.document_no])}" target="_blank" rel="noopener" style="color:#16a34a;font-weight:700;text-decoration:none;">${escText(e.document_no)}</a>`:escText(e.document_no)).join(', '):'<span style="color:#cbd5e1;">—</span>';
+    return `<tr style="border-bottom:1px solid #f1f5f9;font-size:11px;">
+        <td style="padding:5px 6px;text-align:center;color:#94a3b8;">${i+1}</td>
+        <td style="padding:5px 6px;font-weight:700;color:#0369a1;white-space:nowrap;">${escText(o.document_no)}</td>
+        <td style="padding:5px 6px;">${escText(o.outward_date||'—')}</td>
+        <td style="padding:5px 6px;">${escText(o.party_name||'—')}</td>
+        <td style="padding:5px 6px;color:#64748b;">${escText(r.itemNames.join(', ')||'—')}</td>
+        <td style="padding:5px 6px;text-align:center;font-weight:700;">${r.sent}</td>
+        <td style="padding:5px 6px;text-align:center;font-weight:700;color:#16a34a;">${r.received}</td>
+        <td style="padding:5px 6px;text-align:center;font-weight:800;color:${r.balance>0?'#dc2626':'#64748b'};">${r.balance}</td>
+        <td style="padding:5px 6px;">${escText(o.target_return_date||'—')}</td>
+        <td style="padding:5px 6px;text-align:center;">${statusBadge(r.status)}</td>
+        <td style="padding:5px 6px;">${inwardLinks}</td>
+        <td style="padding:5px 6px;text-align:center;">${outPdf}</td>
+      </tr>`;
+  }).join('');
+};
+
 async function updatePoReceipt(poNo,rows){
   const po=sarvPoCatalog.find(x=>x.po_no===poNo);if(!po)return;
   const selected=rows.filter(x=>x.poLineId&&x.qty>0);if(!selected.length)return;
@@ -4910,6 +5125,7 @@ function activatePanel(id){
     loadEmployeeMaster().catch(()=>{});
   }
   if(id==='reportsPanel'&&SB_READY) loadReports().catch(()=>{});
+  if(id==='repairTrackerPanel'&&SB_READY) loadRepairTracker().catch(()=>{});
 }
 function bindNavigation(){
   document.querySelectorAll('.nav-link[data-target]').forEach(link=>link.addEventListener('click',()=>activatePanel(link.dataset.target)));
@@ -5046,7 +5262,7 @@ function addPurchaseMainRow(){
    <td><input class="table-input col-desc" placeholder="Auto from Master" disabled></td>
    <td><input class="table-input col-make" placeholder="Make / Brand"></td>
    <td><input class="table-input col-cat" placeholder="Auto from Master" disabled></td>
-   <td><input class="table-input col-machine" placeholder="e.g. Loom-3 / M-12"></td>
+   <td><input class="table-input col-machine" placeholder="e.g. Loom-3 / M-12" list="dl-inw-machine-name" autocomplete="off"></td>
    <td><input type="number" class="table-input col-qty" min="0" step="any"></td>
    <td><select class="table-select col-uom" disabled><option>Pcs</option><option>Kg</option><option>Set</option><option>Meter</option><option>Liter</option></select></td>
    <td><input type="number" class="table-input col-grossweight" min="0" step="any"></td>
@@ -5097,6 +5313,9 @@ function bindOriginalControls(){
   // addItemBtn already has onclick="addMasterItem()" in HTML — do NOT re-bind here
   add('submitBtn',()=>saveInwardWithPdf().catch(dbError));add('outSubmitBtn',()=>saveOutwardWithPdf().catch(dbError));add('p_submitBtn',()=>saveRequirementWithPdf().catch(dbError));
   add('p_backToStoreBtn',()=>sarvGoHome());
+  add('repairRefreshBtn',()=>loadRepairTracker().catch(dbError));
+  const repairSearch=byId('repairSearchQuery');if(repairSearch&&!repairSearch.dataset.bound){repairSearch.addEventListener('input',renderRepairTrackerTable);repairSearch.dataset.bound='1'}
+  const repairStatus=byId('repairStatusFilter');if(repairStatus&&!repairStatus.dataset.bound){repairStatus.addEventListener('change',renderRepairTrackerTable);repairStatus.dataset.bound='1'}
   add('p_spAddReqItem',addPReqLine);
   add('p_spAddManualPoItem',()=>{
     const tb=byId('p_spPoItemsBody');if(!tb)return;
@@ -5146,6 +5365,7 @@ window.openWebcamModal=()=>showToast('Camera preview is available in the origina
   if(id==='itemMasterSub')    loadItemMaster().catch(()=>{});
   if(id==='supplierMasterSub')loadSupplierMaster().catch(()=>{});
   if(id==='employeeMasterSub')loadEmployeeMaster().catch(()=>{});
+  if(id==='machineMasterSub') loadMachineMaster().catch(()=>{});
   if(id==='settingsSub'){
     const admin=isAdmin();
     if(byId('pwdChangeCard'))byId('pwdChangeCard').style.display=admin?'':'none';
@@ -5417,6 +5637,118 @@ document.addEventListener('DOMContentLoaded',()=>{
 /* ================================================================
    MASTER DATA — Item Master (Full Implementation)
 ================================================================ */
+// Supabase/PostgREST caps a single request at ~1000 rows by default — with
+// more items or ledger lines than that, a plain .select() would silently
+// return only a partial dataset. This pages through .range() until a page
+// comes back short, so callers always get every row.
+async function fetchAllRows(table,selectCols,orderCol,filterFn){
+  const PAGE=1000;
+  let from=0,all=[];
+  for(;;){
+    let q=SB.from(table).select(selectCols);
+    if(filterFn)q=filterFn(q);
+    q=q.range(from,from+PAGE-1);
+    if(orderCol)q=q.order(orderCol);
+    const {data,error}=await q;
+    if(error)throw error;
+    all=all.concat(data||[]);
+    if(!data||data.length<PAGE)break;
+    from+=PAGE;
+  }
+  return all;
+}
+
+// Item Master table state — cached in full (see fetchAllRows) so the
+// search box and Category filter both run instantly over the complete
+// dataset instead of re-querying Supabase on every keystroke/click.
+let sarvItemMasterRows=[];      // [{it, inQty, outQty, bal, catKey}]
+let sarvItemMasterCats=[];      // distinct category buckets present in the data
+let sarvItemMasterSelectedCats=new Set(); // categories currently checked in the filter
+
+function toggleItemMasterCatFilter(){
+  const p=byId('itemMasterCatFilterPanel');if(!p)return;
+  p.style.display=(p.style.display==='none'||!p.style.display)?'block':'none';
+}
+document.addEventListener('click',e=>{
+  const panel=byId('itemMasterCatFilterPanel'),btn=byId('itemMasterCatFilterBtn');
+  if(panel&&panel.style.display==='block'&&!panel.contains(e.target)&&e.target!==btn)panel.style.display='none';
+});
+function buildItemMasterCatFilterUI(){
+  const list=byId('itemMasterCatFilterList');if(!list)return;
+  list.innerHTML=sarvItemMasterCats.length?sarvItemMasterCats.map(c=>{
+    const checked=sarvItemMasterSelectedCats.has(c)?'checked':'';
+    return `<label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:2px 0;"><input type="checkbox" value="${escText(c)}" ${checked} onchange="onItemMasterCatToggle(this)"> ${escText(c)}</label>`;
+  }).join(''):'<div style="color:#94a3b8;padding:4px 0;">No categories yet</div>';
+}
+window.onItemMasterCatToggle=function(cb){
+  if(cb.checked)sarvItemMasterSelectedCats.add(cb.value);else sarvItemMasterSelectedCats.delete(cb.value);
+  updateItemMasterCatFilterBtnLabel();renderItemMasterTable();
+};
+window.setAllItemMasterCatFilter=function(all){
+  sarvItemMasterSelectedCats=all?new Set(sarvItemMasterCats):new Set();
+  buildItemMasterCatFilterUI();updateItemMasterCatFilterBtnLabel();renderItemMasterTable();
+};
+function updateItemMasterCatFilterBtnLabel(){
+  const btn=byId('itemMasterCatFilterBtn');if(!btn)return;
+  const total=sarvItemMasterCats.length,sel=sarvItemMasterSelectedCats.size;
+  btn.textContent=(sel===total)?'\u{1F3F7}️ Category: All ▾':(sel===0?'\u{1F3F7}️ Category: None ▾':`\u{1F3F7}️ Category: ${sel} selected ▾`);
+}
+window.renderItemMasterTable=function(){
+  const tb=byId('itemMasterBody'),cnt=byId('itemMasterCount');
+  if(!tb)return;
+  const q=(byId('itemMasterSearch')?.value||'').toLowerCase().trim();
+  const catFilterActive=sarvItemMasterSelectedCats.size!==sarvItemMasterCats.length;
+  const rows=sarvItemMasterRows.filter(row=>{
+    if(catFilterActive&&!sarvItemMasterSelectedCats.has(row.catKey))return false;
+    if(q){
+      const hay=[row.it.item_code,row.it.name,row.it.description,row.it.category,row.it.sub_category,row.it.make].map(x=>String(x||'').toLowerCase()).join(' ');
+      if(!hay.includes(q))return false;
+    }
+    return true;
+  });
+  if(cnt)cnt.textContent=(catFilterActive||q)?`${rows.length} of ${sarvItemMasterRows.length} items`:`${sarvItemMasterRows.length} items`;
+  if(!sarvItemMasterRows.length){
+    tb.innerHTML='<tr><td colspan="13" style="text-align:center;padding:20px;color:#94a3b8;">No items yet — Add your first item above ⬆️</td></tr>';
+    return;
+  }
+  if(!rows.length){
+    tb.innerHTML='<tr><td colspan="13" style="text-align:center;padding:20px;color:#94a3b8;">No items match this search / category filter.</td></tr>';
+    return;
+  }
+  let totalIn=0,totalOut=0,totalBal=0;
+  const bodyRows=rows.map((row,i)=>{
+    const{it,inQty,outQty,bal}=row;
+    totalIn+=inQty;totalOut+=outQty;totalBal+=bal;
+    const balColor=bal>0?'#166534':bal<0?'#dc2626':'#64748b';
+    return `<tr style="border-bottom:1px solid #f1f5f9;font-size:11px;" data-id="${it.id}">
+        <td style="padding:5px 6px;text-align:center;color:#94a3b8;">${i+1}</td>
+        <td style="padding:5px 6px;font-weight:700;color:#0369a1;white-space:nowrap;">${escText(it.item_code)}</td>
+        <td style="padding:5px 6px;font-weight:700;">${escText(it.name)}</td>
+        <td style="padding:5px 6px;color:#64748b;">${escText(it.description||'—')}</td>
+        <td style="padding:5px 6px;">${escText(it.category||'—')}</td>
+        <td style="padding:5px 6px;color:#64748b;">${escText(it.sub_category||'—')}</td>
+        <td style="padding:5px 6px;text-align:right;">₹${Number(it.rate||0).toFixed(2)}</td>
+        <td style="padding:5px 6px;text-align:center;font-weight:700;">${escText(it.uom||'PCS')}</td>
+        <td style="padding:5px 6px;color:#64748b;">${escText(it.make||'—')}</td>
+        <td style="padding:5px 6px;text-align:center;background:#f0fdf4;font-weight:700;color:#166534;">${inQty}</td>
+        <td style="padding:5px 6px;text-align:center;background:#fef2f2;font-weight:700;color:#dc2626;">${outQty}</td>
+        <td style="padding:5px 6px;text-align:center;background:#eff6ff;font-weight:800;color:${balColor};">${bal}</td>
+        <td style="padding:5px 6px;text-align:center;">
+          ${isAdmin()?`<button onclick="deleteMasterItem('${it.id}')" style="background:#fef2f2;border:1px solid #fca5a5;color:#dc2626;border-radius:4px;padding:2px 7px;font-size:10px;cursor:pointer;" title="Delete">✕</button>`:'<span style="color:#cbd5e1;">—</span>'}
+        </td>
+      </tr>`;
+  }).join('');
+  // Subtotal row pinned at the top of the item list, above all rows,
+  // reflecting whatever the current search/category filter is showing.
+  const totalsRow=`<tr style="background:#1e293b;color:#fff;font-weight:800;">
+      <td colspan="9" style="padding:6px 8px;text-align:right;">SUBTOTAL (${rows.length} shown)</td>
+      <td style="padding:6px;text-align:center;background:#0c4a3e;">${totalIn}</td>
+      <td style="padding:6px;text-align:center;background:#7c2d12;">${totalOut}</td>
+      <td style="padding:6px;text-align:center;background:#1e3a5f;color:${totalBal<0?'#fca5a5':'#fff'};">${totalBal}</td>
+      <td></td>
+    </tr>`;
+  tb.innerHTML=totalsRow+bodyRows;
+};
 function refreshItemDatalist(items){
   sarvItemCatalog=items; // Keep global cache in sync
   // Inward + Outward item name datalists
@@ -5445,44 +5777,28 @@ function refreshSupplierDatalist(suppliers){
 }
 
 window.loadItemMaster=async function(){
-  const tb=byId('itemMasterBody'),cnt=byId('itemMasterCount');
+  const tb=byId('itemMasterBody');
   if(!tb)return;
   if(!SB_READY){tb.innerHTML='<tr><td colspan="13" style="text-align:center;padding:20px;color:#f59e0b;">⚠️ Supabase not configured</td></tr>';return;}
   tb.innerHTML='<tr><td colspan="13" style="text-align:center;padding:20px;color:#94a3b8;">⏳ Loading...</td></tr>';
   try{
-    const [itemsRes,inRes,outRes]=await Promise.all([
-      SB.from('items').select('*').order('name'),
-      SB.from('inward_lines').select('item_id,qty'),
-      SB.from('outward_lines').select('item_id,qty')
+    const [items,inLines,outLines]=await Promise.all([
+      fetchAllRows('items','*','name'),
+      fetchAllRows('inward_lines','item_id,qty'),
+      fetchAllRows('outward_lines','item_id,qty')
     ]);
-    if(itemsRes.error)throw itemsRes.error;
     const inMap={},outMap={};
-    (inRes.data||[]).forEach(r=>{inMap[r.item_id]=(inMap[r.item_id]||0)+Number(r.qty||0);});
-    (outRes.data||[]).forEach(r=>{outMap[r.item_id]=(outMap[r.item_id]||0)+Number(r.qty||0);});
-    const items=itemsRes.data||[];
-    if(cnt)cnt.textContent=items.length+' items';
-    if(!items.length){tb.innerHTML='<tr><td colspan="13" style="text-align:center;padding:20px;color:#94a3b8;">No items yet — Add your first item above ⬆️</td></tr>';return;}
-    tb.innerHTML=items.map((it,i)=>{
-      const inQty=inMap[it.id]||0,outQty=outMap[it.id]||0,bal=inQty-outQty;
-      const balColor=bal>0?'#166534':bal<0?'#dc2626':'#64748b';
-      return `<tr style="border-bottom:1px solid #f1f5f9;font-size:11px;" data-id="${it.id}">
-        <td style="padding:5px 6px;text-align:center;color:#94a3b8;">${i+1}</td>
-        <td style="padding:5px 6px;font-weight:700;color:#0369a1;white-space:nowrap;">${escText(it.item_code)}</td>
-        <td style="padding:5px 6px;font-weight:700;">${escText(it.name)}</td>
-        <td style="padding:5px 6px;color:#64748b;">${escText(it.description||'—')}</td>
-        <td style="padding:5px 6px;">${escText(it.category||'—')}</td>
-        <td style="padding:5px 6px;color:#64748b;">${escText(it.sub_category||'—')}</td>
-        <td style="padding:5px 6px;text-align:right;">₹${Number(it.rate||0).toFixed(2)}</td>
-        <td style="padding:5px 6px;text-align:center;font-weight:700;">${escText(it.uom||'PCS')}</td>
-        <td style="padding:5px 6px;color:#64748b;">${escText(it.make||'—')}</td>
-        <td style="padding:5px 6px;text-align:center;background:#f0fdf4;font-weight:700;color:#166534;">${inQty}</td>
-        <td style="padding:5px 6px;text-align:center;background:#fef2f2;font-weight:700;color:#dc2626;">${outQty}</td>
-        <td style="padding:5px 6px;text-align:center;background:#eff6ff;font-weight:800;color:${balColor};">${bal}</td>
-        <td style="padding:5px 6px;text-align:center;">
-          ${isAdmin()?`<button onclick="deleteMasterItem('${it.id}')" style="background:#fef2f2;border:1px solid #fca5a5;color:#dc2626;border-radius:4px;padding:2px 7px;font-size:10px;cursor:pointer;" title="Delete">✕</button>`:'<span style="color:#cbd5e1;">—</span>'}
-        </td>
-      </tr>`;
-    }).join('');
+    inLines.forEach(r=>{inMap[r.item_id]=(inMap[r.item_id]||0)+Number(r.qty||0);});
+    outLines.forEach(r=>{outMap[r.item_id]=(outMap[r.item_id]||0)+Number(r.qty||0);});
+    sarvItemMasterRows=items.map(it=>{
+      const inQty=inMap[it.id]||0,outQty=outMap[it.id]||0;
+      return {it,inQty,outQty,bal:inQty-outQty,catKey:(it.category&&it.category.trim())?it.category.trim():'(No Category)'};
+    });
+    sarvItemMasterCats=[...new Set(sarvItemMasterRows.map(r=>r.catKey))].sort((a,b)=>a.localeCompare(b));
+    sarvItemMasterSelectedCats=new Set(sarvItemMasterCats); // default: all categories shown
+    buildItemMasterCatFilterUI();
+    updateItemMasterCatFilterBtnLabel();
+    renderItemMasterTable();
     refreshItemDatalist(items);
   }catch(e){dbError(e);tb.innerHTML='<tr><td colspan="13" style="text-align:center;padding:16px;color:#ef4444;">❌ Error loading items</td></tr>';}
 };
@@ -5743,6 +6059,77 @@ window.deleteEmployee=async function(id){
   await loadEmployeeMaster();
 };
 
+/* ================================================================
+   MASTER DATA — Machine Master (Full Implementation)
+================================================================ */
+let sarvMachineCatalog=[]; // Global machine cache — feeds the Machine Name datalist
+
+function refreshMachineDatalist(machines){
+  sarvMachineCatalog=machines;
+  const dl=byId('dl-inw-machine-name');
+  if(dl)dl.innerHTML=machines.map(m=>`<option value="${escText(m.machine_name)}">${escText(m.machine_no||'')}</option>`).join('');
+}
+
+window.loadMachineMaster=async function(){
+  const tb=byId('machineMasterBody'),cnt=byId('machineMasterCount');
+  if(!tb)return;
+  if(!SB_READY){tb.innerHTML='<tr><td colspan="5" style="text-align:center;padding:20px;color:#f59e0b;">⚠️ Supabase not configured</td></tr>';return;}
+  tb.innerHTML='<tr><td colspan="5" style="text-align:center;padding:20px;color:#94a3b8;">⏳ Loading...</td></tr>';
+  try{
+    const{data,error}=await SB.from('machines').select('*').order('machine_name');
+    if(error)throw error;
+    const rows=data||[];
+    if(cnt)cnt.textContent=rows.length+' machines';
+    refreshMachineDatalist(rows);
+    if(!rows.length){tb.innerHTML='<tr><td colspan="5" style="text-align:center;padding:20px;color:#94a3b8;">No machines yet — Add above ⬆️</td></tr>';return;}
+    tb.innerHTML=rows.map((m,i)=>`<tr style="border-bottom:1px solid #f1f5f9;font-size:11px;">
+      <td style="padding:5px 6px;text-align:center;color:#94a3b8;">${i+1}</td>
+      <td style="padding:5px 6px;font-weight:700;">${escText(m.machine_name)}</td>
+      <td style="padding:5px 6px;color:#475569;">${escText(m.machine_no||'—')}</td>
+      <td style="padding:5px 6px;text-align:center;">
+        <span style="background:${m.is_active?'#dcfce7':'#fee2e2'};color:${m.is_active?'#166534':'#dc2626'};border-radius:99px;padding:2px 8px;font-size:10px;font-weight:700;">${m.is_active?'Active':'Inactive'}</span>
+      </td>
+      <td style="padding:5px 6px;text-align:center;">
+        ${isAdmin()?`<button onclick="deleteMachine('${m.id}')" style="background:#fef2f2;border:1px solid #fca5a5;color:#dc2626;border-radius:4px;padding:2px 7px;font-size:10px;cursor:pointer;" title="Delete">✕</button>`:'<span style="color:#cbd5e1;">—</span>'}
+      </td>
+    </tr>`).join('');
+  }catch(e){
+    if(e?.message?.includes('does not exist')||e?.code==='42P01'){
+      tb.innerHTML='<tr><td colspan="5" style="text-align:center;padding:20px;color:#f59e0b;">⚠️ Machines table missing — SQL run karein</td></tr>';
+    }else{dbError(e);tb.innerHTML='<tr><td colspan="5" style="text-align:center;padding:16px;color:#ef4444;">❌ Error loading machines</td></tr>';}
+  }
+};
+
+window.addMasterMachine=async function(){
+  const name=(byId('mm_machineName')?.value||'').trim().toUpperCase();
+  const no=(byId('mm_machineNo')?.value||'').trim().toUpperCase();
+  if(!name){showToast('❌ Machine Name required!','error');byId('mm_machineName')?.focus();return;}
+  if(!no){showToast('❌ Machine No. required!','error');byId('mm_machineNo')?.focus();return;}
+  if(!SB_READY){showToast('Supabase configure karein','warn');return;}
+  const btn=document.querySelector('#machineMasterSub .btn-primary');
+  if(btn){btn.disabled=true;btn.textContent='⏳ Saving...';}
+  try{
+    const chk=await SB.from('machines').select('id').eq('machine_no',no).maybeSingle();
+    if(chk.data){showToast(`⚠️ Machine No. "${no}" already exists!`,'warn');return;}
+    const{error}=await SB.from('machines').insert({machine_name:name,machine_no:no,is_active:true});
+    if(error)throw error;
+    showToast(`✅ "${name}" (${no}) added to Machine Master!`);
+    ['mm_machineName','mm_machineNo'].forEach(id=>{const e=byId(id);if(e)e.value='';});
+    await loadMachineMaster();
+  }catch(e){dbError(e);}
+  finally{if(btn){btn.disabled=false;btn.innerHTML='&#10133; Add Machine';}}
+};
+
+window.deleteMachine=async function(id){
+  if(!isAdmin())return showToast('⛔ Sirf Admin login Master Data delete kar sakta hai','warn');
+  if(!confirm('Ye machine delete karein?'))return;
+  if(!SB_READY)return;
+  const{error}=await SB.from('machines').delete().eq('id',id);
+  if(error){dbError(error);return;}
+  showToast('🗑️ Machine deleted');
+  await loadMachineMaster();
+};
+
 /* ── Search / Filter Master Tables ─────────────────────── */
 window.filterMasterTable=function(searchId,bodyId){
   const q=(byId(searchId)?.value||'').toLowerCase().trim();
@@ -5857,17 +6244,23 @@ window.addEventListener('DOMContentLoaded',()=>{
     // Pre-load Requirement No. so it's visible immediately on the
     // Personnel Item Requirement Form, not just after a save/clear.
     nextNo('REQ').then(no=>{const e=byId('p_reqNoField');if(e)e.value=no;}).catch(()=>{});
-    // Pre-load item catalog for auto-fill across all panels
-    SB.from('items').select('*').order('name')
-      .then(({data,error})=>{if(!error&&data&&data.length){refreshItemDatalist(data);}})
+    // Pre-load item catalog for auto-fill across all panels — fetchAllRows
+    // pages past Supabase's ~1000-row default cap so large item catalogs
+    // aren't silently truncated in the Item Name / Make dropdowns.
+    fetchAllRows('items','*','name')
+      .then(data=>{if(data&&data.length)refreshItemDatalist(data);})
       .catch(()=>{});
     // Pre-load employee catalog for PR form Employee Code auto-fill
-    SB.from('employees').select('*').order('emp_code')
-      .then(({data,error})=>{if(!error&&data&&data.length){refreshEmployeeDatalist(data);}})
+    fetchAllRows('employees','*','emp_code')
+      .then(data=>{if(data&&data.length)refreshEmployeeDatalist(data);})
       .catch(()=>{});
     // Pre-load supplier catalog for Supplier/Party/Vendor name auto-fill
-    SB.from('suppliers').select('*').order('supplier_name')
-      .then(({data,error})=>{if(!error&&data&&data.length){refreshSupplierDatalist(data);}})
+    fetchAllRows('suppliers','*','supplier_name')
+      .then(data=>{if(data&&data.length)refreshSupplierDatalist(data);})
+      .catch(()=>{});
+    // Pre-load machine catalog for Machine Name auto-fill (Inward/PR forms)
+    fetchAllRows('machines','*','machine_name')
+      .then(data=>{if(data&&data.length)refreshMachineDatalist(data);})
       .catch(()=>{});
   }
   // ── Entry Type → Serial No + Theme (Inward) ──────────────
@@ -7327,37 +7720,66 @@ window.addEventListener('DOMContentLoaded',()=>{
  async function saveInwardWithPdf(){
    if(!SB_READY)return showToast('Supabase URL/key configure karein','warn');
    if(!validateRequiredFields([{id:'invoiceNumber',label:'Invoice Number'},{id:'invoiceDate',label:'Invoice Date'},{id:'supplierName',label:'Supplier Name'}]))return;
-   const rows=rowDataInward();if(!rows.length)return showToast('At least one inward item required','warn');if(pVal('poNumber')){const invalid=rows.find(x=>x.poLineId&&x.qty>Math.max(0,x.poOrderedQty-x.poReceivedQty));if(invalid)return showToast(invalid.name+' ki received qty pending quantity se zyada hai','warn')}const no=await nextNo(pVal('entryTypeSelect')==='INWARD NB'?'NB':'INWARD');
+   const rows=rowDataInward();if(!rows.length)return showToast('At least one inward item required','warn');if(pVal('poNumber')){const invalid=rows.find(x=>x.poLineId&&x.qty>Math.max(0,x.poOrderedQty-x.poReceivedQty));if(invalid)return showToast(invalid.name+' ki received qty pending quantity se zyada hai','warn')}
    if(pVal('inwNatureOfInward')==='Repaired'&&!pVal('repairOutwardSelect'))return showToast('Repair Return ke liye pending Outward select karna zaroori hai','warn');
-   const base={document_no:no,entry_type:pVal('entryTypeSelect')||'INWARD',receiving_date:pVal('receivingDate')||today(),invoice_no:pVal('invoiceNumber')||null,invoice_date:pVal('invoiceDate')||null,party_state:pVal('partyState')||null,notes:pVal('inwRemarks')||null};
-   let h=await SB.from('inward_entries').insert({...base,po_number:pVal('poNumber')||null,supplier_name:pVal('supplierName')||null,gate_pass_no:pVal('gatePassNo')||null,lot_no:pVal('lotNo')||null,machine_name:pVal('inwMachineName')||null,nature_of_inward:pVal('inwNatureOfInward')||null}).select().single();
-   if(h.error&&/column/i.test(h.error.message||''))h=await SB.from('inward_entries').insert({...base,po_number:pVal('poNumber')||null,supplier_name:pVal('supplierName')||null}).select().single();
-   if(h.error)throw h.error;
-   let ls=[];for(const r of rows){const it=await ensureItem(r.name,r.desc,r.make,r.cat,r.uom);ls.push({inward_id:h.data.id,item_id:it.id,qty:r.qty,uom:r.uom||it.uom,weight:r.weight,rate:r.rate,gst_pct:r.tax,line_total:r.total,po_line_id:r.poLineId||null})}
-   let ins=await SB.from('inward_lines').insert(ls);if(ins.error&&/po_line_id|column/i.test(ins.error.message||'')){ls=ls.map(({po_line_id,...x})=>x);ins=await SB.from('inward_lines').insert(ls)}if(ins.error)throw ins.error;
-   if(pVal('poNumber'))await updatePoReceipt(pVal('poNumber'),rows);
-    const d=collectInwardData(no,rows),pdfs=await generateStorePdfs('INWARD',d,rows,h.data.id,'inwPhotoGalleryInput');
-    {const b=pdfs.SINGLE?.blob||pdfs.TWO_PAGE?.blob;showSarvPdfPreview(b,pdfs.SINGLE?.name||storePdfFilename_('INWARD',d,'SINGLE'),b?'':(pdfs.SINGLE?.html||pdfs.TWO_PAGE?.html||''));}
-   showToast('✅ Inward saved: '+no);
-   // ── Clear form after save ──────────────────────────────────
-   clearInwardForm();
-   return h.data;
+   const overlay=byId('syncOverlay'),msgEl=byId('syncOverlayText'),btn=byId('submitBtn');
+   if(btn&&btn.disabled)return; // already processing — ignore double-click
+   if(btn){btn.disabled=true;btn.dataset.origLabel=btn.textContent;btn.textContent='⏳ Saving...';}
+   if(overlay){if(msgEl)msgEl.textContent='Saving Inward entry…';overlay.classList.add('active');}
+   try{
+     const no=await nextNo(pVal('entryTypeSelect')==='INWARD NB'?'NB':'INWARD');
+     const base={document_no:no,entry_type:pVal('entryTypeSelect')||'INWARD',receiving_date:pVal('receivingDate')||today(),invoice_no:pVal('invoiceNumber')||null,invoice_date:pVal('invoiceDate')||null,party_state:pVal('partyState')||null,notes:pVal('inwRemarks')||null};
+     let h=await SB.from('inward_entries').insert({...base,po_number:pVal('poNumber')||null,supplier_name:pVal('supplierName')||null,gate_pass_no:pVal('gatePassNo')||null,lot_no:pVal('lotNo')||null,machine_name:pVal('inwMachineName')||null,nature_of_inward:pVal('inwNatureOfInward')||null}).select().single();
+     if(h.error&&/column/i.test(h.error.message||''))h=await SB.from('inward_entries').insert({...base,po_number:pVal('poNumber')||null,supplier_name:pVal('supplierName')||null}).select().single();
+     if(h.error)throw h.error;
+     let ls=[];for(const r of rows){const it=await ensureItem(r.name,r.desc,r.make,r.cat,r.uom);ls.push({inward_id:h.data.id,item_id:it.id,qty:r.qty,uom:r.uom||it.uom,weight:r.weight,rate:r.rate,gst_pct:r.tax,line_total:r.total,po_line_id:r.poLineId||null})}
+     let ins=await SB.from('inward_lines').insert(ls);if(ins.error&&/po_line_id|column/i.test(ins.error.message||'')){ls=ls.map(({po_line_id,...x})=>x);ins=await SB.from('inward_lines').insert(ls)}if(ins.error)throw ins.error;
+     if(pVal('poNumber'))await updatePoReceipt(pVal('poNumber'),rows);
+     if(msgEl)msgEl.textContent='Generating PDF…';
+     const d=collectInwardData(no,rows),pdfs=await generateStorePdfs('INWARD',d,rows,h.data.id,'inwPhotoGalleryInput');
+     {const b=pdfs.SINGLE?.blob||pdfs.TWO_PAGE?.blob;showSarvPdfPreview(b,pdfs.SINGLE?.name||storePdfFilename_('INWARD',d,'SINGLE'),b?'':(pdfs.SINGLE?.html||pdfs.TWO_PAGE?.html||''));}
+     showToast('✅ Inward saved: '+no);
+     // Repair-Return inward — refresh the Repair Items Tracker so the
+     // received/balance figures for the matching outward update immediately.
+     if(pVal('inwNatureOfInward')==='Repaired')loadRepairTracker().catch(()=>{});
+     // ── Clear form after save ──────────────────────────────────
+     clearInwardForm();
+     return h.data;
+   } finally {
+     if(overlay)overlay.classList.remove('active');
+     if(btn){btn.disabled=false;btn.textContent=btn.dataset.origLabel||'Submit Inward';}
+   }
  }
  async function saveOutwardWithPdf(){
    if(!SB_READY)return showToast('Supabase URL/key configure karein','warn');
    if(!validateRequiredFields([{id:'outPartyName',label:'Party Name'},{id:'outLocation',label:'Location'},{id:'outTargetReturnDate',label:'Target Return Date'}]))return;
-   const rows=rowDataOutward();if(!rows.length)return showToast('At least one outward item required','warn');const no=await nextNo(pVal('outEntryTypeSelect')==='ISSUE'?'ISSUE':'OUTWARD');
-   const outBase={document_no:no,entry_type:pVal('outEntryTypeSelect')||'OUTWARD',outward_date:pVal('outDate')||today(),party_name:pVal('outPartyName')||'Unknown',location:pVal('outLocation')||null,receiver_name:pVal('outReceiverName')||null,target_return_date:pVal('outTargetReturnDate')||null,gate_pass_no:pVal('outGatePassNo')||null,transport:pVal('outTransport')||null,notes:pVal('outRemarks')||null};
-   let h=await SB.from('outward_entries').insert({...outBase,nature_of_dispatch:pVal('outNatureOfDispatch')||null,lot_no:pVal('outLotNo')||null}).select().single();
-   if(h.error&&/nature_of_dispatch|lot_no|column/i.test(h.error.message||''))h=await SB.from('outward_entries').insert(outBase).select().single();
-   if(h.error)throw h.error;
-   const ls=[];for(const r of rows){const it=await ensureItem(r.itemName,r.itemDesc,r.make,r.category,r.qtyUom);ls.push({outward_id:h.data.id,item_id:it.id,qty:r.qty,uom:r.qtyUom||it.uom,weight:r.weight})}const ins=await SB.from('outward_lines').insert(ls);if(ins.error)throw ins.error;
-    const d=collectOutwardData(no),pdfs=await generateStorePdfs('OUTWARD',d,rows,h.data.id,'outPhotoGalleryInput');
-    {const b=pdfs.SINGLE?.blob||pdfs.TWO_PAGE?.blob;showSarvPdfPreview(b,pdfs.SINGLE?.name||storePdfFilename_('OUTWARD',d,'SINGLE'),b?'':(pdfs.SINGLE?.html||pdfs.TWO_PAGE?.html||''));}
-   showToast('✅ Outward saved: '+no);
-   // ── Clear form after save ──────────────────────────────────
-   clearOutwardForm();
-   return h.data;
+   const rows=rowDataOutward();if(!rows.length)return showToast('At least one outward item required','warn');
+   const overlay=byId('syncOverlay'),msgEl=byId('syncOverlayText'),btn=byId('outSubmitBtn');
+   if(btn&&btn.disabled)return; // already processing — ignore double-click
+   if(btn){btn.disabled=true;btn.dataset.origLabel=btn.textContent;btn.textContent='⏳ Saving...';}
+   if(overlay){if(msgEl)msgEl.textContent='Saving Outward entry…';overlay.classList.add('active');}
+   try{
+     const no=await nextNo(pVal('outEntryTypeSelect')==='ISSUE'?'ISSUE':'OUTWARD');
+     const outBase={document_no:no,entry_type:pVal('outEntryTypeSelect')||'OUTWARD',outward_date:pVal('outDate')||today(),party_name:pVal('outPartyName')||'Unknown',location:pVal('outLocation')||null,receiver_name:pVal('outReceiverName')||null,target_return_date:pVal('outTargetReturnDate')||null,gate_pass_no:pVal('outGatePassNo')||null,transport:pVal('outTransport')||null,notes:pVal('outRemarks')||null};
+     let h=await SB.from('outward_entries').insert({...outBase,nature_of_dispatch:pVal('outNatureOfDispatch')||null,lot_no:pVal('outLotNo')||null}).select().single();
+     if(h.error&&/nature_of_dispatch|lot_no|column/i.test(h.error.message||''))h=await SB.from('outward_entries').insert(outBase).select().single();
+     if(h.error)throw h.error;
+     const ls=[];for(const r of rows){const it=await ensureItem(r.itemName,r.itemDesc,r.make,r.category,r.qtyUom);ls.push({outward_id:h.data.id,item_id:it.id,qty:r.qty,uom:r.qtyUom||it.uom,weight:r.weight})}const ins=await SB.from('outward_lines').insert(ls);if(ins.error)throw ins.error;
+     if(msgEl)msgEl.textContent='Generating PDF…';
+     const d=collectOutwardData(no),pdfs=await generateStorePdfs('OUTWARD',d,rows,h.data.id,'outPhotoGalleryInput');
+     {const b=pdfs.SINGLE?.blob||pdfs.TWO_PAGE?.blob;showSarvPdfPreview(b,pdfs.SINGLE?.name||storePdfFilename_('OUTWARD',d,'SINGLE'),b?'':(pdfs.SINGLE?.html||pdfs.TWO_PAGE?.html||''));}
+     showToast('✅ Outward saved: '+no);
+     // Repair-nature outward — refresh the Repair Items Tracker so this
+     // entry (and its sent/balance figures) show up immediately, not only
+     // after manually opening that tab and clicking Refresh.
+     if(pVal('outNatureOfDispatch')==='Repair')loadRepairTracker().catch(()=>{});
+     // ── Clear form after save ──────────────────────────────────
+     clearOutwardForm();
+     return h.data;
+   } finally {
+     if(overlay)overlay.classList.remove('active');
+     if(btn){btn.disabled=false;btn.textContent=btn.dataset.origLabel||'Submit Outward';}
+   }
  }
  async function saveRequirementWithPdf(){
    if(!SB_READY)return showToast('Supabase URL/key configure karein','warn');
@@ -7540,7 +7962,10 @@ window.addEventListener('DOMContentLoaded',()=>{
      // matched to snapshot.items by position below, so a different order
      // here silently pairs each line with the WRONG item's rate/discount.
      SB.from('purchase_requirement_lines').select('*').order('id'),
-     SB.from('items').select('id,name,description,make,category'),
+     // fetchAllRows pages past the 1000-row cap — otherwise items beyond
+     // #1000 resolve to {} here and show blank Make/Category in the PR
+     // and Build-PO tables.
+     fetchAllRows('items','id,name,description,make,category').then(data=>({data})).catch(error=>({data:[],error})),
      SB.from('purchase_order_lines').select('req_no,item_id,item_name,ordered_qty')
    ]);
    if(rq.error||lq.error){console.warn('[SARV] Pending PR list unavailable:',rq.error?.message||lq.error?.message);return}
@@ -7570,7 +7995,7 @@ window.addEventListener('DOMContentLoaded',()=>{
        const snapItem=(snapshot.items||[])[index];
        const approvedRate=(approvedVendor&&snapItem&&snapItem.rates)?pNum(snapItem.rates['V'+(approvedIdx+1)])||null:null;
        const approvedDiscount=(approvedVendor&&snapItem&&snapItem.discounts)?pNum(snapItem.discounts['V'+(approvedIdx+1)])||0:0;
-       const poEligible=['MD Approved','Vendor Verified'].includes(req.status);
+       const poEligible=['GM/CEO Approved','MD Approved','Vendor Verified'].includes(req.status);
        if(available>0&&String(req.status||'')!=='Cancelled')sarvPendingRequirements.push({req,line,item,name,requested,inPo,available,sr:index+1,prPdfUrl:prPdfMap[req.req_no]||'',approvedVendor,approvedRate,approvedDiscount,poEligible});
      });
    });
@@ -7582,10 +8007,44 @@ window.addEventListener('DOMContentLoaded',()=>{
      const vendorBtnLabel=x.approvedVendor?'&#9989; '+pEsc(x.approvedVendor.name||'Vendor'):'&#128176; Vendor Info';
      const pickCell=x.poEligible
        ?'<input type="checkbox" class="sarv-po-pick" data-index="'+i+'">'
-       :'<input type="checkbox" class="sarv-po-pick" data-index="'+i+'" disabled title="PO sirf MD Approved (ya aage) requirements se hi build ho sakta hai">';
+       :'<input type="checkbox" class="sarv-po-pick" data-index="'+i+'" disabled title="PO sirf GM/CEO Approved (ya aage) requirements se hi build ho sakta hai">';
      const tr=document.createElement('tr');tr.innerHTML='<td>'+pickCell+'</td><td>'+pEsc(x.req.req_no)+'</td><td>'+x.sr+'</td><td>'+pEsc(x.name)+'</td><td>'+pEsc(x.line.specification||x.item.description||'')+'</td><td>'+pEsc(x.item.make||'')+'</td><td>'+pEsc(x.req.department||'')+'</td><td style="text-align:center;">'+pNum(x.requested)+'</td><td style="text-align:center;">'+pNum(x.inPo)+'</td><td style="text-align:center;">'+pNum(x.available)+'</td><td>'+pEsc(x.line.uom||x.item.uom||'PCS')+'</td><td>'+statusBadge+'</td><td>'+pEsc(x.req.priority||'Normal')+'</td><td style="text-align:center;">'+(x.prPdfUrl?'<a href="'+pEsc(x.prPdfUrl)+'" target="_blank" rel="noopener" style="color:#1d4ed8;font-weight:700;text-decoration:none;">&#128196; PDF</a>':'<span style="color:#cbd5e1;">—</span>')+'</td><td style="text-align:center;"><button type="button" class="btn btn-sm sarv-vendor-info" data-req="'+pEsc(x.req.req_no)+'" style="background:'+(x.approvedVendor?'linear-gradient(180deg,#22c55e 0%,#15803d 100%)':'linear-gradient(180deg,#8b5cf6 0%,#6d28d9 100%)')+';color:#fff;padding:3px 10px;font-size:11px;" title="'+(x.approvedRate!=null?'Approved rate: '+nNum_(x.approvedRate):'')+'">'+vendorBtnLabel+'</button></td><td><button type="button" class="btn btn-neutral btn-sm sarv-edit-pr" data-index="'+i+'">✎ Edit PR</button></td>';tb.appendChild(tr);
    });
    const count=byId('p_poPendingCount');if(count)count.textContent=sarvPendingRequirements.length;updatePoSelectionCount();
+   renderPoKpiCards();
+ }
+ function renderPoKpiCards(){
+   const set=(id,v)=>{const e=byId(id);if(e)e.textContent=v};
+   // ---- Top-of-panel PO lifecycle cards (from Generated POs) ----
+   set('p_kpiPoGenPending',sarvPendingRequirements.filter(x=>x.poEligible).length);
+   set('p_kpiPoGmPending',sarvGeneratedPos.filter(p=>(p.status||'Generated')==='Generated').length);
+   set('p_kpiPoMdPending',sarvGeneratedPos.filter(p=>p.status==='GM/CEO Approved').length);
+   set('p_kpiPoPartyPending',sarvGeneratedPos.filter(p=>p.status==='MD Approved').length);
+   set('p_kpiPoTotalRecvPending',sarvGeneratedPos.filter(p=>p.status==='Vendor Verified').length);
+   set('p_kpiPoPartialRecvPending',sarvGeneratedPos.filter(p=>p.status==='Partially Received').length);
+
+   // ---- Pending Items (Build PO) sub-panel cards — grouped per distinct PR ----
+   const byReq=new Map();
+   sarvPendingRequirements.forEach(x=>{if(!byReq.has(x.req.id))byReq.set(x.req.id,x.req)});
+   const todayMs=Date.now();
+   let vendorInfoPending=0,gmApprovalPending=0,approvedPoPending=0,fiveDaysOld=0;
+   byReq.forEach(req=>{
+     const status=req.status||'Pending';
+     const vendors=(req.pdf_snapshot&&req.pdf_snapshot.vendors)||[];
+     const vendorFilled=vendors.some(v=>v&&String(v.name||'').trim());
+     const poEligible=['GM/CEO Approved','MD Approved','Vendor Verified'].includes(status);
+     if(status==='Pending'&&!vendorFilled)vendorInfoPending++;
+     if(status==='Pending'&&vendorFilled)gmApprovalPending++;
+     if(poEligible)approvedPoPending++;
+     if(status!=='Cancelled'&&req.request_date){
+       const days=(todayMs-new Date(req.request_date).getTime())/86400000;
+       if(days>=5)fiveDaysOld++;
+     }
+   });
+   set('p_kpiPrVendorInfoPending',vendorInfoPending);
+   set('p_kpiPrGmApprovalPending',gmApprovalPending);
+   set('p_kpiPrApprovedPoPending',approvedPoPending);
+   set('p_kpiPr5DaysOld',fiveDaysOld);
  }
  function updatePoSelectionCount(){
    const picked=[...document.querySelectorAll('#p_poPendingBody .sarv-po-pick:checked')],qty=picked.reduce((s,e)=>s+pNum(sarvPendingRequirements[+e.dataset.index]?.available),0);
@@ -7807,6 +8266,7 @@ window.addEventListener('DOMContentLoaded',()=>{
  async function refreshGeneratedPoList(){
    if(!SB_READY)return;const tb=byId('p_poListBody');if(!tb)return;
    const q=await SB.from('purchase_orders').select('*').order('po_date',{ascending:false});if(q.error){console.warn('[SARV] PO list unavailable:',q.error.message);return}
+   sarvGeneratedPos=q.data||[];
    const statusColors={'Generated':'#64748b','GM/CEO Approved':'#0284c7','MD Approved':'#7c3aed','Vendor Verified':'#16a34a','Partially Received':'#d97706','Received':'#16a34a','Rejected':'#dc2626','Cancelled':'#dc2626'};
    tb.innerHTML='';(q.data||[]).forEach(po=>{
      const statusVal=po.status||'Generated',sc=statusColors[statusVal]||'#64748b';
@@ -7823,6 +8283,7 @@ window.addEventListener('DOMContentLoaded',()=>{
      const tr=document.createElement('tr');tr.innerHTML='<td>'+pEsc(po.po_no)+'</td><td>'+pEsc(po.po_date||'')+'</td><td>'+pEsc(po.vendor_name||'')+'</td><td>'+pEsc(po.linked_req_nos||'')+'</td><td style="text-align:center;">'+pNum(po.total_items)+'</td><td style="text-align:center;">'+pNum(po.total_qty)+'</td><td style="text-align:right;">'+pMoney(po.grand_total)+'</td><td>'+statusBadge+'</td><td style="text-align:center;">'+pNum(po.received_qty)+'</td><td>'+((po.pdf_url)?'<a href="'+pEsc(po.pdf_url)+'" target="_blank" rel="noopener">Open</a>':'—')+'</td><td><button type="button" class="sarv-po-wa" data-po="'+pEsc(po.po_no)+'" style="background:none;border:none;color:#16a34a;font-weight:700;cursor:pointer;padding:0;font-size:inherit;">&#128172; Send</button></td><td>'+actionCell+'</td>';tb.appendChild(tr);
    });
    const c=byId('p_poListCount');if(c)c.textContent=(q.data||[]).length;
+   renderPoKpiCards();
  }
  async function cancelPurchaseOrder(poNo){
    if(!isAdmin())return showToast('⛔ Sirf Admin login PO cancel kar sakta hai','warn');
@@ -7847,7 +8308,7 @@ window.addEventListener('DOMContentLoaded',()=>{
      tb.innerHTML='';
      (l.data||[]).forEach((x,i)=>{
        const tr=document.createElement('tr');
-       tr.innerHTML='<td style="text-align:center;">'+(i+1)+'</td><td><input class="table-input po-req-no" value="'+pEsc(x.req_no||'')+'" readonly></td><td><input class="table-input po-item-name" value="'+pEsc(x.item_name||'')+'"></td><td><input class="table-input po-item-desc" value="'+pEsc(x.item_description||'')+'"></td><td><input class="table-input po-make" value="'+pEsc(x.make||'')+'"></td><td class="po-req-qty" style="text-align:center;">'+pNum(x.ordered_qty)+'</td><td class="po-available">-</td><td><input type="number" class="table-input po-qty" min="0" value="'+pNum(x.ordered_qty)+'"></td><td><input type="number" class="table-input po-cancel" min="0" value="0"></td><td><input class="table-input po-uom" value="'+pEsc(x.uom||'PCS')+'"></td><td><input type="number" class="table-input po-grossweight" min="0" value="0"></td><td><input type="number" class="table-input po-unitprice" min="0" step=".01" value="'+pNum(x.unit_price)+'"></td><td><input type="number" class="table-input po-discount" min="0" max="100" step=".01" value="'+pNum(x.discount_pct||0)+'" readonly style="background:#f1f5f9;cursor:not-allowed;" title="Discount was fixed during Vendor Rate approval — cannot change here"></td><td class="po-line-total">'+pMoney(x.line_total)+'</td>';
+       tr.innerHTML='<td style="text-align:center;">'+(i+1)+'</td><td><input class="table-input po-req-no" value="'+pEsc(x.req_no||'')+'" readonly></td><td><input class="table-input po-item-name" value="'+pEsc(x.item_name||'')+'"></td><td><input class="table-input po-item-desc" value="'+pEsc(x.item_description||'')+'"></td><td><input class="table-input po-make" value="'+pEsc(x.make||'')+'"></td><td class="po-req-qty" style="text-align:center;">'+pNum(x.ordered_qty)+'</td><td class="po-available">-</td><td><input type="number" class="table-input po-qty" min="0" value="'+pNum(x.ordered_qty)+'"></td><td><input type="number" class="table-input po-cancel" min="0" value="0"></td><td><input class="table-input po-uom" value="'+pEsc(x.uom||'PCS')+'"></td><td><input type="number" class="table-input po-grossweight" min="0" value="'+pNum(x.gross_weight||0)+'"></td><td><input type="number" class="table-input po-unitprice" min="0" step=".01" value="'+pNum(x.unit_price)+'"></td><td><input type="number" class="table-input po-discount" min="0" max="100" step=".01" value="'+pNum(x.discount_pct||0)+'" readonly style="background:#f1f5f9;cursor:not-allowed;" title="Discount was fixed during Vendor Rate approval — cannot change here"></td><td class="po-line-total">'+pMoney(x.line_total)+'</td>';
        tb.appendChild(tr);
        const recalc=()=>{const qty=pNum(tr.querySelector('.po-qty')?.value),price=pNum(tr.querySelector('.po-unitprice')?.value),disc=pNum(tr.querySelector('.po-discount')?.value);tr.querySelector('.po-line-total').textContent=pMoney(qty*price*(1-disc/100));recomputePoBuildTotals();};
        tr.querySelectorAll('input').forEach(e=>e.addEventListener('input',recalc));
@@ -7883,8 +8344,9 @@ window.addEventListener('DOMContentLoaded',()=>{
      row=ins.data;
    }
    await SB.from('purchase_order_lines').delete().eq('purchase_order_id',row.id);
-   let lines=d.items.map((x,i)=>({purchase_order_id:row.id,line_no:i+1,req_no:x.reqNo||null,item_id:x.itemId||null,item_name:x.itemName||x.name||'Item',item_description:x.itemDesc||x.description||null,make:x.make||null,department:x.department||null,ordered_qty:pNum(x.qty),received_qty:0,uom:x.uom||'PCS',unit_price:pNum(x.unitPrice),discount_pct:pNum(x.discountPercent||x.discPct||0),tax_pct:pNum(x.taxPct||x.tax),line_total:pNum(x.total)}));
+   let lines=d.items.map((x,i)=>({purchase_order_id:row.id,line_no:i+1,req_no:x.reqNo||null,item_id:x.itemId||null,item_name:x.itemName||x.name||'Item',item_description:x.itemDesc||x.description||null,make:x.make||null,department:x.department||null,ordered_qty:pNum(x.qty),received_qty:0,uom:x.uom||'PCS',unit_price:pNum(x.unitPrice),discount_pct:pNum(x.discountPercent||x.discPct||0),tax_pct:pNum(x.taxPct||x.tax),line_total:pNum(x.total),gross_weight:(x.grossWeight!=null&&x.grossWeight!=='')?pNum(x.grossWeight):null}));
    let ins2=await SB.from('purchase_order_lines').insert(lines);
+   if(ins2.error&&/gross_weight|column/i.test(ins2.error.message||'')){lines=lines.map(({gross_weight,...rest})=>rest);ins2=await SB.from('purchase_order_lines').insert(lines);}
    if(ins2.error&&/discount_pct|column/i.test(ins2.error.message||'')){lines=lines.map(({discount_pct,...rest})=>rest);ins2=await SB.from('purchase_order_lines').insert(lines);}
    if(ins2.error)console.warn('[SARV] PO line save skipped:',ins2.error.message);return row;
  }
@@ -7921,7 +8383,7 @@ window.addEventListener('DOMContentLoaded',()=>{
    // enter the real negotiated discount instead of being stuck at 0.
    const discAttrs=locked?' readonly style="background:#fef9c3;font-weight:800;color:#854d0e;"':' style="background:#f1f5f9;"';
    const discTitle=locked?'Approved discount — GM/CEO chosen vendor, cannot change':'Enter discount %';
-   tr.innerHTML='<td style="text-align:center;">'+(tb.children.length+1)+'</td><td><input class="table-input po-req-no" value="'+pEsc(x.req.req_no)+'" readonly></td><td><input class="table-input po-item-name" value="'+pEsc(x.name)+'" readonly></td><td><input class="table-input po-item-desc" value="'+pEsc(x.line.specification||x.item.description||'')+'" readonly></td><td><input class="table-input po-make" value="'+pEsc(x.item.make||'')+'" readonly></td><td class="po-req-qty" style="text-align:center;font-weight:800;color:#854d0e;background:#fef9c3;">'+pNum(x.line.requested_qty)+'</td><td class="po-available">'+pNum(x.available)+'</td><td><input type="number" class="table-input po-qty" min="0" max="'+pNum(x.available)+'" value="'+pNum(x.available)+'"></td><td><input type="number" class="table-input po-cancel" min="0" value="0"></td><td><input class="table-input po-uom" value="'+pEsc(x.line.uom||x.item.uom||'PCS')+'" readonly style="background:#f1f5f9;cursor:not-allowed;" title="UOM Item Master se locked hai"></td><td><input type="number" class="table-input po-grossweight" min="0" value="0"></td><td><input type="number" class="table-input po-unitprice" min="0" step=".01" value="'+pNum(x.approvedRate||0)+'"'+rateAttrs+' title="'+(locked?'Approved rate — GM/CEO chosen vendor, cannot change':'')+'"></td><td><input type="number" class="table-input po-discount" min="0" max="100" step=".01" value="'+pNum(x.approvedDiscount||0)+'"'+discAttrs+' title="'+discTitle+'"></td><td class="po-line-total">₹0.00</td>';
+   tr.innerHTML='<td style="text-align:center;">'+(tb.children.length+1)+'</td><td><input class="table-input po-req-no" value="'+pEsc(x.req.req_no)+'" readonly></td><td><input class="table-input po-item-name" value="'+pEsc(x.name)+'" readonly></td><td><input class="table-input po-item-desc" value="'+pEsc(x.line.specification||x.item.description||'')+'" readonly></td><td><input class="table-input po-make" value="'+pEsc(x.item.make||'')+'" readonly></td><td class="po-req-qty" style="text-align:center;font-weight:800;color:#854d0e;background:#fef9c3;">'+pNum(x.line.requested_qty)+'</td><td class="po-available">'+pNum(x.available)+'</td><td><input type="number" class="table-input po-qty" min="0" max="'+pNum(x.available)+'" value="'+pNum(x.available)+'"></td><td><input type="number" class="table-input po-cancel" min="0" value="0"></td><td><input class="table-input po-uom" value="'+pEsc(x.line.uom||x.item.uom||'PCS')+'" readonly style="background:#f1f5f9;cursor:not-allowed;" title="UOM Item Master se locked hai"></td><td><input type="number" class="table-input po-grossweight" min="0" value="'+pNum(x.line.gross_weight||0)+'"></td><td><input type="number" class="table-input po-unitprice" min="0" step=".01" value="'+pNum(x.approvedRate||0)+'"'+rateAttrs+' title="'+(locked?'Approved rate — GM/CEO chosen vendor, cannot change':'')+'"></td><td><input type="number" class="table-input po-discount" min="0" max="100" step=".01" value="'+pNum(x.approvedDiscount||0)+'"'+discAttrs+' title="'+discTitle+'"></td><td class="po-line-total">₹0.00</td>';
    tb.appendChild(tr);
    if(x.approvedVendor)tr.dataset.approvedVendor=JSON.stringify(x.approvedVendor);
    const recalc=()=>{const qty=pNum(tr.querySelector('.po-qty')?.value),price=pNum(tr.querySelector('.po-unitprice')?.value),disc=pNum(tr.querySelector('.po-discount')?.value);tr.querySelector('.po-line-total').textContent=pMoney(qty*price*(1-disc/100));recomputePoBuildTotals();};
