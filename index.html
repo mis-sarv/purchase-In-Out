@@ -4758,7 +4758,7 @@ function applyItemAutofill(nameVal,tr,prefix){
   } else if(prefix==='purchase'){
     s('.col-desc', item.description||'');
     if(!g('.col-make')?.value) s('.col-make', item.make||'');
-    const cs=g('.col-cat'); if(cs&&item.category){const opts=[...cs.options].map(o=>o.value.toLowerCase());const idx=opts.indexOf(item.category.toLowerCase());if(idx>=0)cs.selectedIndex=idx;}
+    s('.col-cat', item.category||'');
     const us=g('.col-uom'); if(us&&item.uom){const opts=[...us.options].map(o=>o.value.toLowerCase());const idx=opts.indexOf(item.uom.toLowerCase());if(idx>=0)us.selectedIndex=idx;}
     // Once a real master item is picked, lock the name so it can't be
     // hand-edited into something else — delete the row and re-add to pick again.
@@ -4931,7 +4931,7 @@ function addNewRow(){
  <td><input type="text" class="table-input item-make" placeholder="Make" list="dl-item-make"></td>
  <td><input type="text" class="table-input item-cat" placeholder="Auto from Master" disabled></td>
  <td><input type="number" class="table-input qty-field" value="0" min="0"></td>
- <td><input type="text" class="table-input item-uom" value="PCS"></td>
+ <td><input type="text" class="table-input item-uom" value="PCS" readonly style="background:#f1f5f9;cursor:not-allowed;" title="UOM Item Master se locked hai"></td>
  <td><input type="number" class="table-input weight-field" value="0" min="0"></td>
  <td><select class="table-input chip-select item-wunit"><option>KGS</option><option>LBS</option></select></td>
  <td><select class="table-input chip-select bill-basis-field"><option value="QTY">QTY</option><option value="WEIGHT">WEIGHT</option></select></td>
@@ -4959,7 +4959,7 @@ function addOutwardItemRow(){
  <td class="out-sr-no">—</td><td><input class="table-input out-item-name" placeholder="Type item name..." list="dl-out-item-name"></td>
  <td><input class="table-input out-item-desc" placeholder="Auto from Master" disabled></td><td><input class="table-input out-item-make" placeholder="Brand / OEM"></td>
  <td><input class="table-input out-item-cat" placeholder="Auto from Master" disabled></td><td><input class="table-input out-machine-name" placeholder="Machine"></td><td><input class="table-input out-machine-no" placeholder="No."></td>
- <td><input type="number" class="table-input out-qty" value="0" min="0" step=".01"></td><td><input class="table-input out-qty-uom" value="PCS"></td><td><input type="number" class="table-input out-weight" value="0" min="0" step=".001"></td><td><select class="table-input out-wunit"><option>KGS</option><option>GMS</option><option>LBS</option></select></td><td><button class="delete-btn">✕</button></td>`;
+ <td><input type="number" class="table-input out-qty" value="0" min="0" step=".01"></td><td><input class="table-input out-qty-uom" value="PCS" readonly style="background:#f1f5f9;cursor:not-allowed;" title="UOM Item Master se locked hai"></td><td><input type="number" class="table-input out-weight" value="0" min="0" step=".001"></td><td><select class="table-input out-wunit"><option>KGS</option><option>GMS</option><option>LBS</option></select></td><td><button class="delete-btn">✕</button></td>`;
  tb.appendChild(tr);
  tr.querySelector('.delete-btn').onclick=()=>{tr.remove();updateOutTotals()};
  tr.querySelectorAll('input').forEach(x=>x.oninput=updateOutTotals);
@@ -5045,7 +5045,7 @@ function addPurchaseMainRow(){
    <td><input class="table-input col-name" placeholder="Item Name" list="p_dl-item-names" autocomplete="off"></td>
    <td><input class="table-input col-desc" placeholder="Auto from Master" disabled></td>
    <td><input class="table-input col-make" placeholder="Make / Brand"></td>
-   <td><select class="table-select col-cat" disabled><option>General</option><option>Electrical</option><option>Mechanical</option><option>Consumable</option><option>Safety</option></select></td>
+   <td><input class="table-input col-cat" placeholder="Auto from Master" disabled></td>
    <td><input class="table-input col-machine" placeholder="e.g. Loom-3 / M-12"></td>
    <td><input type="number" class="table-input col-qty" min="0" step="any"></td>
    <td><select class="table-select col-uom" disabled><option>Pcs</option><option>Kg</option><option>Set</option><option>Meter</option><option>Liter</option></select></td>
