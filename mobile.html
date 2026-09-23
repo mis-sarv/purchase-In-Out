@@ -909,6 +909,7 @@
 
     let myStage = null;         // 'gmCeo' | 'md' | 'vendor'
     let myVendorName = null;    // selected Supplier Master name, only when myStage === 'vendor'
+    const MOBILE_LOGIN_STORAGE_KEY = 'sarv_mobile_login';
     let currentModule = 'PR';
     let currentTab = 'pending';
     let currentEntry = null;    // the record row currently open in the modal
@@ -970,6 +971,7 @@
             document.getElementById('roleBadge').textContent = STAGE_LABEL[role] + (myVendorName?' — '+myVendorName:'') + ' ⏻';
             document.getElementById('loginScreen').style.display = 'none';
             document.getElementById('loginPin').value = '';
+            try{localStorage.setItem(MOBILE_LOGIN_STORAGE_KEY, JSON.stringify({stage:myStage, vendorName:myVendorName}));}catch(e){}
             renderList();
         }catch(e){
             if(/does not exist|relation/i.test(e.message||'')) err.textContent = '⚠️ role_pins / suppliers table missing — migration run karein';
@@ -980,6 +982,7 @@
     function logoutRole(){
         myStage = null;
         myVendorName = null;
+        try{localStorage.removeItem(MOBILE_LOGIN_STORAGE_KEY);}catch(e){}
         document.getElementById('loginRole').value = '';
         document.getElementById('loginVendorGroup').style.display = 'none';
         document.getElementById('loginVendor').innerHTML = '<option value="">-- Select Vendor --</option>';
@@ -987,6 +990,21 @@
     }
     document.getElementById('loginBtn').addEventListener('click', attemptLogin);
     document.getElementById('loginPin').addEventListener('keydown', e=>{ if(e.key==='Enter') attemptLogin(); });
+    // Restore a previous login so the PIN isn't asked again on every reload —
+    // only an explicit Logout (logoutRole, via the role badge) clears it.
+    (function restoreMobileLogin(){
+        try{
+            const raw = localStorage.getItem(MOBILE_LOGIN_STORAGE_KEY);
+            if(!raw) return;
+            const saved = JSON.parse(raw);
+            if(!saved || !saved.stage || !STAGE_LABEL[saved.stage]) return;
+            myStage = saved.stage;
+            myVendorName = saved.stage==='vendor' ? (saved.vendorName||null) : null;
+            document.getElementById('roleBadge').textContent = STAGE_LABEL[myStage] + (myVendorName?' — '+myVendorName:'') + ' ⏻';
+            document.getElementById('loginScreen').style.display = 'none';
+            renderList();
+        }catch(e){}
+    })();
 
     // ── Module / tab switching ───────────────────────────────────
     function switchModule(module) {
