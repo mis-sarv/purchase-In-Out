@@ -1944,7 +1944,11 @@ body {
   #sarvHomeDashboard .sarv-home-arrow{flex:0 0 auto;color:#94a3b8;font-size:18px;}
 </style>
 <div id="sarvHomeDashboard">
-  <div class="sarv-home-hero">
+  <div class="sarv-home-hero" style="position:relative;">
+    <button type="button" id="sarvHomeLogoutBtn" onclick="sarvLogout()" title="Logout"
+      style="position:absolute;top:14px;right:16px;background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.28);color:#e2e8f0;border-radius:20px;padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:7px;">
+      <span id="sarvHomeRoleLabel">👤 —</span><span style="opacity:.6;">|</span><span>&#9211; Logout</span>
+    </button>
     <h1>SARV INDIA <span>STORE SYSTEM</span></h1>
     <p>Section select karo</p>
   </div>
@@ -2084,15 +2088,15 @@ body {
                 <div id="inwardPoDetails" style="display:none;margin:-2px 0 12px;background:#eff6ff;border:1px solid #93c5fd;border-radius:7px;padding:7px 10px;color:#1e3a8a;font-size:11px;font-weight:600;"></div>
 
                 <div class="grid-4" style="margin-bottom:10px;">
-                    <div class="form-group">
+                    <div class="form-group" id="gatePassFieldGroup" style="display:none;">
                         <label>Gate Pass Against <span id="gatePassMandatoryBadge" style="display:none;color:#dc2626;font-weight:700;font-size:10px;">★ MANDATORY</span></label>
                         <input type="text" class="form-control" id="gatePassNo" placeholder="Gate Pass No." list="dl-gatePassNo" autocomplete="off">
                     </div>
-                    <div class="form-group">
+                    <div class="form-group" id="lotNoFieldGroup" style="display:none;">
                         <label>LOT No.</label>
-                        <input type="number" class="form-control" id="lotNo" placeholder="Lot / Batch No." list="dl-lotNo" required autocomplete="off">
+                        <input type="number" class="form-control" id="lotNo" placeholder="Lot / Batch No." list="dl-lotNo" autocomplete="off">
                     </div>
-                    <div class="form-group">
+                    <div class="form-group" id="inwMachineNameFieldGroup" style="display:none;">
                         <label>Machine Name</label>
                         <input type="text" class="form-control" id="inwMachineName" placeholder="Machine / Line No." list="dl-inw-machine-name" autocomplete="off">
                     </div>
@@ -2257,11 +2261,7 @@ body {
                 </div>
 
                 <div class="grid-4" style="margin-bottom:10px;">
-                    <div class="form-group">
-                        <label>Gate Pass Against</label>
-                        <input type="text" class="form-control" id="outGatePassNo" placeholder="Gate Pass No." list="dl-gatePassNo" autocomplete="off">
-                    </div>
-                    <div class="form-group">
+                    <div class="form-group" id="outLotNoFieldGroup" style="display:none;">
                         <label>LOT No.</label>
                         <input type="text" class="form-control" id="outLotNo" placeholder="Lot / Batch No." list="dl-lotNo" autocomplete="off">
                     </div>
@@ -2409,9 +2409,9 @@ body {
                         &#128196; All Records</button>
                     <button class="btn" id="clearSearchBtn"
                         style="background:#e2e8f0; color:#475569; white-space:nowrap; flex-shrink:0;">&#10005; Clear</button>
-                    <button class="btn" id="excelDownloadBtn" onclick="downloadFilteredExcel()"
+                    <button class="btn" id="excelDownloadBtn" onclick="downloadFilteredExcel()" title="Admin only"
                         style="background:#16a34a; color:#fff; white-space:nowrap; flex-shrink:0; display:none; border:none;">
-                        &#128190; Excel
+                        &#128190; Download CSV
                     </button>
                 </div>
 
@@ -2508,6 +2508,7 @@ body {
                         <option value="COMPLETE">&#9989; Complete</option>
                     </select>
                     <button class="btn btn-primary" id="repairRefreshBtn" style="flex-shrink:0;">&#128260; Refresh</button>
+                    <button class="btn" onclick="exportTableCSV('repairTrackerBody','SARV_Repair_Tracker_'+today()+'.csv',0)" style="background:#16a34a; color:#fff; flex-shrink:0; border:none;">&#128190; Download CSV</button>
                     <span id="repairStatusText" style="font-size:11px; color:#64748b; font-weight:600;"></span>
                 </div>
 
@@ -2718,6 +2719,7 @@ body {
                         </div>
                         <span id="itemMasterCount" style="font-size:11px; font-weight:700; color:#64748b;">0 items</span>
                         <button class="btn" onclick="loadItemMaster()" style="background:#e0f2fe; color:#0369a1; font-size:10px; height:28px; padding:0 10px;">&#128260; Refresh</button>
+                        <button class="btn" onclick="exportTableCSV('itemMasterBody','SARV_Item_Master_'+today()+'.csv',1)" style="background:#16a34a; color:#fff; font-size:10px; height:28px; padding:0 10px; border:none;">&#128190; Download CSV</button>
                     </div>
                     <div class="table-container" style="max-height:calc(100vh - 320px); min-height:340px; overflow-y:auto;">
                         <table style="width:100%; border-collapse:collapse; font-size:11px;">
@@ -2773,6 +2775,7 @@ body {
                         <input type="text" class="form-control" id="supplierMasterSearch" placeholder="&#128269; Search suppliers..." style="flex:1; height:30px; font-size:11px;" oninput="filterMasterTable('supplierMasterSearch','supplierMasterBody')">
                         <span id="supplierMasterCount" style="font-size:11px; font-weight:700; color:#64748b;">0 suppliers</span>
                         <button class="btn" onclick="loadSupplierMaster()" style="background:#dcfce7; color:#166534; font-size:10px; height:28px; padding:0 10px;">&#128260; Refresh</button>
+                        <button class="btn" onclick="exportTableCSV('supplierMasterBody','SARV_Supplier_Master_'+today()+'.csv',2)" style="background:#16a34a; color:#fff; font-size:10px; height:28px; padding:0 10px; border:none;">&#128190; Download CSV</button>
                     </div>
                     <div class="table-container" style="max-height:350px; overflow-y:auto;">
                         <table style="width:100%; border-collapse:collapse; font-size:11px;">
@@ -2839,6 +2842,7 @@ body {
                         <input type="text" class="form-control" id="employeeMasterSearch" placeholder="&#128269; Search employees..." style="flex:1; height:30px; font-size:11px;" oninput="filterMasterTable('employeeMasterSearch','employeeMasterBody')">
                         <span id="employeeMasterCount" style="font-size:11px; font-weight:700; color:#64748b;">0 employees</span>
                         <button class="btn" onclick="loadEmployeeMaster()" style="background:#f5f3ff; color:#6d28d9; font-size:10px; height:28px; padding:0 10px;">&#128260; Refresh</button>
+                        <button class="btn" onclick="exportTableCSV('employeeMasterBody','SARV_Employee_Master_'+today()+'.csv',1)" style="background:#16a34a; color:#fff; font-size:10px; height:28px; padding:0 10px; border:none;">&#128190; Download CSV</button>
                     </div>
                     <div class="table-container" style="max-height:350px; overflow-y:auto;">
                         <table style="width:100%; border-collapse:collapse; font-size:11px;">
@@ -2883,6 +2887,7 @@ body {
                         <input type="text" class="form-control" id="machineMasterSearch" placeholder="&#128269; Search machines..." style="flex:1; height:30px; font-size:11px;" oninput="filterMasterTable('machineMasterSearch','machineMasterBody')">
                         <span id="machineMasterCount" style="font-size:11px; font-weight:700; color:#64748b;">0 machines</span>
                         <button class="btn" onclick="loadMachineMaster()" style="background:#ffedd5; color:#9a3412; font-size:10px; height:28px; padding:0 10px;">&#128260; Refresh</button>
+                        <button class="btn" onclick="exportTableCSV('machineMasterBody','SARV_Machine_List_'+today()+'.csv',1)" style="background:#16a34a; color:#fff; font-size:10px; height:28px; padding:0 10px; border:none;">&#128190; Download CSV</button>
                     </div>
                     <div class="table-container" style="max-height:350px; overflow-y:auto;">
                         <table style="width:100%; border-collapse:collapse; font-size:11px;">
@@ -3821,6 +3826,8 @@ body {
                                     <th>PO No</th>
                                     <th>Date</th>
                                     <th>Vendor</th>
+                                    <th>Item Name</th>
+                                    <th>Description</th>
                                     <th>Linked Req(s)</th>
                                     <th style="text-align:center;">Items</th>
                                     <th style="text-align:center;">Qty</th>
@@ -4703,6 +4710,42 @@ function showToast(message, type='success'){
   if(stack){const el=document.createElement('div');el.className='toast '+type;el.innerHTML=message;stack.appendChild(el);setTimeout(()=>el.remove(),4500)}else alert(String(message).replace(/<[^>]+>/g,''));
 }
 function dbError(error){console.error(error);showToast('Supabase error: '+(error?.message||error),'error');}
+/* ================================================================
+   CSV EXPORT HELPERS — used by Print History/Reports (Admin-only),
+   Master Data Management and Repair Items Tracker (anyone).
+================================================================ */
+function downloadCSV(filename,rows2d){
+  const esc=v=>{
+    const s=v==null?'':String(v);
+    return /[",\n\r]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;
+  };
+  const csv=rows2d.map(row=>row.map(esc).join(',')).join('\r\n');
+  const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=filename;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+// Exports a table's currently-visible rows exactly as shown on screen
+// (respects any active search/filter that hides rows via style.display).
+// Placeholder/subtotal rows whose cell count doesn't match the header are
+// skipped automatically; skipTrailing drops non-data action columns
+// (edit/delete buttons) from the right edge.
+function exportTableCSV(tbodyId,filename,skipTrailing=1){
+  const tb=byId(tbodyId);if(!tb)return false;
+  const table=tb.closest('table');if(!table)return false;
+  const theadCells=[...table.querySelectorAll('thead th')];
+  const total=theadCells.length;
+  const keepCount=Math.max(0,total-skipTrailing);
+  const headers=theadCells.slice(0,keepCount).map(th=>th.textContent.replace(/\s+/g,' ').trim());
+  const rows=[...tb.querySelectorAll('tr')].filter(tr=>tr.style.display!=='none'&&tr.children.length===total);
+  if(!rows.length){showToast('⚠️ Export ke liye koi data nahi hai — pehle filter/search check karein','warn');return false;}
+  const data=rows.map(tr=>[...tr.children].slice(0,keepCount).map(td=>td.textContent.replace(/\s+/g,' ').trim()));
+  downloadCSV(filename,[headers,...data]);
+  showToast('📥 CSV downloaded — '+rows.length+' rows');
+  return true;
+}
 function today(){return new Date().toISOString().slice(0,10)}
 // India financial year (Apr–Mar), e.g. sarvFinancialYear() -> "2026-27",
 // sarvFinancialYear(true) -> "26-27". Rolls over automatically with the date.
@@ -5334,6 +5377,7 @@ function bindOriginalControls(){
     natureSel.addEventListener('change',()=>{
       const isRepair=natureSel.value==='Repaired';
       if(byId('repairOutwardGroup'))byId('repairOutwardGroup').style.display=isRepair?'block':'none';
+      if(byId('gatePassFieldGroup'))byId('gatePassFieldGroup').style.display=isRepair?'':'none';
       if(byId('gatePassMandatoryBadge'))byId('gatePassMandatoryBadge').style.display=isRepair?'inline':'none';
       const gp=byId('gatePassNo');
       if(gp){
@@ -5371,7 +5415,7 @@ window.openWebcamModal=()=>showToast('Camera preview is available in the origina
     if(byId('pwdChangeCard'))byId('pwdChangeCard').style.display=admin?'':'none';
     if(byId('pwdChangeLockedNotice'))byId('pwdChangeLockedNotice').style.display=admin?'none':'block';
   }
-};window.downloadFilteredExcel=()=>showToast('Use the Reports export after Supabase data is connected.','warn');window.revokeEditSession=()=>{};window.acClearAll=()=>{};window.togglePwdVis=(id)=>{const e=byId(id);if(e)e.type=e.type==='password'?'text':'password'};window.startupVerify=()=>{};window.clearCanvas=()=>{};window.openEditFlow=()=>{};window.removePhotoAt=()=>{};
+};window.revokeEditSession=()=>{};window.acClearAll=()=>{};window.togglePwdVis=(id)=>{const e=byId(id);if(e)e.type=e.type==='password'?'text':'password'};window.startupVerify=()=>{};window.clearCanvas=()=>{};window.openEditFlow=()=>{};window.removePhotoAt=()=>{};
 
 /* ================================================================
    ROLE PIN MANAGEMENT — backs both the Settings > Change Passwords
@@ -5432,6 +5476,7 @@ window.submitPasswordChange=async function(){
    permission is needed (e.g. isAdmin() for cancelling a PO).
 ================================================================ */
 const SARV_ROLE_LABEL={USER_IC_PIN:'Store In-Charge',USER_GM_PIN:'GM / CEO',USER_MD_PIN:'MD',USER_AC_PIN:'Accountant',USER_GT_PIN:'Gate Man',ADMIN_PIN:'Admin',VENDOR_VERIFY_PIN:'Vendor Verified'};
+const SARV_LOGIN_STORAGE_KEY='sarv_active_role';
 let sarvCurrentRole=null;
 function isAdmin(){return sarvCurrentRole==='ADMIN_PIN';}
 async function sarvAttemptLogin(){
@@ -5449,6 +5494,7 @@ async function sarvAttemptLogin(){
     if(!q.data)return show('Is role ke liye PIN set nahi hai — Settings > Change Passwords me set karo');
     if(await sha256Hex(pin)!==q.data.pin_hash)return show('Galat PIN');
     sarvCurrentRole=role;
+    try{localStorage.setItem(SARV_LOGIN_STORAGE_KEY,role);}catch(e){}
     const badge=byId('sarvRoleBadge');if(badge)badge.textContent='👤 '+(SARV_ROLE_LABEL[role]||role);
     const gate=byId('sarvLoginGate');if(gate)gate.style.display='none';
     if(byId('sarvLoginPin'))byId('sarvLoginPin').value='';
@@ -5461,6 +5507,7 @@ async function sarvAttemptLogin(){
 }
 function sarvLogout(){
   sarvCurrentRole=null;
+  try{localStorage.removeItem(SARV_LOGIN_STORAGE_KEY);}catch(e){}
   const gate=byId('sarvLoginGate');if(gate)gate.style.display='flex';
 }
 function sarvUnlockNav(){
@@ -5472,6 +5519,7 @@ function sarvLockNavToSection(){
 }
 function sarvGoHome(){
   const dash=byId('sarvHomeDashboard');if(dash)dash.style.display='block';
+  const roleLabel=byId('sarvHomeRoleLabel');if(roleLabel)roleLabel.textContent='👤 '+(SARV_ROLE_LABEL[sarvCurrentRole]||sarvCurrentRole||'—');
   sarvUnlockNav();
 }
 function sarvNavigateFromHome(target){
@@ -5507,6 +5555,18 @@ document.addEventListener('DOMContentLoaded',()=>{
   byId('sarvLoginBtn')?.addEventListener('click',sarvAttemptLogin);
   byId('sarvLoginPin')?.addEventListener('keydown',e=>{if(e.key==='Enter')sarvAttemptLogin();});
   byId('sarvHomeDashboard')?.addEventListener('click',e=>{const b=e.target.closest('.sarv-home-row');if(b)sarvNavigateFromHome(b.dataset.go);});
+  // Restore a previous login so the PIN isn't asked again on every reload —
+  // only an explicit Logout (sarvLogout, via the role badge) clears it.
+  try{
+    const savedRole=localStorage.getItem(SARV_LOGIN_STORAGE_KEY);
+    if(savedRole&&SARV_ROLE_LABEL[savedRole]){
+      sarvCurrentRole=savedRole;
+      const badge=byId('sarvRoleBadge');if(badge)badge.textContent='👤 '+SARV_ROLE_LABEL[savedRole];
+      const gate=byId('sarvLoginGate');if(gate)gate.style.display='none';
+      if(byId('p_poListBody'))refreshGeneratedPoList().catch(()=>{});
+      sarvGoHome();
+    }
+  }catch(e){}
 });
 
 /* ================================================================
@@ -6141,9 +6201,11 @@ window.filterMasterTable=function(searchId,bodyId){
 /* ================================================================
    REPORTS PANEL — Fetch Inward + Outward from Supabase
 ================================================================ */
+let sarvLastReportsFiltered=[];
 window.loadReports=async function(){
   const tb=byId('searchResultsBody'),statusEl=byId('searchStatusText');
   if(!tb)return;
+  const csvBtn=byId('excelDownloadBtn');if(csvBtn)csvBtn.style.display=isAdmin()?'':'none';
   if(!SB_READY){tb.innerHTML='<tr><td colspan="9" style="text-align:center;padding:20px;color:#f59e0b;">⚠️ Supabase not configured</td></tr>';return;}
   tb.innerHTML='<tr><td colspan="9" style="text-align:center;padding:24px;color:#94a3b8;">⏳ Loading entries...</td></tr>';
   if(statusEl)statusEl.textContent='Loading...';
@@ -6198,6 +6260,7 @@ window.loadReports=async function(){
     // ── Search filter ─────────────────────────────────────────
     const filtered=search?results.filter(r=>[r.no,r.invoice,r.party,r.receiver,r.items].some(v=>(v||'').toLowerCase().includes(search))):results;
     filtered.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+    sarvLastReportsFiltered=filtered;
     if(statusEl)statusEl.textContent=filtered.length+' records found';
     if(!filtered.length){tb.innerHTML='<tr><td colspan="9" style="text-align:center;padding:30px;color:#94a3b8;">No records found</td></tr>';return;}
     const tc={'INWARD':'#0284c7','INWARD NB':'#dc2626','OUTWARD':'#166534','ISSUE':'#7c3aed'};
@@ -6224,6 +6287,17 @@ window.loadReports=async function(){
       </tr>`;
     }).join('');
   }catch(e){dbError(e);tb.innerHTML='<tr><td colspan="9" style="text-align:center;padding:20px;color:#ef4444;">❌ Error loading reports</td></tr>';}
+};
+// Downloads the currently filtered Reports result set as CSV, straight
+// from the database rows (not just what's rendered in the table) — Admin
+// login only.
+window.downloadFilteredExcel=function(){
+  if(!isAdmin())return showToast('⛔ Sirf Admin login Print History / Reports CSV export kar sakta hai','warn');
+  if(!sarvLastReportsFiltered.length)return showToast('⚠️ Pehle Search / All Records se data laayein','warn');
+  const headers=['Type','Record No','Invoice No','Date','Party / Supplier','Receiver Name','Amount','Total Qty','Items'];
+  const rows=sarvLastReportsFiltered.map(r=>[r.type||'',r.no||'',r.invoice||'',r.date||'',r.party||'',r.receiver||'',r.amount||0,r.qty||0,r.items||'']);
+  downloadCSV('SARV_Reports_'+today()+'.csv',[headers,...rows]);
+  showToast('📥 CSV downloaded — '+rows.length+' records');
 };
 window.addEventListener('DOMContentLoaded',()=>{
   bindNavigation();
@@ -6263,6 +6337,13 @@ window.addEventListener('DOMContentLoaded',()=>{
       .then(data=>{if(data&&data.length)refreshMachineDatalist(data);})
       .catch(()=>{});
   }
+  // Lot No. / Machine Name fields are ISSUE-only — hidden for every other
+  // Entry Type (Inward's Entry Type never has an ISSUE option, so on the
+  // Inward panel this keeps them hidden permanently).
+  const syncIssueOnlyFields=(selectId,groupIds)=>{
+    const sel=byId(selectId);const show=!!sel&&sel.value==='ISSUE';
+    groupIds.forEach(id=>{const g=byId(id);if(g)g.style.display=show?'':'none';});
+  };
   // ── Entry Type → Serial No + Theme (Inward) ──────────────
   const etSel=byId('entryTypeSelect');
   if(etSel){etSel.addEventListener('change',function(){
@@ -6270,7 +6351,9 @@ window.addEventListener('DOMContentLoaded',()=>{
     if(SB_READY)nextNo(kind).then(no=>{const e=byId('regEntryNo');if(e)e.value=no;}).catch(()=>{});
     const panel=byId('inwardPanel');
     if(panel){panel.classList.remove('theme-nb','theme-issue');if(type==='INWARD NB')panel.classList.add('theme-nb');}
+    syncIssueOnlyFields('entryTypeSelect',['lotNoFieldGroup','inwMachineNameFieldGroup']);
   });}
+  syncIssueOnlyFields('entryTypeSelect',['lotNoFieldGroup','inwMachineNameFieldGroup']);
   // ── Entry Type → Serial No + Theme (Outward) ─────────────
   const otSel=byId('outEntryTypeSelect');
   if(otSel){otSel.addEventListener('change',function(){
@@ -6278,7 +6361,9 @@ window.addEventListener('DOMContentLoaded',()=>{
     if(SB_READY)nextNo(kind).then(no=>{const e=byId('outRegEntryNo');if(e)e.value=no;}).catch(()=>{});
     const panel=byId('outwardPanel');
     if(panel){panel.classList.remove('theme-nb','theme-issue');if(type==='ISSUE')panel.classList.add('theme-issue');}
+    syncIssueOnlyFields('outEntryTypeSelect',['outLotNoFieldGroup']);
   });}
+  syncIssueOnlyFields('outEntryTypeSelect',['outLotNoFieldGroup']);
   // ── Report panel buttons ──────────────────────────────────
   const add2=(id,fn)=>{const e=byId(id);if(e&&!e.dataset.rb){e.addEventListener('click',fn);e.dataset.rb='1';}};
   add2('searchBtn',()=>loadReports());
@@ -8267,6 +8352,21 @@ window.addEventListener('DOMContentLoaded',()=>{
    if(!SB_READY)return;const tb=byId('p_poListBody');if(!tb)return;
    const q=await SB.from('purchase_orders').select('*').order('po_date',{ascending:false});if(q.error){console.warn('[SARV] PO list unavailable:',q.error.message);return}
    sarvGeneratedPos=q.data||[];
+   // Item Name / Description columns are pulled from each PO's line items
+   // (a PO can have several lines) and joined for display — best-effort,
+   // the list still renders without them if this lookup fails.
+   const poLineMap={};
+   try{
+     const poIds=sarvGeneratedPos.map(po=>po.id).filter(Boolean);
+     if(poIds.length){
+       const ll=await SB.from('purchase_order_lines').select('purchase_order_id,item_name,item_description').in('purchase_order_id',poIds).order('line_no');
+       if(!ll.error)(ll.data||[]).forEach(l=>{
+         const m=poLineMap[l.purchase_order_id]=poLineMap[l.purchase_order_id]||{names:[],descs:[]};
+         if(l.item_name&&!m.names.includes(l.item_name))m.names.push(l.item_name);
+         if(l.item_description&&!m.descs.includes(l.item_description))m.descs.push(l.item_description);
+       });
+     }
+   }catch(e){console.warn('[SARV] PO line item lookup skipped:',e.message||e);}
    const statusColors={'Generated':'#64748b','GM/CEO Approved':'#0284c7','MD Approved':'#7c3aed','Vendor Verified':'#16a34a','Partially Received':'#d97706','Received':'#16a34a','Rejected':'#dc2626','Cancelled':'#dc2626'};
    tb.innerHTML='';(q.data||[]).forEach(po=>{
      const statusVal=po.status||'Generated',sc=statusColors[statusVal]||'#64748b';
@@ -8280,7 +8380,10 @@ window.addEventListener('DOMContentLoaded',()=>{
        :(isAdmin()
          ?'<button type="button" class="sarv-po-cancel btn btn-danger btn-sm" data-po="'+pEsc(po.po_no)+'" style="padding:3px 10px;font-size:11px;">&#10060; Cancel</button>'
          :'<button type="button" class="btn btn-sm" disabled title="MD Approved ke baad sirf Admin login cancel kar sakta hai" style="padding:3px 10px;font-size:11px;background:#e2e8f0;color:#94a3b8;cursor:not-allowed;">&#128274; Locked</button>');
-     const tr=document.createElement('tr');tr.innerHTML='<td>'+pEsc(po.po_no)+'</td><td>'+pEsc(po.po_date||'')+'</td><td>'+pEsc(po.vendor_name||'')+'</td><td>'+pEsc(po.linked_req_nos||'')+'</td><td style="text-align:center;">'+pNum(po.total_items)+'</td><td style="text-align:center;">'+pNum(po.total_qty)+'</td><td style="text-align:right;">'+pMoney(po.grand_total)+'</td><td>'+statusBadge+'</td><td style="text-align:center;">'+pNum(po.received_qty)+'</td><td>'+((po.pdf_url)?'<a href="'+pEsc(po.pdf_url)+'" target="_blank" rel="noopener">Open</a>':'—')+'</td><td><button type="button" class="sarv-po-wa" data-po="'+pEsc(po.po_no)+'" style="background:none;border:none;color:#16a34a;font-weight:700;cursor:pointer;padding:0;font-size:inherit;">&#128172; Send</button></td><td>'+actionCell+'</td>';tb.appendChild(tr);
+     const lm=poLineMap[po.id]||{names:[],descs:[]};
+     const itemNameCell=pEsc(lm.names.join(', ')||'—');
+     const itemDescCell=pEsc(lm.descs.join(', ')||'—');
+     const tr=document.createElement('tr');tr.innerHTML='<td>'+pEsc(po.po_no)+'</td><td>'+pEsc(po.po_date||'')+'</td><td>'+pEsc(po.vendor_name||'')+'</td><td>'+itemNameCell+'</td><td>'+itemDescCell+'</td><td>'+pEsc(po.linked_req_nos||'')+'</td><td style="text-align:center;">'+pNum(po.total_items)+'</td><td style="text-align:center;">'+pNum(po.total_qty)+'</td><td style="text-align:right;">'+pMoney(po.grand_total)+'</td><td>'+statusBadge+'</td><td style="text-align:center;">'+pNum(po.received_qty)+'</td><td>'+((po.pdf_url)?'<a href="'+pEsc(po.pdf_url)+'" target="_blank" rel="noopener">Open</a>':'—')+'</td><td><button type="button" class="sarv-po-wa" data-po="'+pEsc(po.po_no)+'" style="background:none;border:none;color:#16a34a;font-weight:700;cursor:pointer;padding:0;font-size:inherit;">&#128172; Send</button></td><td>'+actionCell+'</td>';tb.appendChild(tr);
    });
    const c=byId('p_poListCount');if(c)c.textContent=(q.data||[]).length;
    renderPoKpiCards();
