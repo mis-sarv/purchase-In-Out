@@ -1861,6 +1861,13 @@ body {
             width: 60px !important;
             text-align: center;
         }
+        #fullPurchasePanel .p_priority-btn {
+            flex: 1; padding: 6px 4px; font-size: 11px; font-weight: 700; cursor: pointer;
+            border: 1.5px solid #cbd5e1; border-radius: 6px; background: #fff; color: #64748b;
+            white-space: nowrap; transition: all .12s;
+        }
+        #fullPurchasePanel .p_priority-btn:hover { border-color: #94a3b8; }
+        #fullPurchasePanel .p_priority-btn.active { border-color: #0284c7; background: #e0f2fe; color: #0369a1; box-shadow: 0 0 0 2px rgba(2,132,199,0.15); }
         #fullPurchasePanel /* #8 remove up/down spinner buttons on PO unit price */
         .po-unitprice::-webkit-outer-spin-button,
 #fullPurchasePanel .po-unitprice::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
@@ -2067,8 +2074,10 @@ body {
 
                 <div class="grid-4">
                     <div class="form-group">
-                        <label>PO Number <span style="color:#dc2626;font-weight:800;">★</span></label>
-                        <select class="form-control" id="poNumber">
+                        <label>PO Number <span style="color:#dc2626;font-weight:800;">★</span>
+                            <small style="color:#94a3b8;font-weight:500;">(Ctrl/Cmd + click = multiple, same supplier only)</small>
+                        </label>
+                        <select class="form-control" id="poNumber" multiple size="3" style="height:auto;min-height:62px;">
                             <option value="">Without PO</option>
                         </select>
                     </div>
@@ -3436,7 +3445,7 @@ body {
                 <div class="grid-4">
                     <div class="form-group">
                         <label>Date <span class="req">*</span></label>
-                        <input type="date" class="form-control" id="p_reqDate">
+                        <input type="date" class="form-control" id="p_reqDate" readonly style="background:#f1f5f9;cursor:not-allowed;">
                     </div>
                     <div class="form-group">
                         <label>Requirement No. (Auto)</label>
@@ -3448,22 +3457,25 @@ body {
                     </div>
                     <div class="form-group">
                         <label>Priority <span class="req">*</span></label>
-                        <select class="form-control" id="p_priority">
-                            <option value="Normal">&#128994; Normal</option>
-                            <option value="Urgent">&#128993; Urgent</option>
-                            <option value="Critical">&#128308; Critical</option>
-                        </select>
+                        <input type="hidden" id="p_priority" value="Normal">
+                        <div id="p_priorityBtnGroup" style="display:flex; gap:6px;">
+                            <button type="button" class="p_priority-btn" data-priority="Normal">&#128994; Normal</button>
+                            <button type="button" class="p_priority-btn" data-priority="Urgent">&#128993; Urgent</button>
+                            <button type="button" class="p_priority-btn" data-priority="Critical">&#128308; Critical</button>
+                        </div>
                     </div>
                 </div>
 
                 <div class="grid-4" style="margin-top:8px;">
                     <div class="form-group">
                         <label>Purchaser Name <span class="req">*</span></label>
-                        <input type="text" class="form-control" id="p_reqGeneratedBy" placeholder="Purchaser name">
-                    </div>
-                    <div class="form-group">
-                        <label>Last Date Used</label>
-                        <input type="date" class="form-control" id="p_reqLastDateUsed">
+                        <select class="form-control" id="p_reqGeneratedBy">
+                            <option value="">-- Select Purchaser --</option>
+                            <option value="Vishal ji">Vishal ji</option>
+                            <option value="Subdesh ji">Subdesh ji</option>
+                            <option value="Satinder Ji">Satinder Ji</option>
+                            <option value="Ankur ji">Ankur ji</option>
+                        </select>
                     </div>
                 </div>
 
@@ -3500,13 +3512,6 @@ body {
                         <option>Other</option>
                     </select>
                     <input type="hidden" id="p_reqContact">
-                </div>
-
-                <div class="grid-3">
-                    <div class="form-group">
-                        <label>Purpose / Reason <span class="req">*</span></label>
-                        <input type="text" class="form-control" id="p_reqPurpose" placeholder="e.g. Loom maintenance, sample run">
-                    </div>
                 </div>
 
                 <div class="section-header-row">
@@ -3889,16 +3894,11 @@ body {
             <div class="grid-3" style="margin-bottom:10px;">
                 <div class="form-group" style="grid-column: span 2;">
                     <label>Vendor Address</label>
-                    <textarea class="form-control" id="p_poVendorAddressField" rows="2" placeholder="Vendor full address"></textarea>
+                    <textarea class="form-control" id="p_poVendorAddressField" rows="2" placeholder="Supplier Master se auto-fill hoga" readonly style="background:#f1f5f9;cursor:not-allowed;"></textarea>
                 </div>
                 <div class="form-group">
-                    <label>Payment Terms</label>
-                    <select class="form-control" id="p_poPaymentTermsField">
-                        <option value="Payment terms 0 days after receipt of bill">0 days</option>
-                        <option value="Payment terms 7 days after receipt of bill">7 days</option>
-                        <option value="Payment terms 15 days after receipt of bill">15 days</option>
-                        <option value="Payment terms 30 days after receipt of bill">30 days</option>
-                        <option value="Payment terms 60 days after receipt of bill">60 days</option>
+                    <label>Payment Terms <small style="color:#94a3b8;font-weight:500;">(fixed)</small></label>
+                    <select class="form-control" id="p_poPaymentTermsField" disabled style="background:#f1f5f9;cursor:not-allowed;font-weight:700;">
                         <option value="Payment terms 90 days after receipt of bill" selected>90 days</option>
                     </select>
                 </div>
@@ -3929,8 +3929,10 @@ body {
                             <th style="width:5%; background:#fef2f2; color:#b91c1c;" title="Cancel remaining qty now (optional)">Cancel</th>
                             <th style="width:5%;">UOM</th>
                             <th style="width:7%; background:#fef9c3; color:#854d0e;">Gross Wt (kg)</th>
+                            <th style="width:6%; background:#f1f5f9; color:#334155;" title="QTY = Qty × final rate · WEIGHT = Gross Wt × final rate">Bill Basis</th>
                             <th style="width:7%;">Unit Price <span style="color:#dc2626;">*</span></th>
-                            <th style="width:8%; background:#e0e7ff; color:#3730a3;" title="Discount % per item">Disc%</th>
+                            <th style="width:6%; background:#e0e7ff; color:#3730a3;" title="Discount % per item">Disc%</th>
+                            <th style="width:5%; background:#ecfdf5; color:#047857;" title="GST % per item">GST%</th>
                             <th style="width:8%; text-align:right;">Total</th>
                         </tr>
                     </thead>
@@ -3961,7 +3963,7 @@ body {
 
             <div class="grid-4" style="margin-top:14px;">
                 <div class="form-group">
-                    <label>GST %</label>
+                    <label>Freight / Other GST % <small style="color:#94a3b8;font-weight:500;">(items ka GST upar row-wise)</small></label>
                     <input type="number" class="form-control" id="p_poGstPctField" min="0" max="100" step="0.01" value="18">
                 </div>
                 <div class="form-group">
@@ -3984,11 +3986,6 @@ body {
                 <span class="totals-pill"><span class="lbl">Freight</span><span class="val" id="p_poFreightView">0.00</span></span>
                 <span class="totals-pill"><span class="lbl" id="p_poOtherViewLbl">Other</span><span class="val" id="p_poOtherView">0.00</span></span>
                 <span class="totals-pill success"><span class="lbl">Grand Total</span><span class="val" id="p_poGrandTotalView">0.00</span></span>
-            </div>
-
-            <div class="form-group" style="margin-top:10px;">
-                <label>Important Notes</label>
-                <textarea class="form-control" id="p_poNotesField" rows="2" placeholder="Special instructions, packaging, etc."></textarea>
             </div>
 
             <!-- 📎 Attachments (images / PDFs / docs) — forwarded to approvers, NOT to vendor -->
@@ -4125,13 +4122,8 @@ body {
                 </div>
                 <div class="form-group">
                     <label>Payment Terms</label>
-                    <select class="form-control" id="p_poEditPaymentTerms">
-                        <option value="Payment terms 0 days after receipt of bill">0 days</option>
-                        <option value="Payment terms 7 days after receipt of bill">7 days</option>
-                        <option value="Payment terms 15 days after receipt of bill">15 days</option>
-                        <option value="Payment terms 30 days after receipt of bill">30 days</option>
-                        <option value="Payment terms 60 days after receipt of bill">60 days</option>
-                        <option value="Payment terms 90 days after receipt of bill">90 days</option>
+                    <select class="form-control" id="p_poEditPaymentTerms" disabled style="background:#f1f5f9;cursor:not-allowed;font-weight:700;">
+                        <option value="Payment terms 90 days after receipt of bill" selected>90 days</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -4786,6 +4778,8 @@ async function nextNo(kind){
   }
 }
 let sarvPoCatalog=[],sarvPendingRequirements=[],sarvEditingRequirementId=null,sarvGeneratedPos=[];
+// Admin-only view toggle for fully-received / short-closed POs.
+let sarvShowReceivedPos=false;
 let sarvItemCatalog=[];     // Global item master cache for auto-fill
 let sarvEmployeeCatalog=[]; // Global employee cache for PR form auto-fill
 let sarvSupplierCatalog=[]; // Global supplier master cache for auto-fill
@@ -4886,7 +4880,7 @@ function applyItemAutofill(nameVal,tr,prefix){
     s('.item-desc', item.description||'');
     if(!g('.item-make')?.value) s('.item-make', item.make||'');
     s('.item-cat',  item.category||'');
-    s('.item-uom',  item.uom||'PCS');
+    s('.item-uom',  item.uom||'');
     const pe=g('.list-price-field'); if(pe&&(pe.value===''||pe.value==='0'))pe.value=item.rate||0;
     const re=g('.rate-field');       if(re&&(re.value===''||re.value==='0'))re.value=item.rate||0;
     updateStoreTotals();
@@ -4894,13 +4888,13 @@ function applyItemAutofill(nameVal,tr,prefix){
     s('.out-item-desc', item.description||'');
     if(!g('.out-item-make')?.value) s('.out-item-make', item.make||'');
     s('.out-item-cat',  item.category||'');
-    s('.out-qty-uom',   item.uom||'PCS');
+    s('.out-qty-uom',   item.uom||'');
     updateOutTotals();
   } else if(prefix==='purchase'){
     s('.col-desc', item.description||'');
     if(!g('.col-make')?.value) s('.col-make', item.make||'');
     s('.col-cat', item.category||'');
-    const us=g('.col-uom'); if(us&&item.uom){const opts=[...us.options].map(o=>o.value.toLowerCase());const idx=opts.indexOf(item.uom.toLowerCase());if(idx>=0)us.selectedIndex=idx;}
+    s('.col-uom', item.uom||'');
     // Once a real master item is picked, lock the name so it can't be
     // hand-edited into something else — delete the row and re-add to pick again.
     const nameEl=g('.col-name');
@@ -4908,32 +4902,78 @@ function applyItemAutofill(nameVal,tr,prefix){
     refreshPurchaseTotals();
   }
 }
+// PO Number is a multi-select — every currently chosen PO number.
+function getSelectedPoNos(){
+  const sel=byId('poNumber');if(!sel)return [];
+  return [...sel.selectedOptions].map(o=>o.value).filter(Boolean);
+}
 async function loadOpenPoDropdown(){
   const sel=byId('poNumber');if(!sel||!SB_READY)return;
-  const old=sel.value;sel.innerHTML='<option value="">Without PO</option>';
+  const old=getSelectedPoNos();sel.innerHTML='<option value="">Without PO</option>';
   const q=await SB.from('purchase_orders').select('*').order('po_date',{ascending:false});
   if(q.error){console.warn('[SARV] PO dropdown unavailable:',q.error.message);return}
   sarvPoCatalog=(q.data||[]).filter(x=>['MD Approved','Partially Received','Vendor Verified'].includes(String(x.status||'')));
   sarvPoCatalog.forEach(po=>{const o=document.createElement('option');o.value=po.po_no;o.textContent=po.po_no+' — '+(po.vendor_name||'Vendor')+' — '+(po.status||'Generated');sel.appendChild(o)});
-  if(old&&sarvPoCatalog.some(x=>x.po_no===old))sel.value=old;
+  [...sel.options].forEach(o=>{if(o.value&&old.includes(o.value))o.selected=true;});
 }
 async function loadPoIntoInward(poNo){
-  const po=sarvPoCatalog.find(x=>x.po_no===poNo);const box=byId('inwardPoDetails');
-  if(!po){if(box)box.style.display='none';return}
+  const sel=byId('poNumber'),box=byId('inwardPoDetails');
+  // Multi-select: every chosen PO is loaded, each item row tagged with the PO
+  // it belongs to so receipts post back against the right one.
+  const poNos=sel?[...sel.selectedOptions].map(o=>o.value).filter(Boolean)
+                 :(poNo?[poNo]:[]);
+  const pos=poNos.map(n=>sarvPoCatalog.find(x=>x.po_no===n)).filter(Boolean);
+  if(!pos.length){if(box)box.style.display='none';setInwardPoLock(false);return}
+  // All selected POs must belong to one supplier — a single Inward entry
+  // records one supplier's material.
+  const vendors=[...new Set(pos.map(p=>String(p.vendor_name||'').trim().toUpperCase()))];
+  if(vendors.length>1){
+    showToast('⛔ Alag-alag Supplier ke POs ek saath select nahi ho sakte','error');
+    [...sel.options].forEach(o=>{if(o.value&&o.value!==pos[0].po_no)o.selected=false;});
+    return loadPoIntoInward();
+  }
+  const po=pos[0];
   if(byId('supplierName'))byId('supplierName').value=po.vendor_name||'';
   if(byId('invoiceDate')&&!byId('invoiceDate').value)byId('invoiceDate').value=po.po_date||today();
-  const q=await SB.from('purchase_order_lines').select('*').eq('purchase_order_id',po.id).order('line_no');
+  // Against a PO the inward is always a Purchase receipt, and the vendor /
+  // item names come from the PO itself — neither may be hand-edited.
+  const nat=byId('inwNatureOfInward');
+  if(nat&&nat.value!=='Purchase'){nat.value='Purchase';nat.dispatchEvent(new Event('change'));}
+  const q=await SB.from('purchase_order_lines').select('*').in('purchase_order_id',pos.map(p=>p.id)).order('line_no');
   if(q.error){showToast('PO lines load nahi ho paaye: '+q.error.message,'error');return}
+  const poById={};pos.forEach(p=>{poById[p.id]=p});
   const lines=q.data||[],tb=byId('itemTableBody');if(tb)tb.innerHTML='';
   lines.forEach(line=>{
     addNewRow();const tr=tb?.lastElementChild;if(!tr)return;
     const pending=Math.max(0,Number(line.ordered_qty||0)-Number(line.received_qty||0));
     tr.dataset.poLineId=line.id;tr.dataset.poOrderedQty=line.ordered_qty||0;tr.dataset.poReceivedQty=line.received_qty||0;
+    tr.dataset.poNo=poById[line.purchase_order_id]?.po_no||'';
+    tr.dataset.poUnitPrice=line.unit_price||0;
     const set=(s,v)=>{const e=tr.querySelector(s);if(e)e.value=v??''};
-    set('.item-name',line.item_name);set('.item-desc',line.item_description);set('.item-make',line.make);set('.item-cat',line.department||'General');set('.qty-field',pending);set('.item-uom',line.uom||'PCS');set('.list-price-field',line.unit_price||0);set('.rate-field',line.unit_price||0);set('.item-gst-field',line.tax_pct||0);
+    set('.item-name',line.item_name);set('.item-desc',line.item_description);set('.item-make',line.make);set('.item-cat',line.department||'General');set('.qty-field',pending);set('.item-uom',line.uom||'');set('.list-price-field',line.unit_price||0);set('.rate-field',line.unit_price||0);set('.item-gst-field',line.tax_pct||0);
   });
   updateStoreTotals();
-  if(box){box.innerHTML='PO <b>'+escText(po.po_no)+'</b> · Vendor: <b>'+escText(po.vendor_name||'-')+'</b> · Ordered: <b>'+pNum(po.total_qty)+'</b> · Already received: <b>'+pNum(po.received_qty)+'</b> · Enter received quantity in the item rows.';box.style.display='block'}
+  setInwardPoLock(true);
+  if(box){
+    const ordered=pos.reduce((s,p)=>s+pNum(p.total_qty),0),received=pos.reduce((s,p)=>s+pNum(p.received_qty),0);
+    box.innerHTML='PO <b>'+escText(pos.map(p=>p.po_no).join(', '))+'</b> · Vendor: <b>'+escText(po.vendor_name||'-')+'</b> · Ordered: <b>'+ordered+'</b> · Already received: <b>'+received+'</b> · Enter received quantity in the item rows.';
+    box.style.display='block';
+  }
+}
+// Locks Supplier Name + every Item Name while the Inward is tied to a PO,
+// and also pins Nature of Inward to Purchase.
+function setInwardPoLock(locked){
+  const lock=(el,title)=>{
+    if(!el)return;
+    el.readOnly=locked;
+    el.style.background=locked?'#f1f5f9':'';
+    el.style.cursor=locked?'not-allowed':'';
+    el.title=locked?title:'';
+  };
+  lock(byId('supplierName'),'PO ke against Supplier Name PO se aata hai — change nahi kar sakte');
+  document.querySelectorAll('#itemTableBody .item-name').forEach(el=>lock(el,'PO ke against Item Name PO se aata hai — change nahi kar sakte'));
+  const nat=byId('inwNatureOfInward');
+  if(nat){nat.disabled=locked;nat.style.background=locked?'#f1f5f9':'';nat.title=locked?'PO ke against Nature of Inward hamesha Purchase hota hai':'';}
 }
 let sarvRepairOutwardCatalog=[];
 async function loadRepairOutwardDropdown(){
@@ -5115,19 +5155,67 @@ window.renderRepairTrackerTable=function(){
   }).join('');
 };
 
-async function updatePoReceipt(poNo,rows){
-  const po=sarvPoCatalog.find(x=>x.po_no===poNo);if(!po)return;
+// Rows carry their own PO (tr.dataset.poNo), so one Inward can post receipts
+// back across several selected POs at once.
+async function updatePoReceipt(poNos,rows){
+  const wanted=(Array.isArray(poNos)?poNos:[poNos]).filter(Boolean);
   const selected=rows.filter(x=>x.poLineId&&x.qty>0);if(!selected.length)return;
   for(const row of selected){
-    const ordered=pNum(row.poOrderedQty),old=pNum(row.poReceivedQty),next=Math.min(ordered,old+pNum(row.qty));
-    if(pNum(row.qty)>Math.max(0,ordered-old))throw new Error(row.name+' received qty pending se zyada hai');
+    const ordered=pNum(row.poOrderedQty),old=pNum(row.poReceivedQty);
+    // Over-receipt is allowed only behind the Edit Password gate, which the
+    // save flow has already cleared before reaching here.
+    const next=old+pNum(row.qty);
     const u=await SB.from('purchase_order_lines').update({received_qty:next}).eq('id',row.poLineId);if(u.error)throw u.error;
   }
-  const q=await SB.from('purchase_order_lines').select('ordered_qty,received_qty').eq('purchase_order_id',po.id);if(q.error)throw q.error;
-  const totals=(q.data||[]).reduce((a,x)=>({ordered:a.ordered+pNum(x.ordered_qty),received:a.received+pNum(x.received_qty)}),{ordered:0,received:0});
-  const status=totals.received>=totals.ordered&&totals.ordered>0?'Received':totals.received>0?'Partially Received':(po.status||'Generated');
-  const u=await SB.from('purchase_orders').update({received_qty:totals.received,status,updated_at:new Date().toISOString()}).eq('id',po.id);if(u.error)throw u.error;
+  const touched=[...new Set(selected.map(r=>r.poNo).filter(Boolean))];
+  for(const poNo of (touched.length?touched:wanted)){
+    const po=sarvPoCatalog.find(x=>x.po_no===poNo);if(!po)continue;
+    const q=await SB.from('purchase_order_lines').select('ordered_qty,received_qty').eq('purchase_order_id',po.id);if(q.error)throw q.error;
+    const totals=(q.data||[]).reduce((a,x)=>({ordered:a.ordered+pNum(x.ordered_qty),received:a.received+pNum(x.received_qty)}),{ordered:0,received:0});
+    // A short-closed PO stays closed — receipts must not reopen it.
+    const status=(po.status==='Closed (Short)')?po.status
+      :(totals.received>=totals.ordered&&totals.ordered>0?'Received':totals.received>0?'Partially Received':(po.status||'Generated'));
+    const u=await SB.from('purchase_orders').update({received_qty:totals.received,status,updated_at:new Date().toISOString()}).eq('id',po.id);if(u.error)throw u.error;
+  }
   await loadOpenPoDropdown();await refreshGeneratedPoList();
+}
+/* ================================================================
+   EDIT PASSWORD GATE — backs over-receipt / rate-override on a PO.
+   The password is the EDIT_PASSWORD entry in role_pins, set by an
+   Admin from Settings > Change Passwords.
+================================================================ */
+async function verifyEditPassword(reason){
+  if(!SB_READY){showToast('Supabase configure karein','warn');return false;}
+  let hash=null;
+  try{
+    const q=await SB.from('role_pins').select('pin_hash').eq('role','EDIT_PASSWORD').maybeSingle();
+    if(q.error)throw q.error;
+    hash=q.data?.pin_hash||null;
+  }catch(e){
+    showToast('Edit Password check nahi ho paaya: '+(e.message||e),'error');
+    return false;
+  }
+  if(!hash){
+    showToast('⚠️ Edit Password set nahi hai — Admin Settings > Change Passwords me set kare','warn');
+    return false;
+  }
+  const entered=prompt((reason||'Is change ke liye Edit Password chahiye')+'\n\nEdit Password:');
+  if(entered==null)return false;
+  if(!entered.trim()){showToast('Edit Password khali nahi ho sakta','warn');return false;}
+  if(await sha256Hex(entered.trim())!==hash){showToast('❌ Galat Edit Password','error');return false;}
+  return true;
+}
+// Flags any row that exceeds its PO pending qty or changes the PO's rate.
+function inwardPoOverrides(rows){
+  const out=[];
+  rows.forEach(r=>{
+    if(!r.poLineId)return;
+    const pending=Math.max(0,pNum(r.poOrderedQty)-pNum(r.poReceivedQty));
+    if(pNum(r.qty)>pending)out.push(r.name+': qty '+pNum(r.qty)+' > pending '+pending);
+    if(r.poUnitPrice!=null&&r.poUnitPrice!==''&&Math.abs(pNum(r.rate)-pNum(r.poUnitPrice))>0.001)
+      out.push(r.name+': rate '+pNum(r.rate)+' ≠ PO rate '+pNum(r.poUnitPrice));
+  });
+  return out;
 }
 async function ensureItem(name, description='', make='', category='', uom='PCS'){
   name=(name||'').trim(); if(!name)return null;
@@ -5190,7 +5278,7 @@ function addNewRow(){
  <td><input type="text" class="table-input item-make" placeholder="Make" list="dl-item-make"></td>
  <td><input type="text" class="table-input item-cat" placeholder="Auto from Master" disabled></td>
  <td><input type="number" class="table-input qty-field" value="0" min="0"></td>
- <td><input type="text" class="table-input item-uom" value="PCS" readonly style="background:#f1f5f9;cursor:not-allowed;" title="UOM Item Master se locked hai"></td>
+ <td><input type="text" class="table-input item-uom" value="" readonly style="background:#f1f5f9;cursor:not-allowed;" title="UOM Item Master se locked hai"></td>
  <td><input type="number" class="table-input weight-field" value="0" min="0"></td>
  <td><select class="table-input chip-select item-wunit"><option>KGS</option><option>LBS</option></select></td>
  <td><select class="table-input chip-select bill-basis-field"><option value="QTY">QTY</option><option value="WEIGHT">WEIGHT</option></select></td>
@@ -5218,7 +5306,7 @@ function addOutwardItemRow(){
  <td class="out-sr-no">—</td><td><input class="table-input out-item-name" placeholder="Type item name..." list="dl-out-item-name"></td>
  <td><input class="table-input out-item-desc" placeholder="Auto from Master" disabled></td><td><input class="table-input out-item-make" placeholder="Brand / OEM"></td>
  <td><input class="table-input out-item-cat" placeholder="Auto from Master" disabled></td><td><input class="table-input out-machine-name" placeholder="Machine"></td><td><input class="table-input out-machine-no" placeholder="No."></td>
- <td><input type="number" class="table-input out-qty" value="0" min="0" step=".01"></td><td><input class="table-input out-qty-uom" value="PCS" readonly style="background:#f1f5f9;cursor:not-allowed;" title="UOM Item Master se locked hai"></td><td><input type="number" class="table-input out-weight" value="0" min="0" step=".001"></td><td><select class="table-input out-wunit"><option>KGS</option><option>GMS</option><option>LBS</option></select></td><td><button class="delete-btn">✕</button></td>`;
+ <td><input type="number" class="table-input out-qty" value="0" min="0" step=".01"></td><td><input class="table-input out-qty-uom" value="" readonly style="background:#f1f5f9;cursor:not-allowed;" title="UOM Item Master se locked hai"></td><td><input type="number" class="table-input out-weight" value="0" min="0" step=".001"></td><td><select class="table-input out-wunit"><option>KGS</option><option>GMS</option><option>LBS</option></select></td><td><button class="delete-btn">✕</button></td>`;
  tb.appendChild(tr);
  tr.querySelector('.delete-btn').onclick=()=>{tr.remove();updateOutTotals()};
  tr.querySelectorAll('input').forEach(x=>x.oninput=updateOutTotals);
@@ -5240,10 +5328,13 @@ function updateStoreTotals(){
     const disc=+r.querySelector('.discount-field')?.value||0;
     const gst=+r.querySelector('.item-gst-field')?.value||0;
     const netRate=listP-listP*disc/100;
-    const rowTotal=netRate*rowQty;
+    const rowWeight=+r.querySelector('.weight-field')?.value||0;
+    // Bill Basis: WEIGHT bills the row on Gross Wt × net rate, QTY on Qty × net rate.
+    const basis=r.querySelector('.bill-basis-field')?.value||'QTY';
+    const rowTotal=netRate*(basis==='WEIGHT'?rowWeight:rowQty);
     qty+=rowQty; base+=rowTotal;
     weightedGst+=gst*rowTotal; totalGstWt+=rowTotal;
-    netWt+=+r.querySelector('.weight-field')?.value||0;
+    netWt+=rowWeight;
     if(r.querySelector('.rate-field'))r.querySelector('.rate-field').value=netRate.toFixed(2);
     if(r.querySelector('.row-total-cell'))r.querySelector('.row-total-cell').textContent='₹'+rowTotal.toFixed(2);
   });
@@ -5307,7 +5398,7 @@ function addPurchaseMainRow(){
    <td><input class="table-input col-cat" placeholder="Auto from Master" disabled></td>
    <td><input class="table-input col-machine" placeholder="e.g. Loom-3 / M-12" list="dl-inw-machine-name" autocomplete="off"></td>
    <td><input type="number" class="table-input col-qty" min="0" step="any"></td>
-   <td><select class="table-select col-uom" disabled><option>Pcs</option><option>Kg</option><option>Set</option><option>Meter</option><option>Liter</option></select></td>
+   <td><input class="table-input col-uom" placeholder="Auto from Master" readonly style="background:#f1f5f9;"></td>
    <td><input type="number" class="table-input col-grossweight" min="0" step="any"></td>
    <td><input class="table-input col-rem" placeholder="optional note"></td>
    <td><button class="delete-row-btn">×</button></td>`;
@@ -5327,7 +5418,7 @@ function refreshPurchaseTotals(){const rows=[...document.querySelectorAll('#p_it
 function addPReqLine(){
   const tb=byId('p_spReqItemsBody');if(!tb)return;
   const tr=document.createElement('tr');
-  tr.innerHTML='<td><select class="form-control p_sp-req-item"><option value="">-- Select item --</option></select></td><td><input class="form-control p_sp-req-desc" placeholder="Specification"></td><td><input class="form-control p_sp-req-qty" type="number" min=".001" value="1"></td><td><input class="form-control p_sp-req-uom" value="PCS"></td><td><button class="delete-row-btn">×</button></td>';
+  tr.innerHTML='<td><select class="form-control p_sp-req-item"><option value="">-- Select item --</option></select></td><td><input class="form-control p_sp-req-desc" placeholder="Specification"></td><td><input class="form-control p_sp-req-qty" type="number" min=".001" value="1"></td><td><input class="form-control p_sp-req-uom" value="" placeholder="Auto from Master" readonly style="background:#f1f5f9;"></td><td><button class="delete-row-btn">×</button></td>';
   tb.appendChild(tr);
   tr.querySelector('.delete-row-btn').onclick=()=>tr.remove();
   // Populate select with item catalog
@@ -5344,10 +5435,10 @@ function addPReqLine(){
     const descEl=tr.querySelector('.p_sp-req-desc');
     const uomEl=tr.querySelector('.p_sp-req-uom');
     if(descEl&&!descEl.value)descEl.value=item.description||'';
-    if(uomEl)uomEl.value=item.uom||'PCS';
+    if(uomEl)uomEl.value=item.uom||'';
   });
 }
-async function saveFullPurchaseRequirement(){if(!SB_READY)return showToast('Supabase URL/key configure karein','warn');const rows=[...document.querySelectorAll('#p_itemTableBody tr')].map(r=>({name:r.querySelector('.col-name')?.value,description:r.querySelector('.col-desc')?.value,make:r.querySelector('.col-make')?.value,category:r.querySelector('.col-cat')?.value,uom:r.querySelector('.col-uom')?.value,qty:+r.querySelector('.col-qty')?.value||0,specification:r.querySelector('.col-rem')?.value})).filter(x=>x.name&&x.qty>0);if(!rows.length)return showToast('At least one item required','warn');const no=await nextNo('REQ');const h=await SB.from('purchase_requirements').insert({req_no:no,request_date:byId('p_reqDate').value||today(),required_by:byId('p_requiredByDate').value||null,requested_by:byId('p_reqPersonName').value||byId('p_reqGeneratedBy').value||'Unknown',employee_code:byId('p_reqEmpCode').value||null,department:byId('p_reqDepartment').value||null,purpose:byId('p_reqPurpose').value||'Purchase requirement',priority:byId('p_priority').value||'Normal',notes:byId('p_overallRemarks').value||null}).select().single();if(h.error)throw h.error;const ls=[];for(const r of rows){const it=await ensureItem(r.name,r.description,r.make,r.category,r.uom);ls.push({requirement_id:h.data.id,item_id:it.id,specification:r.specification||r.description,requested_qty:r.qty,uom:r.uom||it.uom})}const ins=await SB.from('purchase_requirement_lines').insert(ls);if(ins.error)throw ins.error;showToast('Requirement saved: '+no);}
+async function saveFullPurchaseRequirement(){if(!SB_READY)return showToast('Supabase URL/key configure karein','warn');const rows=[...document.querySelectorAll('#p_itemTableBody tr')].map(r=>({name:r.querySelector('.col-name')?.value,description:r.querySelector('.col-desc')?.value,make:r.querySelector('.col-make')?.value,category:r.querySelector('.col-cat')?.value,uom:r.querySelector('.col-uom')?.value,qty:+r.querySelector('.col-qty')?.value||0,specification:r.querySelector('.col-rem')?.value})).filter(x=>x.name&&x.qty>0);if(!rows.length)return showToast('At least one item required','warn');const no=await nextNo('REQ');const h=await SB.from('purchase_requirements').insert({req_no:no,request_date:byId('p_reqDate').value||today(),required_by:byId('p_requiredByDate').value||null,requested_by:byId('p_reqPersonName').value||byId('p_reqGeneratedBy').value||'Unknown',employee_code:byId('p_reqEmpCode').value||null,department:byId('p_reqDepartment').value||null,purpose:'Purchase requirement',priority:byId('p_priority').value||'Normal',notes:byId('p_overallRemarks').value||null}).select().single();if(h.error)throw h.error;const ls=[];for(const r of rows){const it=await ensureItem(r.name,r.description,r.make,r.category,r.uom);ls.push({requirement_id:h.data.id,item_id:it.id,specification:r.specification||r.description,requested_qty:r.qty,uom:r.uom||it.uom})}const ins=await SB.from('purchase_requirement_lines').insert(ls);if(ins.error)throw ins.error;showToast('Requirement saved: '+no);}
 async function saveStoreInward(){if(!SB_READY)return showToast('Supabase URL/key configure karein','warn');const rows=[...document.querySelectorAll('#itemTableBody tr')].map(r=>({name:r.querySelector('.item-name')?.value,desc:r.querySelector('.item-desc')?.value,make:r.querySelector('.item-make')?.value,cat:r.querySelector('.item-cat')?.value,uom:r.querySelector('.item-uom')?.value,qty:+r.querySelector('.qty-field')?.value||0,weight:+r.querySelector('.weight-field')?.value||0,rate:+r.querySelector('.rate-field')?.value||0,tax:+r.querySelector('.item-gst-field')?.value||0})).filter(x=>x.name&&x.qty>0);if(!rows.length)return showToast('At least one inward item required','warn');const no=await nextNo('INWARD');const h=await SB.from('inward_entries').insert({document_no:no,entry_type:byId('entryTypeSelect')?.value||'INWARD',receiving_date:byId('receivingDate')?.value||today(),invoice_no:byId('invoiceNumber')?.value||null,invoice_date:byId('invoiceDate')?.value||null,party_state:byId('partyState')?.value||null,notes:byId('inwRemarks')?.value||null}).select().single();if(h.error)throw h.error;const ls=[];for(const r of rows){const it=await ensureItem(r.name,r.desc,r.make,r.cat,r.uom);ls.push({inward_id:h.data.id,item_id:it.id,qty:r.qty,uom:r.uom||it.uom,weight:r.weight,rate:r.rate,gst_pct:r.tax,line_total:r.qty*r.rate})}const ins=await SB.from('inward_lines').insert(ls);if(ins.error)throw ins.error;showToast('Inward saved: '+no)}
 async function saveStoreOutward(){if(!SB_READY)return showToast('Supabase URL/key configure karein','warn');const rows=[...document.querySelectorAll('#outwardItemTableBody tr')].map(r=>({name:r.querySelector('.out-item-name')?.value,desc:r.querySelector('.out-item-desc')?.value,make:r.querySelector('.out-item-make')?.value,cat:r.querySelector('.out-item-cat')?.value,uom:r.querySelector('.out-qty-uom')?.value,qty:+r.querySelector('.out-qty')?.value||0,weight:+r.querySelector('.out-weight')?.value||0})).filter(x=>x.name&&x.qty>0);if(!rows.length)return showToast('At least one outward item required','warn');const no=await nextNo('OUTWARD');const h=await SB.from('outward_entries').insert({document_no:no,entry_type:byId('outEntryTypeSelect')?.value||'OUTWARD',outward_date:byId('outDate')?.value||today(),party_name:byId('outPartyName')?.value||'Unknown',location:byId('outLocation')?.value||null,receiver_name:byId('outReceiverName')?.value||null,target_return_date:byId('outTargetReturnDate')?.value||null,gate_pass_no:byId('outGatePassNo')?.value||null,transport:byId('outTransport')?.value||null,notes:byId('outRemarks')?.value||null}).select().single();if(h.error)throw h.error;const ls=[];for(const r of rows){const it=await ensureItem(r.name,r.desc,r.make,r.cat,r.uom);ls.push({outward_id:h.data.id,item_id:it.id,qty:r.qty,uom:r.uom||it.uom,weight:r.weight})}const ins=await SB.from('outward_lines').insert(ls);if(ins.error)throw ins.error;showToast('Outward saved: '+no)}
 function bindOriginalControls(){
@@ -6198,6 +6289,18 @@ window.filterMasterTable=function(searchId,bodyId){
   });
 };
 
+/* ── PR Priority button group (backs the hidden #p_priority input) ── */
+window.syncPriorityButtons=function(){
+  const cur=byId('p_priority')?.value||'Normal';
+  document.querySelectorAll('#p_priorityBtnGroup .p_priority-btn').forEach(b=>{
+    b.classList.toggle('active',b.dataset.priority===cur);
+  });
+};
+window.setRequirementPriority=function(v){
+  const h=byId('p_priority');if(h)h.value=v;
+  syncPriorityButtons();
+};
+
 /* ================================================================
    REPORTS PANEL — Fetch Inward + Outward from Supabase
 ================================================================ */
@@ -6364,6 +6467,12 @@ window.addEventListener('DOMContentLoaded',()=>{
     syncIssueOnlyFields('outEntryTypeSelect',['outLotNoFieldGroup']);
   });}
   syncIssueOnlyFields('outEntryTypeSelect',['outLotNoFieldGroup']);
+  // ── PR Priority buttons (single-select, backs hidden #p_priority) ──
+  byId('p_priorityBtnGroup')?.addEventListener('click',e=>{
+    const b=e.target.closest('.p_priority-btn');
+    if(b)setRequirementPriority(b.dataset.priority);
+  });
+  syncPriorityButtons();
   // ── Report panel buttons ──────────────────────────────────
   const add2=(id,fn)=>{const e=byId(id);if(e&&!e.dataset.rb){e.addEventListener('click',fn);e.dataset.rb='1';}};
   add2('searchBtn',()=>loadReports());
@@ -6523,6 +6632,11 @@ window.addEventListener('DOMContentLoaded',()=>{
  };
 
  // ── PDF helper functions ──────────────────────────────────────
+ // Approver remarks live on the signature object — mobile.html writes
+ // `remarks`, older desktop-side records used `comment`.
+ function sigRemark_(sign){
+   return String((sign&&(sign.remarks||sign.comment))||'').trim();
+ }
  function fmtDate_(v){
    if(!v)return '-';
    const mo=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -6997,7 +7111,7 @@ window.addEventListener('DOMContentLoaded',()=>{
    const rateTxt=v=>(v!=null&&pNum(v)>0)?nNum_(v):'';
    const discTxt=v=>(v!=null&&pNum(v)>0)?' (-'+pNum(v)+'%)':'';
    const approvedIdx=(d.approvedVendorIndex!=null&&d.approvedVendorIndex>=0)?d.approvedVendorIndex:-1;
-   const APPROVED_BG='background:#fff176;font-weight:bold;';
+   const APPROVED_BG='background:#c5e1a5;font-weight:bold;';
    const rateCell=(v,disc,vi)=>'<td class="vcol"'+(vi===approvedIdx?' style="'+APPROVED_BG+'"':'')+'>'+pEsc(rateTxt(v)+discTxt(disc))+'</td>';
    const itemRowsHtml=items.map(r=>'<tr>'+
      '<td class="c sr">'+pEsc(r.sr)+'</td>'+
@@ -7054,13 +7168,12 @@ window.addEventListener('DOMContentLoaded',()=>{
      +'<tr>'+info('Timestamp',pStamp(d.ts||new Date()))+'<td class="spacer"></td>'+info('Department',d.department||'')+'</tr>'
      +'<tr>'+info('Requirement No',d.reqNo||'')+'<td class="spacer"></td>'+info('Contact No',d.contact||d.contact_no||'')+'</tr>'
      +'<tr>'+info('Request Date',fmtDate_(d.date||d.request_date))+'<td class="spacer"></td>'+info('Machine / Line',d.machine||'')+'</tr>'
-     +'<tr>'+info('Required By Date',fmtDate_(d.requiredByDate||d.required_by))+'<td class="spacer"></td>'+info('Purpose',d.purpose||'')+'</tr>'
+     +'<tr>'+info('Required By Date',fmtDate_(d.requiredByDate||d.required_by))+'<td class="spacer"></td><td class="lbl">&nbsp;</td><td class="val">&nbsp;</td></tr>'
      +'<tr><td class="lbl">Priority</td><td class="val" style="'+priorityStyle_(d.priority)+'">'+pEsc(d.priority||'Normal')+'</td><td class="spacer"></td>'+info('Overall Remarks',d.overallRemarks||d.notes||'')+'</tr>'
      +'<tr>'+info('Person Name',d.personName||d.requested_by||'')+'<td class="spacer"></td><td class="lbl">Total Items</td><td class="val" style="text-align:left;font-weight:bold;">'+pEsc(items.length)+'</td></tr>'
      +'<tr>'+info('Employee Code',d.empCode||d.employee_code||'')+'<td class="spacer"></td><td class="lbl">Total Qty</td><td class="val" style="text-align:left;font-weight:bold;">'+pEsc(totalQty)+'</td></tr>'
      +'<tr>'+info('Designation',d.designation||'')+'<td class="spacer"></td><td class="lbl">Status</td><td class="val" style="text-align:left;font-weight:bold;">'+pEsc(d.status||'Pending')+'</td></tr>'
      +'<tr>'+info('Purchaser Name',d.generatedBy||d.purchaserName||'')+'<td class="spacer"></td><td class="lbl">Printed On</td><td class="val">'+pStamp()+'</td></tr>'
-     +'<tr>'+info('Last Date Used',fmtDate_(d.lastDateUsed))+'<td class="spacer"></td><td class="lbl">&nbsp;</td><td class="val">&nbsp;</td></tr>'
      +'</tbody></table>'
      +'<table class="items" style="margin-top:10px;"><thead>'
      +'<tr class="subtotal-row"><td colspan="6">SUBTOTAL &gt;&gt;</td><td>'+pEsc(totalQty)+'</td><td>'+pEsc(d.totalIssued||0)+'</td><td></td><td>'+(totalGW>0?pEsc(totalGW)+' kg':'')+'</td><td colspan="4">VENDOR RATE (rate, and disc% in brackets)</td></tr>'
@@ -7116,13 +7229,12 @@ window.addEventListener('DOMContentLoaded',()=>{
      ['Timestamp',pStamp(d.ts||new Date()),'Department',d.department||''],
      ['Requirement No',d.reqNo||'','Contact No',d.contact||d.contact_no||''],
      ['Request Date',fmtDate_(d.date||d.request_date),'Machine / Line',d.machine||''],
-     ['Required By Date',fmtDate_(d.requiredByDate||d.required_by),'Purpose',d.purpose||''],
+     ['Required By Date',fmtDate_(d.requiredByDate||d.required_by),'',''],
      ['Priority',d.priority||'Normal','Overall Remarks',d.overallRemarks||d.notes||''],
      ['Person Name',d.personName||d.requested_by||'','Total Items',String(items.length)],
      ['Employee Code',d.empCode||d.employee_code||'','Total Qty',String(totalQty)],
      ['Designation',d.designation||'','Status',d.status||'Pending'],
      ['Purchaser Name',d.generatedBy||d.purchaserName||'','Printed On',pStamp()],
-     ['Last Date Used',fmtDate_(d.lastDateUsed),'',''],
    ];
    const lw=W*0.15,vw=W*0.35;
    doc.autoTable({
@@ -7157,7 +7269,7 @@ window.addEventListener('DOMContentLoaded',()=>{
    const discTxt=v=>(v!=null&&pNum(v)>0)?' (-'+pNum(v)+'%)':'';
    const body=items.map(r=>[String(r.sr),r.name,r.desc,r.make,r.cat,r.machineNo,String(r.qty),String(r.issued),r.uom,(r.grossWeight!=null?String(r.grossWeight):''),rateTxt(r.rates.V1)+discTxt(r.discounts.V1),rateTxt(r.rates.V2)+discTxt(r.discounts.V2),rateTxt(r.rates.V3)+discTxt(r.discounts.V3),rateTxt(r.rates.V4)+discTxt(r.discounts.V4)]);
    const approvedIdx=(d.approvedVendorIndex!=null&&d.approvedVendorIndex>=0)?d.approvedVendorIndex:-1;
-   const APPROVED_YELLOW=[255,241,118];
+   const APPROVED_YELLOW=[197,225,165]; // pista green — approved vendor highlight
    doc.autoTable({
      head,body,startY:y,
      margin:{left:M,right:pageW-(M+W)}, tableWidth:W,
@@ -7281,9 +7393,10 @@ window.addEventListener('DOMContentLoaded',()=>{
   const items=(d.items||[]).map((it,i)=>{
     const up=pNum(it.unitPrice),disc=pNum(it.discountPercent),qty=pNum(it.qty);
     const netUp=disc>0?Math.round(up*(1-disc/100)*100)/100:up;
-    const total=pNum(it.total)||Math.round(netUp*qty*100)/100;
     const gw=(it.grossWeight!=null&&it.grossWeight!=='')?pNum(it.grossWeight):null;
-    return{sr:i+1,desc:(it.itemName||'')+(it.itemDesc?' - '+it.itemDesc:''),make:it.make||'',qty,uom:it.uom||'',up,disc,netUp,total,gw};
+    const basis=it.billBasis||'QTY';
+    const total=pNum(it.total)||Math.round(netUp*(basis==='WEIGHT'?pNum(gw):qty)*100)/100;
+    return{sr:i+1,desc:(it.itemName||'')+(it.itemDesc?' - '+it.itemDesc:''),make:it.make||'',qty,uom:it.uom||'',up,disc,netUp,total,gw,basis,gstPct:pNum(it.taxPct)};
   });
   const totalGW=items.reduce((s,r)=>s+(r.gw!=null?r.gw:0),0);
   // Always show Rate/Disc%/Net Rate columns — a fixed layout avoids a PO
@@ -7303,17 +7416,18 @@ window.addEventListener('DOMContentLoaded',()=>{
   const B2='border:1.5px solid #000;';
   const PAD='padding:4px 6px;';
   const CELL=B1+PAD+'font-size:11px;';
-  const TH=B1+PAD+'font-size:11px;font-weight:800;text-align:center;background:#fde68a;-webkit-print-color-adjust:exact;print-color-adjust:exact;';
+  const TH=B1+PAD+'font-size:11px;font-weight:800;text-align:center;background:#d1d5db;-webkit-print-color-adjust:exact;print-color-adjust:exact;';
 
   // ── Item rows (all inline) ─────────────────────────────────
   const itemRows=items.map(r=>'<tr>'+
     '<td style="'+CELL+'text-align:center;">'+r.sr+'</td>'+
     '<td style="'+CELL+'">'+pEsc(r.desc)+'</td>'+
     '<td style="'+CELL+'text-align:center;">'+pEsc(r.make)+'</td>'+
-    '<td style="'+CELL+'text-align:center;">'+pEsc(r.qty)+' '+pEsc(r.uom)+'</td>'+
+    '<td style="'+CELL+'text-align:center;">'+pEsc(r.qty)+' '+pEsc(r.uom)+(r.basis==='WEIGHT'?'<br><span style="font-size:8px;">(billed on wt)</span>':'')+'</td>'+
     '<td style="'+CELL+'text-align:center;">'+(r.gw!=null?r.gw:'')+'</td>'+
     '<td style="'+CELL+'text-align:right;">'+pMoney(r.up)+'</td>'+
     (hasDisc?'<td style="'+CELL+'text-align:center;">'+(r.disc>0?r.disc+'%':'-')+'</td><td style="'+CELL+'text-align:right;">'+pMoney(r.netUp)+'</td>':'')+
+    '<td style="'+CELL+'text-align:center;">'+(r.gstPct>0?r.gstPct+'%':'-')+'</td>'+
     '<td style="'+CELL+'text-align:right;font-weight:bold;">'+pMoney(r.total)+'</td>'+
   '</tr>').join('');
 
@@ -7325,7 +7439,7 @@ window.addEventListener('DOMContentLoaded',()=>{
     ['Freight / Transport',pMoney(freight)],
     [pEsc(d.otherExpenseLabel||'Labour Other Exp.'),pMoney(other)],
     ['Taxable Value',pMoney(taxable)],
-    ['GST @ '+gstPct+'%',pMoney(gstAmt)],
+    ['GST (item-wise + freight/other @ '+gstPct+'%)',pMoney(gstAmt)],
   ].map(([l,v])=>'<tr><td style="'+SL+'">'+l+'</td><td style="'+SV+'">'+v+'</td></tr>').join('');
   const grandRow='<tr><td style="'+SL+'background:#fde68a;font-size:13px;font-weight:900;">GRAND TOTAL (₹)</td><td style="'+SV+'background:#fde68a;font-size:13px;font-weight:900;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'+pMoney(grand)+'</td></tr>';
 
@@ -7384,11 +7498,11 @@ window.addEventListener('DOMContentLoaded',()=>{
     +'<tr>'
     +'<td style="width:42%;background:#f3f4f6;font-weight:bold;text-align:center;'+B1+'padding:4px 6px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">Shipping Address:</td>'
     +'<td style="width:25%;background:#f3f4f6;font-weight:bold;text-align:center;'+B1+'padding:4px 6px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">Delivery Date :</td>'
-    +'<td style="width:33%;background:#f3f4f6;font-weight:bold;text-align:center;'+B1+'padding:4px 6px;-webkit-print-color-adjust:exact;print-color-adjust:exact;"><b>Contact For Location or Confirmation</b></td>'
+    +'<td style="width:33%;background:#fff200;font-weight:bold;text-align:center;'+B1+'padding:4px 6px;-webkit-print-color-adjust:exact;print-color-adjust:exact;"><b>Contact For Location or Confirmation</b></td>'
     +'</tr><tr>'
     +'<td style="font-weight:700;'+B1+'padding:5px 6px;height:40px;vertical-align:top;">'+pEsc(d.shippingAddress||SARV_COMPANY.address)+'</td>'
     +'<td style="'+B1+'text-align:center;font-size:14px;font-weight:700;vertical-align:middle;">'+fmtDate_(d.deliveryDate)+'</td>'
-    +'<td style="'+B1+'text-align:center;font-size:13px;font-weight:700;vertical-align:middle;">'+pEsc(d.locationContact||'')+'</td>'
+    +'<td style="background:#fff200;'+B1+'text-align:center;font-size:13px;font-weight:700;vertical-align:middle;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'+pEsc(d.locationContact||'')+'</td>'
     +'</tr>'
     +'<tr><td colspan="3" style="background:#fff7e6;text-align:center;font-weight:bold;'+B1+'padding:4px 6px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">**'+pEsc(d.paymentTerms||'Payment terms 30 days after receipt of bill')+'**</td></tr>'
     +'</tbody></table>'
@@ -7401,15 +7515,16 @@ window.addEventListener('DOMContentLoaded',()=>{
     +'<th style="'+TH+'width:9%;">MAKE</th>'
     +'<th style="'+TH+'width:10%;">QUANTITY</th>'
     +'<th style="'+TH+'width:9%;">GROSS WT (kg)</th>'
-    +(hasDisc?'<th style="'+TH+'width:10%;">RATE</th><th style="'+TH+'width:6%;">DISC%</th><th style="'+TH+'width:10%;">NET RATE</th>':'<th style="'+TH+'width:13%;">UNIT PRICE</th>')
-    +'<th style="'+TH+'width:13%;">AMOUNT</th>'
+    +(hasDisc?'<th style="'+TH+'width:9%;">RATE</th><th style="'+TH+'width:6%;">DISC%</th><th style="'+TH+'width:9%;">NET RATE</th>':'<th style="'+TH+'width:12%;">UNIT PRICE</th>')
+    +'<th style="'+TH+'width:6%;">GST%</th>'
+    +'<th style="'+TH+'width:12%;">AMOUNT</th>'
     +'</tr></thead>'
     +'<tbody>'+itemRows+'</tbody>'
     +'<tfoot><tr>'
     +'<td colspan="3" style="background:#fde68a;font-weight:bold;'+B1+'padding:5px 6px;text-align:center;-webkit-print-color-adjust:exact;print-color-adjust:exact;">Grand Total (Subtotal)</td>'
     +'<td style="background:#fde68a;font-weight:bold;'+B1+'padding:5px 6px;text-align:center;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'+items.reduce((s,x)=>s+x.qty,0)+'</td>'
     +'<td style="background:#fde68a;font-weight:bold;'+B1+'padding:5px 6px;text-align:center;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'+(totalGW>0?totalGW+' kg':'')+'</td>'
-    +'<td colspan="'+(hasDisc?3:1)+'" style="background:#fde68a;'+B1+'padding:5px 6px;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></td>'
+    +'<td colspan="'+(hasDisc?4:2)+'" style="background:#fde68a;'+B1+'padding:5px 6px;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></td>'
     +'<td style="background:#fde68a;font-weight:bold;'+B1+'padding:5px 6px;text-align:right;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'+pMoney(subtotal)+'</td>'
     +'</tr></tfoot>'
     +'</table>'
@@ -7419,9 +7534,12 @@ window.addEventListener('DOMContentLoaded',()=>{
     +sumRows+grandRow
     +'</tbody></table>'
 
-    // ── Important Notes ───────────────────────────────────────
+    // ── Approval remarks (GM/CEO and MD, one line each) ───────
     +'<div style="font-weight:bold;margin:10px 0 4px;font-size:11px;">IMPORTANT NOTES:</div>'
-    +'<div style="background:#fff200;border:1px solid #d4b800;padding:6px 8px;min-height:36px;font-weight:700;font-size:11px;white-space:pre-wrap;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'+pEsc(d.importantNotes||'')+'</div>'
+    +'<div style="background:#fff200;border:1px solid #d4b800;padding:6px 8px;font-weight:700;font-size:11px;white-space:pre-wrap;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
+    +'<div style="margin-bottom:3px;">GM / CEO: '+pEsc(sigRemark_(sigs.gmCeo)||'—')+'</div>'
+    +'<div>MD: '+pEsc(sigRemark_(sigs.md)||'—')+'</div>'
+    +'</div>'
 
     // ── Signature ─────────────────────────────────────────────
     +sigFooter
@@ -7444,14 +7562,16 @@ window.addEventListener('DOMContentLoaded',()=>{
    const pageW=doc.internal.pageSize.getWidth(), pageH=doc.internal.pageSize.getHeight();
    const M=8, W=pageW-M*2;
    const AMBER=[253,230,138];
+   const GRAY_HEAD=[209,213,219]; // items table header — gray theme
    doc.setTextColor(0,0,0);
 
    const items=(d.items||[]).map((it,i)=>{
      const up=pNum(it.unitPrice),disc=pNum(it.discountPercent),qty=pNum(it.qty);
      const netUp=disc>0?Math.round(up*(1-disc/100)*100)/100:up;
-     const total=pNum(it.total)||Math.round(netUp*qty*100)/100;
      const gw=(it.grossWeight!=null&&it.grossWeight!=='')?pNum(it.grossWeight):null;
-     return{sr:i+1,desc:(it.itemName||'')+(it.itemDesc?' - '+it.itemDesc:''),make:it.make||'',qty,uom:it.uom||'',up,disc,netUp,total,gw};
+     const basis=it.billBasis||'QTY';
+     const total=pNum(it.total)||Math.round(netUp*(basis==='WEIGHT'?pNum(gw):qty)*100)/100;
+     return{sr:i+1,desc:(it.itemName||'')+(it.itemDesc?' - '+it.itemDesc:''),make:it.make||'',qty,uom:it.uom||'',up,disc,netUp,total,gw,basis,gstPct:pNum(it.taxPct)};
    });
    const totalGW=items.reduce((s,r)=>s+(r.gw!=null?r.gw:0),0);
    const totalQty=items.reduce((s,r)=>s+r.qty,0);
@@ -7461,7 +7581,11 @@ window.addEventListener('DOMContentLoaded',()=>{
    const gstAmt=pNum(d.gstAmount)||Math.round(taxable*gstPct/100*100)/100;
    const grand=pNum(d.grandTotal)||(taxable+gstAmt);
 
+   // Drawn for page 1 and repeated on every overflow page, so each sheet is a
+   // complete document (company header + party details + shipping box).
+   const drawPoPageHeader=()=>{
    let y=M;
+   doc.setTextColor(0,0,0);
    doc.setFontSize(9);doc.setFont(undefined,'bold');
    doc.text('GST IN: '+(SARV_COMPANY.gstin||''),M,y+4);
    doc.setFontSize(12);
@@ -7505,7 +7629,9 @@ window.addEventListener('DOMContentLoaded',()=>{
 
    const c1=W*0.42,c2=W*0.25,c3=W-c1-c2;
    doc.setFillColor(243,244,246);
-   doc.rect(M,y,c1,6,'FD');doc.rect(M+c1,y,c2,6,'FD');doc.rect(M+c1+c2,y,c3,6,'FD');
+   doc.rect(M,y,c1,6,'FD');doc.rect(M+c1,y,c2,6,'FD');
+   doc.setFillColor(255,242,0); // Contact For Location — yellow highlight
+   doc.rect(M+c1+c2,y,c3,6,'FD');
    doc.setFontSize(8);doc.setFont(undefined,'bold');
    doc.text('Shipping Address:',M+c1/2,y+4,{align:'center'});
    doc.text('Delivery Date :',M+c1+c2/2,y+4,{align:'center'});
@@ -7513,7 +7639,9 @@ window.addEventListener('DOMContentLoaded',()=>{
    y+=6;
    const rowH=12;
    doc.setFillColor(255,255,255);
-   doc.rect(M,y,c1,rowH);doc.rect(M+c1,y,c2,rowH);doc.rect(M+c1+c2,y,c3,rowH);
+   doc.rect(M,y,c1,rowH);doc.rect(M+c1,y,c2,rowH);
+   doc.setFillColor(255,242,0);
+   doc.rect(M+c1+c2,y,c3,rowH,'FD');
    doc.setFont(undefined,'normal');doc.setFontSize(7.5);
    const shipLines=doc.splitTextToSize(String(d.shippingAddress||SARV_COMPANY.address),c1-4);
    doc.text(shipLines,M+2,y+4.5);
@@ -7528,24 +7656,31 @@ window.addEventListener('DOMContentLoaded',()=>{
    doc.setFont(undefined,'bold');doc.setFontSize(8.5);
    doc.text('**'+(d.paymentTerms||'Payment terms 30 days after receipt of bill')+'**',pageW/2,y+4,{align:'center'});
    y+=9;
+   return y;
+   };
+   let y=drawPoPageHeader();
 
    // Always render Rate/Disc%/Net Rate/Amount — a fixed column set avoids
    // a PO with 0% discount on every line silently losing the Disc%/Net
    // Rate columns whenever this PDF gets regenerated (e.g. after a
    // GM/CEO/MD approval in mobile.html).
-   const head=[['Sr.','Description','Make','Quantity','Gross Wt (kg)','Rate','Disc%','Net Rate','Amount']];
-   const body=items.map(r=>[String(r.sr),r.desc,r.make,pNum(r.qty)+' '+r.uom,r.gw!=null?String(r.gw):'',nNum_(r.up),r.disc>0?r.disc+'%':'-',nNum_(r.netUp),nNum_(r.total)]);
-   const columnStyles={0:{cellWidth:9},2:{cellWidth:18},3:{cellWidth:17},4:{cellWidth:17},5:{cellWidth:19},6:{cellWidth:13},7:{cellWidth:19},8:{cellWidth:22}};
-   const foot=[[{content:'Grand Total (Subtotal)',colSpan:3},String(totalQty),(totalGW>0?totalGW+' kg':''),{content:'',colSpan:3},nNum_(subtotal)]];
+   const head=[['Sr.','Description','Make','Quantity','Gross Wt (kg)','Rate','Disc%','Net Rate','GST%','Amount']];
+   const body=items.map(r=>[String(r.sr),r.desc,r.make,pNum(r.qty)+' '+r.uom+(r.basis==='WEIGHT'?'\n(billed on wt)':''),r.gw!=null?String(r.gw):'',nNum_(r.up),r.disc>0?r.disc+'%':'-',nNum_(r.netUp),r.gstPct>0?r.gstPct+'%':'-',nNum_(r.total)]);
+   const columnStyles={0:{cellWidth:9},2:{cellWidth:18},3:{cellWidth:17},4:{cellWidth:16},5:{cellWidth:18},6:{cellWidth:12},7:{cellWidth:18},8:{cellWidth:11},9:{cellWidth:21}};
+   const foot=[[{content:'Grand Total (Subtotal)',colSpan:3},String(totalQty),(totalGW>0?totalGW+' kg':''),{content:'',colSpan:4},nNum_(subtotal)]];
    doc.autoTable({
      head,body,foot,startY:y,
-     margin:{left:M,right:pageW-(M+W)},
+     // margin.top reserves room for the repeated header block on page 2+,
+     // which didDrawPage then draws. showHead:'everyPage' is autoTable's
+     // default, so the column header row repeats too.
+     margin:{left:M,right:pageW-(M+W),top:y},
      tableWidth:W,
      styles:{fontSize:7.5,cellPadding:1.4,overflow:'linebreak',textColor:[0,0,0],lineColor:[0,0,0],lineWidth:0.25,valign:'middle'},
-     headStyles:{fillColor:AMBER,textColor:[0,0,0],fontStyle:'bold',halign:'center',lineWidth:0.3,lineColor:[0,0,0]},
+     headStyles:{fillColor:GRAY_HEAD,textColor:[0,0,0],fontStyle:'bold',halign:'center',lineWidth:0.3,lineColor:[0,0,0]},
      footStyles:{fillColor:AMBER,textColor:[0,0,0],fontStyle:'bold',lineWidth:0.3,lineColor:[0,0,0]},
      columnStyles,
-     theme:'grid'
+     theme:'grid',
+     didDrawPage:(data)=>{if(data.pageNumber>1)drawPoPageHeader();}
    });
    y=doc.lastAutoTable.finalY+4;
    if(y>pageH-90){doc.addPage();y=M;}
@@ -7556,7 +7691,7 @@ window.addEventListener('DOMContentLoaded',()=>{
      ['Freight / Transport',nNum_(freight)],
      [String(d.otherExpenseLabel||'Labour Other Exp.'),nNum_(other)],
      ['Taxable Value',nNum_(taxable)],
-     ['GST @ '+gstPct+'%',nNum_(gstAmt)],
+     ['GST (item-wise + freight/other @ '+gstPct+'%)',nNum_(gstAmt)],
    ];
    doc.setFontSize(8.5);
    sumRows.forEach(([l,v])=>{
@@ -7577,7 +7712,11 @@ window.addEventListener('DOMContentLoaded',()=>{
    doc.text('IMPORTANT NOTES:',M,y);
    y+=2;
    doc.setFontSize(8);
-   const notesLines=doc.splitTextToSize(String(d.importantNotes||''),W-4);
+   // GM/CEO and MD approval remarks, one line each.
+   const poSigs=d.signatures||{};
+   const notesLines=[]
+     .concat(doc.splitTextToSize('GM / CEO: '+(sigRemark_(poSigs.gmCeo)||'—'),W-4))
+     .concat(doc.splitTextToSize('MD: '+(sigRemark_(poSigs.md)||'—'),W-4));
    const notesH=Math.max(8,notesLines.length*3.6+3);
    doc.setFillColor(255,242,0);doc.rect(M,y,W,notesH,'F');
    doc.setDrawColor(212,184,0);doc.setLineWidth(0.3);doc.rect(M,y,W,notesH);
@@ -7765,10 +7904,10 @@ window.addEventListener('DOMContentLoaded',()=>{
  }
  function collectInwardData(no,rows){
    const base=rows.reduce((s,x)=>s+pNum(x.rate)*pNum(x.qty),0), tax=rows.reduce((s,x)=>s+pNum(x.rate)*pNum(x.qty)*pNum(x.tax)/100,0);
-   return {inwardNo:no,entryType:pVal('entryTypeSelect'),receivingDate:pVal('receivingDate'),supplier:pVal('supplierName'),state:pVal('partyState'),poNum:pVal('poNumber'),invoiceNum:pVal('invoiceNumber'),invoiceDate:pVal('invoiceDate'),gatePass:pVal('gatePassNo'),lotNo:pVal('lotNo'),machineName:pVal('inwMachineName'),natureOfInward:pVal('inwNatureOfInward'),remarks:pVal('inwRemarks'),baseTotal:base,totalTax:tax,taxable:base,finalAmt:base+tax,gstRate:rows.length?rows.reduce((s,x)=>s+pNum(x.tax),0)/rows.length:0};
+   return {inwardNo:no,entryType:pVal('entryTypeSelect'),receivingDate:pVal('receivingDate'),supplier:pVal('supplierName'),state:pVal('partyState'),poNum:getSelectedPoNos().join(', '),invoiceNum:pVal('invoiceNumber'),invoiceDate:pVal('invoiceDate'),gatePass:pVal('gatePassNo'),lotNo:pVal('lotNo'),machineName:pVal('inwMachineName'),natureOfInward:pVal('inwNatureOfInward'),remarks:pVal('inwRemarks'),baseTotal:base,totalTax:tax,taxable:base,finalAmt:base+tax,gstRate:rows.length?rows.reduce((s,x)=>s+pNum(x.tax),0)/rows.length:0};
  }
  function collectOutwardData(no){return {outwardNo:no,entryType:pVal('outEntryTypeSelect'),date:pVal('outDate'),natureOfDispatch:pVal('outNatureOfDispatch'),partyName:pVal('outPartyName'),location:pVal('outLocation'),targetReturnDate:pVal('outTargetReturnDate'),transport:pVal('outTransport'),gatePass:pVal('outGatePassNo'),lotNo:pVal('outLotNo'),receiverName:pVal('outReceiverName'),designation:pVal('outDesignation'),department:pVal('outDepartment'),remarks:pVal('outRemarks')}}
- function collectRequirementData(no,rows){return {reqNo:no,ts:new Date(),date:pVal('p_reqDate'),requiredByDate:pVal('p_requiredByDate'),priority:pVal('p_priority'),generatedBy:pVal('p_reqGeneratedBy'),lastDateUsed:pVal('p_reqLastDateUsed'),personName:pVal('p_reqPersonName'),empCode:pVal('p_reqEmpCode'),designation:pVal('p_reqDesignation'),department:pVal('p_reqDepartment'),contact:pVal('p_reqContact'),purpose:pVal('p_reqPurpose'),overallRemarks:pVal('p_overallRemarks'),items:rows.map(x=>({name:x.name,desc:x.description,make:x.make,category:x.category,machine:x.machine,qty:x.qty,uom:x.uom,grossWeight:x.grossWeight,remarks:x.specification}))}}
+ function collectRequirementData(no,rows){return {reqNo:no,ts:new Date(),date:pVal('p_reqDate'),requiredByDate:pVal('p_requiredByDate'),priority:pVal('p_priority'),generatedBy:pVal('p_reqGeneratedBy'),personName:pVal('p_reqPersonName'),empCode:pVal('p_reqEmpCode'),designation:pVal('p_reqDesignation'),department:pVal('p_reqDepartment'),contact:pVal('p_reqContact'),overallRemarks:pVal('p_overallRemarks'),items:rows.map(x=>({name:x.name,desc:x.description,make:x.make,category:x.category,machine:x.machine,qty:x.qty,uom:x.uom,grossWeight:x.grossWeight,remarks:x.specification}))}}
  async function generateRequirementPdf(d,recordId){
    const html=buildRequirementPdfHtml(d);
    let blob;
@@ -7784,7 +7923,7 @@ window.addEventListener('DOMContentLoaded',()=>{
    }
    return artifact;
  }
- function rowDataInward(){return pRows('#itemTableBody tr').map(r=>({name:r.querySelector('.item-name')?.value||'',desc:r.querySelector('.item-desc')?.value||'',make:r.querySelector('.item-make')?.value||'',cat:r.querySelector('.item-cat')?.value||'',qty:pNum(r.querySelector('.qty-field')?.value),uom:r.querySelector('.item-uom')?.value||'',weight:pNum(r.querySelector('.weight-field')?.value),wunit:r.querySelector('.item-wunit')?.value||'',listPrice:pNum(r.querySelector('.list-price-field')?.value),discountPct:pNum(r.querySelector('.discount-field')?.value),rate:pNum(r.querySelector('.rate-field')?.value),tax:pNum(r.querySelector('.item-gst-field')?.value),poLineId:r.dataset.poLineId||'',poOrderedQty:pNum(r.dataset.poOrderedQty),poReceivedQty:pNum(r.dataset.poReceivedQty)})).filter(x=>x.name&&x.qty>0).map(x=>({...x,total:pRound(x.rate*x.qty)}))}
+ function rowDataInward(){return pRows('#itemTableBody tr').map(r=>({name:r.querySelector('.item-name')?.value||'',desc:r.querySelector('.item-desc')?.value||'',make:r.querySelector('.item-make')?.value||'',cat:r.querySelector('.item-cat')?.value||'',qty:pNum(r.querySelector('.qty-field')?.value),uom:r.querySelector('.item-uom')?.value||'',weight:pNum(r.querySelector('.weight-field')?.value),wunit:r.querySelector('.item-wunit')?.value||'',listPrice:pNum(r.querySelector('.list-price-field')?.value),discountPct:pNum(r.querySelector('.discount-field')?.value),rate:pNum(r.querySelector('.rate-field')?.value),tax:pNum(r.querySelector('.item-gst-field')?.value),billBasis:r.querySelector('.bill-basis-field')?.value||'QTY',poLineId:r.dataset.poLineId||'',poOrderedQty:pNum(r.dataset.poOrderedQty),poReceivedQty:pNum(r.dataset.poReceivedQty),poNo:r.dataset.poNo||'',poUnitPrice:r.dataset.poUnitPrice})).filter(x=>x.name&&x.qty>0).map(x=>({...x,total:pRound(x.rate*(x.billBasis==='WEIGHT'?x.weight:x.qty))}))}
  function rowDataOutward(){return pRows('#outwardItemTableBody tr').map(r=>({itemName:r.querySelector('.out-item-name')?.value||'',itemDesc:r.querySelector('.out-item-desc')?.value||'',make:r.querySelector('.out-item-make')?.value||'',category:r.querySelector('.out-item-cat')?.value||'',machineName:r.querySelector('.out-machine-name')?.value||'',machineNo:r.querySelector('.out-machine-no')?.value||'',qty:pNum(r.querySelector('.out-qty')?.value),qtyUom:r.querySelector('.out-qty-uom')?.value||'',weight:pNum(r.querySelector('.out-weight')?.value),wUnit:r.querySelector('.out-wunit')?.value||''})).filter(x=>x.itemName&&x.qty>0)}
  function highlightRequiredField(id){
    const e=byId(id);if(!e)return;
@@ -7805,7 +7944,15 @@ window.addEventListener('DOMContentLoaded',()=>{
  async function saveInwardWithPdf(){
    if(!SB_READY)return showToast('Supabase URL/key configure karein','warn');
    if(!validateRequiredFields([{id:'invoiceNumber',label:'Invoice Number'},{id:'invoiceDate',label:'Invoice Date'},{id:'supplierName',label:'Supplier Name'}]))return;
-   const rows=rowDataInward();if(!rows.length)return showToast('At least one inward item required','warn');if(pVal('poNumber')){const invalid=rows.find(x=>x.poLineId&&x.qty>Math.max(0,x.poOrderedQty-x.poReceivedQty));if(invalid)return showToast(invalid.name+' ki received qty pending quantity se zyada hai','warn')}
+   const rows=rowDataInward();if(!rows.length)return showToast('At least one inward item required','warn');
+   // Receiving more than the PO's pending qty, or at a different rate than the
+   // PO, needs the Edit Password — everything else saves straight through.
+   const selectedPoNos=getSelectedPoNos();
+   if(selectedPoNos.length){
+     const overrides=inwardPoOverrides(rows);
+     if(overrides.length&&!await verifyEditPassword('PO se alag values mili:\n• '+overrides.join('\n• ')))
+       return showToast('⛔ Edit Password ke bina PO se zyada qty / alag rate save nahi hoga','warn');
+   }
    if(pVal('inwNatureOfInward')==='Repaired'&&!pVal('repairOutwardSelect'))return showToast('Repair Return ke liye pending Outward select karna zaroori hai','warn');
    const overlay=byId('syncOverlay'),msgEl=byId('syncOverlayText'),btn=byId('submitBtn');
    if(btn&&btn.disabled)return; // already processing — ignore double-click
@@ -7814,12 +7961,13 @@ window.addEventListener('DOMContentLoaded',()=>{
    try{
      const no=await nextNo(pVal('entryTypeSelect')==='INWARD NB'?'NB':'INWARD');
      const base={document_no:no,entry_type:pVal('entryTypeSelect')||'INWARD',receiving_date:pVal('receivingDate')||today(),invoice_no:pVal('invoiceNumber')||null,invoice_date:pVal('invoiceDate')||null,party_state:pVal('partyState')||null,notes:pVal('inwRemarks')||null};
-     let h=await SB.from('inward_entries').insert({...base,po_number:pVal('poNumber')||null,supplier_name:pVal('supplierName')||null,gate_pass_no:pVal('gatePassNo')||null,lot_no:pVal('lotNo')||null,machine_name:pVal('inwMachineName')||null,nature_of_inward:pVal('inwNatureOfInward')||null}).select().single();
-     if(h.error&&/column/i.test(h.error.message||''))h=await SB.from('inward_entries').insert({...base,po_number:pVal('poNumber')||null,supplier_name:pVal('supplierName')||null}).select().single();
+     const poNumberVal=selectedPoNos.join(', ')||null;
+     let h=await SB.from('inward_entries').insert({...base,po_number:poNumberVal,supplier_name:pVal('supplierName')||null,gate_pass_no:pVal('gatePassNo')||null,lot_no:pVal('lotNo')||null,machine_name:pVal('inwMachineName')||null,nature_of_inward:pVal('inwNatureOfInward')||null}).select().single();
+     if(h.error&&/column/i.test(h.error.message||''))h=await SB.from('inward_entries').insert({...base,po_number:poNumberVal,supplier_name:pVal('supplierName')||null}).select().single();
      if(h.error)throw h.error;
      let ls=[];for(const r of rows){const it=await ensureItem(r.name,r.desc,r.make,r.cat,r.uom);ls.push({inward_id:h.data.id,item_id:it.id,qty:r.qty,uom:r.uom||it.uom,weight:r.weight,rate:r.rate,gst_pct:r.tax,line_total:r.total,po_line_id:r.poLineId||null})}
      let ins=await SB.from('inward_lines').insert(ls);if(ins.error&&/po_line_id|column/i.test(ins.error.message||'')){ls=ls.map(({po_line_id,...x})=>x);ins=await SB.from('inward_lines').insert(ls)}if(ins.error)throw ins.error;
-     if(pVal('poNumber'))await updatePoReceipt(pVal('poNumber'),rows);
+     if(selectedPoNos.length)await updatePoReceipt(selectedPoNos,rows);
      if(msgEl)msgEl.textContent='Generating PDF…';
      const d=collectInwardData(no,rows),pdfs=await generateStorePdfs('INWARD',d,rows,h.data.id,'inwPhotoGalleryInput');
      {const b=pdfs.SINGLE?.blob||pdfs.TWO_PAGE?.blob;showSarvPdfPreview(b,pdfs.SINGLE?.name||storePdfFilename_('INWARD',d,'SINGLE'),b?'':(pdfs.SINGLE?.html||pdfs.TWO_PAGE?.html||''));}
@@ -7893,7 +8041,7 @@ window.addEventListener('DOMContentLoaded',()=>{
    if(btn){btn.disabled=true;btn.innerHTML='⏳ Saving...';}
    if(overlay){setMsg(sarvEditingRequirementId?'Updating Requirement...':'Saving Requirement...');overlay.classList.add('active');}
    try{
-     const payload={request_date:pVal('p_reqDate')||today(),required_by:pVal('p_requiredByDate')||null,requested_by:pVal('p_reqPersonName')||pVal('p_reqGeneratedBy')||'Unknown',employee_code:pVal('p_reqEmpCode')||null,department:pVal('p_reqDepartment')||null,purpose:pVal('p_reqPurpose')||'Purchase requirement',priority:pVal('p_priority')||'Normal',notes:pVal('p_overallRemarks')||null};
+     const payload={request_date:pVal('p_reqDate')||today(),required_by:pVal('p_requiredByDate')||null,requested_by:pVal('p_reqPersonName')||pVal('p_reqGeneratedBy')||'Unknown',employee_code:pVal('p_reqEmpCode')||null,department:pVal('p_reqDepartment')||null,purpose:'Purchase requirement',priority:pVal('p_priority')||'Normal',notes:pVal('p_overallRemarks')||null};
      let h,no;
      if(sarvEditingRequirementId){
        h=await SB.from('purchase_requirements').update(payload).eq('id',sarvEditingRequirementId).select().single();if(h.error)throw h.error;no=h.data.req_no;
@@ -7919,13 +8067,16 @@ window.addEventListener('DOMContentLoaded',()=>{
 
  /* ── Form clear helpers ─────────────────────────────────── */
  function clearInwardForm(){
-   ['invoiceNumber','invoiceDate','partyState','supplierName','poNumber','inwRemarks',
+   ['invoiceNumber','invoiceDate','partyState','supplierName','inwRemarks',
     'inwMachineName','lotNo','gatePassNo'].forEach(id=>{const e=byId(id);if(e)e.value='';});
+   // .value='' doesn't reliably clear a multi-select — deselect explicitly.
+   const poSel=byId('poNumber');if(poSel)[...poSel.options].forEach(o=>o.selected=false);
    const rd=byId('receivingDate');if(rd)rd.value=today();
    const et=byId('entryTypeSelect');if(et){et.value='INWARD';byId('inwardPanel')?.classList.remove('theme-nb','theme-issue');}
    const nat=byId('inwNatureOfInward');
    if(nat){nat.value='Purchase';nat.dispatchEvent(new Event('change'));}
    const gp=byId('gatePassNo');if(gp){gp.readOnly=false;gp.style.background='';gp.title='';}
+   setInwardPoLock(false);
    const tb=byId('itemTableBody');if(tb){tb.innerHTML='';addNewRow();}
    // Photos store reset
    if(window.getPhotos)window._inwPhotos=[];
@@ -7946,9 +8097,12 @@ window.addEventListener('DOMContentLoaded',()=>{
    if(SB_READY)nextNo('OUTWARD').then(no=>{const e=byId('outRegEntryNo');if(e)e.value=no;}).catch(()=>{});
  }
  function clearPrForm(){
-   ['p_reqDate','p_requiredByDate','p_reqPersonName','p_reqEmpCode','p_reqDesignation','p_reqDepartment','p_reqContact','p_reqPurpose','p_overallRemarks'].forEach(id=>{const e=byId(id);if(e)e.value='';});
+   ['p_requiredByDate','p_reqPersonName','p_reqEmpCode','p_reqDesignation','p_reqDepartment','p_reqContact','p_reqGeneratedBy','p_overallRemarks'].forEach(id=>{const e=byId(id);if(e)e.value='';});
    renderReqEmpDetails();
+   // Request Date is locked to today — reset it rather than blanking it out.
+   if(byId('p_reqDate'))byId('p_reqDate').value=today();
    if(byId('p_priority'))byId('p_priority').value='Normal';
+   syncPriorityButtons();
    if(byId('p_reqNoField'))byId('p_reqNoField').value='';
    const tb=byId('p_itemTableBody');if(tb){tb.innerHTML='';addPurchaseMainRow();}
    sarvEditingRequirementId=null;
@@ -8051,11 +8205,18 @@ window.addEventListener('DOMContentLoaded',()=>{
      // #1000 resolve to {} here and show blank Make/Category in the PR
      // and Build-PO tables.
      fetchAllRows('items','id,name,description,make,category').then(data=>({data})).catch(error=>({data:[],error})),
-     SB.from('purchase_order_lines').select('req_no,item_id,item_name,ordered_qty')
+     SB.from('purchase_order_lines').select('req_no,item_id,item_name,ordered_qty,purchase_order_id')
    ]);
    if(rq.error||lq.error){console.warn('[SARV] Pending PR list unavailable:',rq.error?.message||lq.error?.message);return}
+   // A Rejected or Cancelled PO must release its requirement quantities so a
+   // fresh PO can be raised against the same PRs.
+   const deadPoIds=new Set();
+   try{
+     const sq=await SB.from('purchase_orders').select('id,status');
+     if(!sq.error)(sq.data||[]).forEach(p=>{if(['Rejected','Cancelled'].includes(p.status||''))deadPoIds.add(p.id)});
+   }catch(e){console.warn('[SARV] PO status lookup skipped:',e.message||e);}
    const itemMap=new Map((iq.data||[]).map(x=>[x.id,x])),poByKey={};
-   (pq.data||[]).forEach(x=>{const key=String(x.req_no||'')+'|'+String(x.item_name||'').toLowerCase().trim();poByKey[key]=(poByKey[key]||0)+pNum(x.ordered_qty)});
+   (pq.data||[]).filter(x=>!deadPoIds.has(x.purchase_order_id)).forEach(x=>{const key=String(x.req_no||'')+'|'+String(x.item_name||'').toLowerCase().trim();poByKey[key]=(poByKey[key]||0)+pNum(x.ordered_qty)});
    const reqNos=[...new Set((rq.data||[]).map(r=>r.req_no).filter(Boolean))];
    const prPdfMap={};
    if(reqNos.length){
@@ -8308,7 +8469,7 @@ window.addEventListener('DOMContentLoaded',()=>{
    document.querySelectorAll('#fullPurchasePanel .tab-content').forEach(e=>{e.style.display='none';e.classList.remove('active')});
    const entry=byId('p_tab-entry');if(entry){entry.style.display='block';entry.classList.add('active')}
    const set=(id,v)=>{if(byId(id))byId(id).value=v??''};
-   sarvEditingRequirementId=req.id;set('p_reqDate',req.request_date);set('p_requiredByDate',req.required_by);set('p_priority',req.priority||'Normal');set('p_reqPersonName',req.requested_by);set('p_reqEmpCode',req.employee_code);set('p_reqDepartment',req.department);set('p_reqPurpose',req.purpose);set('p_overallRemarks',req.notes);set('p_reqNoField',req.req_no);
+   sarvEditingRequirementId=req.id;set('p_reqDate',req.request_date);set('p_requiredByDate',req.required_by);set('p_priority',req.priority||'Normal');syncPriorityButtons();set('p_reqPersonName',req.requested_by);set('p_reqEmpCode',req.employee_code);set('p_reqDepartment',req.department);set('p_overallRemarks',req.notes);set('p_reqNoField',req.req_no);
    renderReqEmpDetails();
    const tb=byId('p_itemTableBody');if(tb)tb.innerHTML='';
    const lines=sarvPendingRequirements.filter(y=>y.req.id===req.id).map(y=>({...y.line,item_name:y.name,item:y.item}));
@@ -8359,34 +8520,102 @@ window.addEventListener('DOMContentLoaded',()=>{
    try{
      const poIds=sarvGeneratedPos.map(po=>po.id).filter(Boolean);
      if(poIds.length){
-       const ll=await SB.from('purchase_order_lines').select('purchase_order_id,item_name,item_description').in('purchase_order_id',poIds).order('line_no');
+       const ll=await SB.from('purchase_order_lines').select('*').in('purchase_order_id',poIds).order('line_no');
        if(!ll.error)(ll.data||[]).forEach(l=>{
-         const m=poLineMap[l.purchase_order_id]=poLineMap[l.purchase_order_id]||{names:[],descs:[]};
+         const m=poLineMap[l.purchase_order_id]=poLineMap[l.purchase_order_id]||{names:[],descs:[],lines:[]};
+         m.lines.push(l);
          if(l.item_name&&!m.names.includes(l.item_name))m.names.push(l.item_name);
          if(l.item_description&&!m.descs.includes(l.item_description))m.descs.push(l.item_description);
        });
      }
    }catch(e){console.warn('[SARV] PO line item lookup skipped:',e.message||e);}
-   const statusColors={'Generated':'#64748b','GM/CEO Approved':'#0284c7','MD Approved':'#7c3aed','Vendor Verified':'#16a34a','Partially Received':'#d97706','Received':'#16a34a','Rejected':'#dc2626','Cancelled':'#dc2626'};
-   tb.innerHTML='';(q.data||[]).forEach(po=>{
+   const statusColors={'Generated':'#64748b','GM/CEO Approved':'#0284c7','MD Approved':'#7c3aed','Vendor Verified':'#16a34a','Partially Received':'#d97706','Received':'#16a34a','Closed (Short)':'#0f766e','Rejected':'#dc2626','Cancelled':'#dc2626'};
+   // Completed POs (fully received / short-closed) drop off the list; only an
+   // Admin can bring them back into view with the Show Received toggle.
+   const doneStatuses=['Received','Closed (Short)'];
+   const showDone=isAdmin()&&sarvShowReceivedPos;
+   const visiblePos=(q.data||[]).filter(po=>showDone||!doneStatuses.includes(po.status||''));
+   const doneCount=(q.data||[]).length-visiblePos.length;
+   renderPoListDoneToggle(doneCount);
+   tb.innerHTML='';visiblePos.forEach(po=>{
      const statusVal=po.status||'Generated',sc=statusColors[statusVal]||'#64748b';
      const statusBadge='<span style="background:'+sc+'18;color:'+sc+';border:1px solid '+sc+'33;border-radius:4px;padding:2px 8px;font-size:10px;font-weight:800;white-space:nowrap;">'+pEsc(statusVal)+'</span>';
-     // Editable only up to GM/CEO Approved — once MD has signed off the
+     // Editable only until GM/CEO signs off — once approved, the
      // vendor/rate/items are locked; from there only an Admin login can
      // cancel the PO.
-     const editable=['Generated','GM/CEO Approved'].includes(statusVal);
-     const actionCell=editable
+     const editable=statusVal==='Generated';
+     // Short-close is Admin-only and only meaningful while a PO is still
+     // open with less received than ordered.
+     const shortCloseable=isAdmin()&&!['Received','Closed (Short)','Cancelled','Rejected','Generated'].includes(statusVal);
+     const actionCell=(editable
        ?'<button type="button" class="sarv-po-edit btn btn-neutral btn-sm" data-po="'+pEsc(po.po_no)+'" style="padding:3px 10px;font-size:11px;">&#9999;&#65039; Edit</button>'
        :(isAdmin()
          ?'<button type="button" class="sarv-po-cancel btn btn-danger btn-sm" data-po="'+pEsc(po.po_no)+'" style="padding:3px 10px;font-size:11px;">&#10060; Cancel</button>'
-         :'<button type="button" class="btn btn-sm" disabled title="MD Approved ke baad sirf Admin login cancel kar sakta hai" style="padding:3px 10px;font-size:11px;background:#e2e8f0;color:#94a3b8;cursor:not-allowed;">&#128274; Locked</button>');
-     const lm=poLineMap[po.id]||{names:[],descs:[]};
+         :'<button type="button" class="btn btn-sm" disabled title="GM/CEO approval ke baad sirf Admin login cancel kar sakta hai" style="padding:3px 10px;font-size:11px;background:#e2e8f0;color:#94a3b8;cursor:not-allowed;">&#128274; Locked</button>'))
+       +(shortCloseable?' <button type="button" class="sarv-po-shortclose btn btn-sm" data-po="'+pEsc(po.po_no)+'" title="Short quantity par PO band karein" style="padding:3px 10px;font-size:11px;background:#0f766e;color:#fff;border:none;">&#9989; Close</button>':'');
+     const lm=poLineMap[po.id]||{names:[],descs:[],lines:[]};
      const itemNameCell=pEsc(lm.names.join(', ')||'—');
      const itemDescCell=pEsc(lm.descs.join(', ')||'—');
-     const tr=document.createElement('tr');tr.innerHTML='<td>'+pEsc(po.po_no)+'</td><td>'+pEsc(po.po_date||'')+'</td><td>'+pEsc(po.vendor_name||'')+'</td><td>'+itemNameCell+'</td><td>'+itemDescCell+'</td><td>'+pEsc(po.linked_req_nos||'')+'</td><td style="text-align:center;">'+pNum(po.total_items)+'</td><td style="text-align:center;">'+pNum(po.total_qty)+'</td><td style="text-align:right;">'+pMoney(po.grand_total)+'</td><td>'+statusBadge+'</td><td style="text-align:center;">'+pNum(po.received_qty)+'</td><td>'+((po.pdf_url)?'<a href="'+pEsc(po.pdf_url)+'" target="_blank" rel="noopener">Open</a>':'—')+'</td><td><button type="button" class="sarv-po-wa" data-po="'+pEsc(po.po_no)+'" style="background:none;border:none;color:#16a34a;font-weight:700;cursor:pointer;padding:0;font-size:inherit;">&#128172; Send</button></td><td>'+actionCell+'</td>';tb.appendChild(tr);
+     const tr=document.createElement('tr');
+     tr.className='sarv-po-row';tr.dataset.poId=po.id;tr.style.cursor='pointer';
+     tr.title='Click karke is PO ke saare items dekhein';
+     tr.innerHTML='<td><span class="sarv-po-caret" style="color:#94a3b8;font-weight:800;">&#9656;</span> '+pEsc(po.po_no)+'</td><td>'+pEsc(po.po_date||'')+'</td><td>'+pEsc(po.vendor_name||'')+'</td><td>'+itemNameCell+'</td><td>'+itemDescCell+'</td><td>'+pEsc(po.linked_req_nos||'')+'</td><td style="text-align:center;">'+pNum(po.total_items)+'</td><td style="text-align:center;">'+pNum(po.total_qty)+'</td><td style="text-align:right;">'+pMoney(po.grand_total)+'</td><td>'+statusBadge+'</td><td style="text-align:center;">'+pNum(po.received_qty)+'</td><td>'+((po.pdf_url)?'<a href="'+pEsc(po.pdf_url)+'" target="_blank" rel="noopener">Open</a>':'—')+'</td><td><button type="button" class="sarv-po-wa" data-po="'+pEsc(po.po_no)+'" style="background:none;border:none;color:#16a34a;font-weight:700;cursor:pointer;padding:0;font-size:inherit;">&#128172; Send</button></td><td>'+actionCell+'</td>';
+     tb.appendChild(tr);
+     // Collapsed item-detail row, revealed by clicking the PO row.
+     const det=document.createElement('tr');
+     det.className='sarv-po-items';det.dataset.poId=po.id;det.style.display='none';
+     det.innerHTML='<td colspan="14" style="background:#f8fafc;padding:8px 14px;">'+buildPoItemsDetailHtml(lm.lines)+'</td>';
+     tb.appendChild(det);
    });
-   const c=byId('p_poListCount');if(c)c.textContent=(q.data||[]).length;
+   const c=byId('p_poListCount');if(c)c.textContent=visiblePos.length;
    renderPoKpiCards();
+ }
+ // Sr-wise item breakdown shown under a PO row when it's expanded.
+ function buildPoItemsDetailHtml(lines){
+   if(!lines||!lines.length)return '<div style="color:#94a3b8;font-size:11px;">Is PO ke items nahi mile.</div>';
+   const th='padding:4px 6px;background:#e2e8f0;font-size:10px;font-weight:800;text-align:left;';
+   const td='padding:4px 6px;font-size:11px;border-bottom:1px solid #e2e8f0;';
+   const rows=lines.map((l,i)=>'<tr>'
+     +'<td style="'+td+'text-align:center;">'+(i+1)+'</td>'
+     +'<td style="'+td+'font-weight:700;">'+pEsc(l.item_name||'—')+'</td>'
+     +'<td style="'+td+'color:#64748b;">'+pEsc(l.item_description||'—')+'</td>'
+     +'<td style="'+td+'">'+pEsc(l.make||'—')+'</td>'
+     +'<td style="'+td+'text-align:center;">'+pNum(l.ordered_qty)+' '+pEsc(l.uom||'')+'</td>'
+     +'<td style="'+td+'text-align:center;color:#16a34a;font-weight:700;">'+pNum(l.received_qty)+'</td>'
+     +'<td style="'+td+'text-align:center;">'+pEsc(l.bill_basis||'QTY')+'</td>'
+     +'<td style="'+td+'text-align:right;">'+pMoney(l.unit_price)+'</td>'
+     +'<td style="'+td+'text-align:center;">'+pNum(l.discount_pct||0)+'%</td>'
+     +'<td style="'+td+'text-align:center;">'+pNum(l.tax_pct||0)+'%</td>'
+     +'<td style="'+td+'text-align:right;font-weight:800;">'+pMoney(l.line_total)+'</td>'
+   +'</tr>').join('');
+   return '<table style="width:100%;border-collapse:collapse;">'
+     +'<thead><tr><th style="'+th+'width:4%;text-align:center;">Sr</th><th style="'+th+'width:18%;">Item Name</th><th style="'+th+'width:20%;">Description</th><th style="'+th+'width:10%;">Make</th><th style="'+th+'width:10%;text-align:center;">Ordered</th><th style="'+th+'width:8%;text-align:center;">Received</th><th style="'+th+'width:7%;text-align:center;">Basis</th><th style="'+th+'width:8%;text-align:right;">Rate</th><th style="'+th+'width:5%;text-align:center;">Disc%</th><th style="'+th+'width:5%;text-align:center;">GST%</th><th style="'+th+'width:10%;text-align:right;">Amount</th></tr></thead>'
+     +'<tbody>'+rows+'</tbody></table>';
+ }
+ // "Show Received" toggle — Admin-only, sits above the Generated POs table.
+ function renderPoListDoneToggle(doneCount){
+   const host=byId('p_poListCount')?.closest('.items-total-strip');if(!host)return;
+   let btn=byId('p_poShowReceivedBtn');
+   if(!isAdmin()){if(btn)btn.remove();return;}
+   if(!btn){
+     btn=document.createElement('button');
+     btn.type='button';btn.id='p_poShowReceivedBtn';
+     btn.style.cssText='margin-left:10px;padding:3px 12px;font-size:11px;font-weight:700;border-radius:14px;border:1.5px solid #0f766e;background:#fff;color:#0f766e;cursor:pointer;';
+     btn.addEventListener('click',()=>{sarvShowReceivedPos=!sarvShowReceivedPos;refreshGeneratedPoList().catch(dbError);});
+     host.appendChild(btn);
+   }
+   btn.textContent=sarvShowReceivedPos?'👁️ Hide Received / Closed':'✅ Show Received / Closed'+(doneCount?' ('+doneCount+')':'');
+   btn.style.background=sarvShowReceivedPos?'#0f766e':'#fff';
+   btn.style.color=sarvShowReceivedPos?'#fff':'#0f766e';
+ }
+ async function shortClosePurchaseOrder(poNo){
+   if(!isAdmin())return showToast('⛔ Sirf Admin login short-close kar sakta hai','warn');
+   if(!confirm('PO "'+poNo+'" ko short quantity par close karein?\n\nBaaki pending qty ab receive nahi ki ja sakegi.'))return;
+   const u=await SB.from('purchase_orders').update({status:'Closed (Short)'}).eq('po_no',poNo);
+   if(u.error)return dbError(u.error);
+   showToast('✅ PO '+poNo+' short-close kar diya gaya');
+   await loadOpenPoDropdown();
+   await refreshGeneratedPoList();
  }
  async function cancelPurchaseOrder(poNo){
    if(!isAdmin())return showToast('⛔ Sirf Admin login PO cancel kar sakta hai','warn');
@@ -8405,16 +8634,18 @@ window.addEventListener('DOMContentLoaded',()=>{
    set('p_poNoField',po.po_no);set('p_poDateField',po.po_date);set('p_poDeliveryField',po.delivery_date);
    set('p_poVendorField',po.vendor_name);set('p_poVendorMailField',po.vendor_mail);set('p_poVendorContactField',po.vendor_contact);
    set('p_poVendorAddressField',po.vendor_address);set('p_poGstPctField',po.gst_percent||0);set('p_poFreightField',po.freight||0);
-   set('p_poOtherExpField',po.other_expense||0);set('p_poNotesField',po.important_notes);
+   set('p_poOtherExpField',po.other_expense||0);
    const tb=byId('p_poBuildBody');
    if(tb){
      tb.innerHTML='';
      (l.data||[]).forEach((x,i)=>{
        const tr=document.createElement('tr');
-       tr.innerHTML='<td style="text-align:center;">'+(i+1)+'</td><td><input class="table-input po-req-no" value="'+pEsc(x.req_no||'')+'" readonly></td><td><input class="table-input po-item-name" value="'+pEsc(x.item_name||'')+'"></td><td><input class="table-input po-item-desc" value="'+pEsc(x.item_description||'')+'"></td><td><input class="table-input po-make" value="'+pEsc(x.make||'')+'"></td><td class="po-req-qty" style="text-align:center;">'+pNum(x.ordered_qty)+'</td><td class="po-available">-</td><td><input type="number" class="table-input po-qty" min="0" value="'+pNum(x.ordered_qty)+'"></td><td><input type="number" class="table-input po-cancel" min="0" value="0"></td><td><input class="table-input po-uom" value="'+pEsc(x.uom||'PCS')+'"></td><td><input type="number" class="table-input po-grossweight" min="0" value="'+pNum(x.gross_weight||0)+'"></td><td><input type="number" class="table-input po-unitprice" min="0" step=".01" value="'+pNum(x.unit_price)+'"></td><td><input type="number" class="table-input po-discount" min="0" max="100" step=".01" value="'+pNum(x.discount_pct||0)+'" readonly style="background:#f1f5f9;cursor:not-allowed;" title="Discount was fixed during Vendor Rate approval — cannot change here"></td><td class="po-line-total">'+pMoney(x.line_total)+'</td>';
+       const basisSel=(x.bill_basis==='WEIGHT')?'<option value="QTY">QTY</option><option value="WEIGHT" selected>WEIGHT</option>':'<option value="QTY" selected>QTY</option><option value="WEIGHT">WEIGHT</option>';
+       tr.innerHTML='<td style="text-align:center;">'+(i+1)+'</td><td><input class="table-input po-req-no" value="'+pEsc(x.req_no||'')+'" readonly></td><td><input class="table-input po-item-name" value="'+pEsc(x.item_name||'')+'"></td><td><input class="table-input po-item-desc" value="'+pEsc(x.item_description||'')+'"></td><td><input class="table-input po-make" value="'+pEsc(x.make||'')+'"></td><td class="po-req-qty" style="text-align:center;">'+pNum(x.ordered_qty)+'</td><td class="po-available">-</td><td><input type="number" class="table-input po-qty" min="0" value="'+pNum(x.ordered_qty)+'"></td><td><input type="number" class="table-input po-cancel" min="0" value="0"></td><td><input class="table-input po-uom" value="'+pEsc(x.uom||'')+'"></td><td><input type="number" class="table-input po-grossweight" min="0" value="'+pNum(x.gross_weight||0)+'"></td><td><select class="table-input chip-select po-billbasis">'+basisSel+'</select></td><td><input type="number" class="table-input po-unitprice" min="0" step=".01" value="'+pNum(x.unit_price)+'"></td><td><input type="number" class="table-input po-discount" min="0" max="100" step=".01" value="'+pNum(x.discount_pct||0)+'" readonly style="background:#f1f5f9;cursor:not-allowed;" title="Discount was fixed during Vendor Rate approval — cannot change here"></td><td><input type="number" class="table-input po-gst" min="0" max="100" step=".01" value="'+pNum(x.tax_pct||18)+'" title="GST % for this item"></td><td class="po-line-total">'+pMoney(x.line_total)+'</td>';
        tb.appendChild(tr);
-       const recalc=()=>{const qty=pNum(tr.querySelector('.po-qty')?.value),price=pNum(tr.querySelector('.po-unitprice')?.value),disc=pNum(tr.querySelector('.po-discount')?.value);tr.querySelector('.po-line-total').textContent=pMoney(qty*price*(1-disc/100));recomputePoBuildTotals();};
-       tr.querySelectorAll('input').forEach(e=>e.addEventListener('input',recalc));
+       const recalc=()=>{tr.querySelector('.po-line-total').textContent=pMoney(poLineAmount(tr));recomputePoBuildTotals();};
+       tr.querySelectorAll('input,select').forEach(e=>e.addEventListener('input',recalc));
+       tr.querySelector('.po-billbasis')?.addEventListener('change',recalc);
      });
    }
    const modal=byId('p_poBuildModal');if(modal)modal.classList.add('active');
@@ -8447,8 +8678,9 @@ window.addEventListener('DOMContentLoaded',()=>{
      row=ins.data;
    }
    await SB.from('purchase_order_lines').delete().eq('purchase_order_id',row.id);
-   let lines=d.items.map((x,i)=>({purchase_order_id:row.id,line_no:i+1,req_no:x.reqNo||null,item_id:x.itemId||null,item_name:x.itemName||x.name||'Item',item_description:x.itemDesc||x.description||null,make:x.make||null,department:x.department||null,ordered_qty:pNum(x.qty),received_qty:0,uom:x.uom||'PCS',unit_price:pNum(x.unitPrice),discount_pct:pNum(x.discountPercent||x.discPct||0),tax_pct:pNum(x.taxPct||x.tax),line_total:pNum(x.total),gross_weight:(x.grossWeight!=null&&x.grossWeight!=='')?pNum(x.grossWeight):null}));
+   let lines=d.items.map((x,i)=>({purchase_order_id:row.id,line_no:i+1,req_no:x.reqNo||null,item_id:x.itemId||null,item_name:x.itemName||x.name||'Item',item_description:x.itemDesc||x.description||null,make:x.make||null,department:x.department||null,ordered_qty:pNum(x.qty),received_qty:0,uom:x.uom||null,unit_price:pNum(x.unitPrice),discount_pct:pNum(x.discountPercent||x.discPct||0),tax_pct:pNum(x.taxPct||x.tax),line_total:pNum(x.total),gross_weight:(x.grossWeight!=null&&x.grossWeight!=='')?pNum(x.grossWeight):null,bill_basis:x.billBasis||'QTY'}));
    let ins2=await SB.from('purchase_order_lines').insert(lines);
+   if(ins2.error&&/bill_basis|column/i.test(ins2.error.message||'')){lines=lines.map(({bill_basis,...rest})=>rest);ins2=await SB.from('purchase_order_lines').insert(lines);}
    if(ins2.error&&/gross_weight|column/i.test(ins2.error.message||'')){lines=lines.map(({gross_weight,...rest})=>rest);ins2=await SB.from('purchase_order_lines').insert(lines);}
    if(ins2.error&&/discount_pct|column/i.test(ins2.error.message||'')){lines=lines.map(({discount_pct,...rest})=>rest);ins2=await SB.from('purchase_order_lines').insert(lines);}
    if(ins2.error)console.warn('[SARV] PO line save skipped:',ins2.error.message);return row;
@@ -8460,18 +8692,31 @@ window.addEventListener('DOMContentLoaded',()=>{
    const mailEl=byId('p_poVendorMailField'),contactEl=byId('p_poVendorContactField'),addrEl=byId('p_poVendorAddressField');
    if(mailEl&&!mailEl.value.trim())mailEl.value=supplier.email||'';
    if(contactEl&&!contactEl.value.trim())contactEl.value=supplier.phone||'';
-   // Address auto-fills with the Supplier Master's city on every vendor
-   // pick (overwriting the previous vendor's city) but stays a normal
-   // editable field afterwards, so Store can add/adjust the full address.
+   // Address is read-only and always mirrors the Supplier Master's city —
+   // the only place a vendor's address is maintained.
    if(addrEl)addrEl.value=supplier.city||'';
  }
+ // Final rate = unit price after this line's own discount.
+ function poLineFinalRate(tr){
+   return pNum(tr.querySelector('.po-unitprice')?.value)*(1-pNum(tr.querySelector('.po-discount')?.value)/100);
+ }
+ // WEIGHT basis bills Gross Wt (kg) × final rate; QTY basis bills Qty × final rate.
+ function poLineAmount(tr){
+   const basis=tr.querySelector('.po-billbasis')?.value||'QTY';
+   const units=basis==='WEIGHT'?pNum(tr.querySelector('.po-grossweight')?.value):pNum(tr.querySelector('.po-qty')?.value);
+   return units*poLineFinalRate(tr);
+ }
+ function poLineGstAmt(tr){
+   return poLineAmount(tr)*pNum(tr.querySelector('.po-gst')?.value)/100;
+ }
  function recomputePoBuildTotals(){
-   const subtotal=pRows('#p_poBuildBody tr').reduce((s,tr)=>{
-     const qty=pNum(tr.querySelector('.po-qty')?.value),price=pNum(tr.querySelector('.po-unitprice')?.value),disc=pNum(tr.querySelector('.po-discount')?.value);
-     return s+qty*price*(1-disc/100);
-   },0);
-   const gstPct=pNum(pVal('p_poGstPctField')),freight=pNum(pVal('p_poFreightField')),other=pNum(pVal('p_poOtherExpField'));
-   const gstAmt=(subtotal+freight+other)*gstPct/100,grand=subtotal+freight+other+gstAmt;
+   const rows=pRows('#p_poBuildBody tr');
+   const subtotal=rows.reduce((s,tr)=>s+poLineAmount(tr),0);
+   const itemsGst=rows.reduce((s,tr)=>s+poLineGstAmt(tr),0);
+   // GST on items is per-line; freight + other expense carry their own rate.
+   const foGstPct=pNum(pVal('p_poGstPctField')),freight=pNum(pVal('p_poFreightField')),other=pNum(pVal('p_poOtherExpField'));
+   const gstAmt=itemsGst+(freight+other)*foGstPct/100;
+   const grand=subtotal+freight+other+gstAmt;
    const set=(id,v)=>{const e=byId(id);if(e)e.textContent=pMoney(v)};
    set('p_poSubtotalView',subtotal);set('p_poGstAmtView',gstAmt);set('p_poFreightView',freight);set('p_poOtherView',other);set('p_poGrandTotalView',grand);
  }
@@ -8486,11 +8731,13 @@ window.addEventListener('DOMContentLoaded',()=>{
    // enter the real negotiated discount instead of being stuck at 0.
    const discAttrs=locked?' readonly style="background:#fef9c3;font-weight:800;color:#854d0e;"':' style="background:#f1f5f9;"';
    const discTitle=locked?'Approved discount — GM/CEO chosen vendor, cannot change':'Enter discount %';
-   tr.innerHTML='<td style="text-align:center;">'+(tb.children.length+1)+'</td><td><input class="table-input po-req-no" value="'+pEsc(x.req.req_no)+'" readonly></td><td><input class="table-input po-item-name" value="'+pEsc(x.name)+'" readonly></td><td><input class="table-input po-item-desc" value="'+pEsc(x.line.specification||x.item.description||'')+'" readonly></td><td><input class="table-input po-make" value="'+pEsc(x.item.make||'')+'" readonly></td><td class="po-req-qty" style="text-align:center;font-weight:800;color:#854d0e;background:#fef9c3;">'+pNum(x.line.requested_qty)+'</td><td class="po-available">'+pNum(x.available)+'</td><td><input type="number" class="table-input po-qty" min="0" max="'+pNum(x.available)+'" value="'+pNum(x.available)+'"></td><td><input type="number" class="table-input po-cancel" min="0" value="0"></td><td><input class="table-input po-uom" value="'+pEsc(x.line.uom||x.item.uom||'PCS')+'" readonly style="background:#f1f5f9;cursor:not-allowed;" title="UOM Item Master se locked hai"></td><td><input type="number" class="table-input po-grossweight" min="0" value="'+pNum(x.line.gross_weight||0)+'"></td><td><input type="number" class="table-input po-unitprice" min="0" step=".01" value="'+pNum(x.approvedRate||0)+'"'+rateAttrs+' title="'+(locked?'Approved rate — GM/CEO chosen vendor, cannot change':'')+'"></td><td><input type="number" class="table-input po-discount" min="0" max="100" step=".01" value="'+pNum(x.approvedDiscount||0)+'"'+discAttrs+' title="'+discTitle+'"></td><td class="po-line-total">₹0.00</td>';
+   tr.innerHTML='<td style="text-align:center;">'+(tb.children.length+1)+'</td><td><input class="table-input po-req-no" value="'+pEsc(x.req.req_no)+'" readonly></td><td><input class="table-input po-item-name" value="'+pEsc(x.name)+'" readonly></td><td><input class="table-input po-item-desc" value="'+pEsc(x.line.specification||x.item.description||'')+'" readonly></td><td><input class="table-input po-make" value="'+pEsc(x.item.make||'')+'" readonly></td><td class="po-req-qty" style="text-align:center;font-weight:800;color:#854d0e;background:#fef9c3;">'+pNum(x.line.requested_qty)+'</td><td class="po-available">'+pNum(x.available)+'</td><td><input type="number" class="table-input po-qty" min="0" max="'+pNum(x.available)+'" value="'+pNum(x.available)+'"></td><td><input type="number" class="table-input po-cancel" min="0" value="0"></td><td><input class="table-input po-uom" value="'+pEsc(x.line.uom||x.item.uom||'')+'" readonly style="background:#f1f5f9;cursor:not-allowed;" title="UOM Item Master se locked hai"></td><td><input type="number" class="table-input po-grossweight" min="0" value="'+pNum(x.line.gross_weight||0)+'"></td><td><select class="table-input chip-select po-billbasis"><option value="QTY">QTY</option><option value="WEIGHT">WEIGHT</option></select></td><td><input type="number" class="table-input po-unitprice" min="0" step=".01" value="'+pNum(x.approvedRate||0)+'"'+rateAttrs+' title="'+(locked?'Approved rate — GM/CEO chosen vendor, cannot change':'')+'"></td><td><input type="number" class="table-input po-discount" min="0" max="100" step=".01" value="'+pNum(x.approvedDiscount||0)+'"'+discAttrs+' title="'+discTitle+'"></td><td><input type="number" class="table-input po-gst" min="0" max="100" step=".01" value="'+pNum(x.line.tax_pct||18)+'" title="GST % for this item"></td><td class="po-line-total">₹0.00</td>';
    tb.appendChild(tr);
    if(x.approvedVendor)tr.dataset.approvedVendor=JSON.stringify(x.approvedVendor);
-   const recalc=()=>{const qty=pNum(tr.querySelector('.po-qty')?.value),price=pNum(tr.querySelector('.po-unitprice')?.value),disc=pNum(tr.querySelector('.po-discount')?.value);tr.querySelector('.po-line-total').textContent=pMoney(qty*price*(1-disc/100));recomputePoBuildTotals();};
-   tr.querySelectorAll('input').forEach(e=>e.addEventListener('input',recalc));recalc();
+   const recalc=()=>{tr.querySelector('.po-line-total').textContent=pMoney(poLineAmount(tr));recomputePoBuildTotals();};
+   tr.querySelectorAll('input,select').forEach(e=>e.addEventListener('input',recalc));
+   tr.querySelector('.po-billbasis')?.addEventListener('change',recalc);
+   recalc();
    return tr;
  }
  function applyApprovedVendorLock(){
@@ -8671,7 +8918,20 @@ window.addEventListener('DOMContentLoaded',()=>{
      poListBody.addEventListener('click',e=>{
        const editBtn=e.target.closest('.sarv-po-edit');if(editBtn){editPurchaseOrder(editBtn.dataset.po).catch(dbError);return;}
        const cancelBtn=e.target.closest('.sarv-po-cancel');if(cancelBtn){cancelPurchaseOrder(cancelBtn.dataset.po).catch(dbError);return;}
-       const waBtn=e.target.closest('.sarv-po-wa');if(waBtn)sendPoWhatsapp(waBtn.dataset.po).catch(dbError);
+       const closeBtn=e.target.closest('.sarv-po-shortclose');if(closeBtn){shortClosePurchaseOrder(closeBtn.dataset.po).catch(dbError);return;}
+       const waBtn=e.target.closest('.sarv-po-wa');if(waBtn){sendPoWhatsapp(waBtn.dataset.po).catch(dbError);return;}
+       if(e.target.closest('a'))return; // let PDF links through
+       // Clicking anywhere else on a PO row expands its Sr-wise item list.
+       const row=e.target.closest('.sarv-po-row');
+       if(row){
+         const det=poListBody.querySelector('.sarv-po-items[data-po-id="'+row.dataset.poId+'"]');
+         if(det){
+           const open=det.style.display!=='none';
+           det.style.display=open?'none':'';
+           const caret=row.querySelector('.sarv-po-caret');
+           if(caret)caret.innerHTML=open?'&#9656;':'&#9662;';
+         }
+       }
      });
      poListBody.dataset.editBound='1';
    }
@@ -8685,7 +8945,7 @@ window.addEventListener('DOMContentLoaded',()=>{
  }
 
  function resetPoBuildForm(){
-   ['p_poNoField','p_poDeliveryField','p_poVendorField','p_poVendorMailField','p_poVendorContactField','p_poVendorAddressField','p_poNotesField'].forEach(id=>{const e=byId(id);if(e)e.value='';});
+   ['p_poNoField','p_poDeliveryField','p_poVendorField','p_poVendorMailField','p_poVendorContactField','p_poVendorAddressField'].forEach(id=>{const e=byId(id);if(e)e.value='';});
    if(byId('p_poDateField'))byId('p_poDateField').value=today();
    if(byId('p_poLocationContactField'))byId('p_poLocationContactField').value='+91 94168 72119';
    if(byId('p_poGstPctField'))byId('p_poGstPctField').value='18';
@@ -8701,7 +8961,7 @@ window.addEventListener('DOMContentLoaded',()=>{
    const modal=byId('p_poBuildModal');if(modal)modal.classList.remove('active');
  }
  async function generateCurrentPoPdf(){
-   const items=pRows('#p_poBuildBody tr,#p_spPoItemsBody tr').map(r=>{const q=s=>r.querySelector(s),cells=[...r.children].map(x=>x.innerText.trim());if(q('.po-item-name')){const qty=pNum(q('.po-qty')?.value),price=pNum(q('.po-unitprice')?.value),disc=pNum(q('.po-discount')?.value);return {reqNo:q('.po-req-no')?.value||'',itemName:q('.po-item-name')?.value||'',itemDesc:q('.po-item-desc')?.value||'',make:q('.po-make')?.value||'',qty,uom:q('.po-uom')?.value||'PCS',unitPrice:price,discountPercent:disc,netUnitPrice:price*(1-disc/100),total:pRound(qty*price*(1-disc/100)),grossWeight:pNum(q('.po-grossweight')?.value)}}const vals=[...r.querySelectorAll('input,select')].map(x=>x.value);return {itemName:vals[0]||cells[2]||cells[1]||'',itemDesc:vals[1]||'',make:vals[2]||cells[3]||'',qty:pNum(vals[3]||cells[3]),uom:vals[4]||cells[4]||'PCS',unitPrice:pNum(vals[5]||cells[5]),discountPercent:pNum(vals[6]),netUnitPrice:pNum(vals[5]||cells[5])*(1-pNum(vals[6])/100),total:pNum(vals[7]||cells[7]),grossWeight:pNum(vals[8])}}).filter(x=>x.itemName&&x.qty);
+   const items=pRows('#p_poBuildBody tr,#p_spPoItemsBody tr').map(r=>{const q=s=>r.querySelector(s),cells=[...r.children].map(x=>x.innerText.trim());if(q('.po-item-name')){const qty=pNum(q('.po-qty')?.value),price=pNum(q('.po-unitprice')?.value),disc=pNum(q('.po-discount')?.value);const grossWeight=pNum(q('.po-grossweight')?.value),billBasis=q('.po-billbasis')?.value||'QTY',taxPct=pNum(q('.po-gst')?.value),netUnitPrice=price*(1-disc/100);const billUnits=billBasis==='WEIGHT'?grossWeight:qty;return {reqNo:q('.po-req-no')?.value||'',itemName:q('.po-item-name')?.value||'',itemDesc:q('.po-item-desc')?.value||'',make:q('.po-make')?.value||'',qty,uom:q('.po-uom')?.value||'',unitPrice:price,discountPercent:disc,netUnitPrice,billBasis,taxPct,total:pRound(billUnits*netUnitPrice),grossWeight}}const vals=[...r.querySelectorAll('input,select')].map(x=>x.value);return {itemName:vals[0]||cells[2]||cells[1]||'',itemDesc:vals[1]||'',make:vals[2]||cells[3]||'',qty:pNum(vals[3]||cells[3]),uom:vals[4]||cells[4]||'PCS',unitPrice:pNum(vals[5]||cells[5]),discountPercent:pNum(vals[6]),netUnitPrice:pNum(vals[5]||cells[5])*(1-pNum(vals[6])/100),total:pNum(vals[7]||cells[7]),grossWeight:pNum(vals[8])}}).filter(x=>x.itemName&&x.qty);
    if(!items.length)return showToast('Add at least one PO item before generating','warn');
    const overlay=byId('p_syncOverlay'),msgEl=byId('p_syncMsg'),genBtns=['p_poBuildConfirmBtn','p_spGeneratePo'].map(byId).filter(Boolean);
    const setMsg=t=>{if(msgEl)msgEl.textContent=t};
@@ -8709,7 +8969,10 @@ window.addEventListener('DOMContentLoaded',()=>{
    if(overlay){setMsg('Saving Purchase Order...');overlay.classList.add('active');}
    try{
      const d={poNo:pVal('p_poNoField')||pVal('p_spPoNo')||await nextNo('PO'),poDate:pVal('p_poDateField')||pVal('p_spPoDate')||today(),deliveryDate:pVal('p_poDeliveryField')||pVal('p_spPoDelivery'),vendorName:pVal('p_poVendorField')||pVal('p_spPoVendor'),vendorMail:pVal('p_poVendorMailField'),vendorContact:pVal('p_poVendorContactField')||pVal('p_spPoVendorContact'),vendorAddress:pVal('p_poVendorAddressField')||pVal('p_spPoVendorAddress'),paymentTerms:pVal('p_poPaymentTermsField'),locationContact:pVal('p_poLocationContactField'),freight:pNum(pVal('p_poFreightField')||pVal('p_spPoFreight')),otherExpense:pNum(pVal('p_poOtherExpField')),otherExpenseLabel:pVal('p_poOtherLabelField'),gstPercent:pNum(pVal('p_poGstPctField')),grandTotal:pNum(byId('p_poGrandTotalView')?.textContent||byId('p_spPoGrandTotal')?.textContent),importantNotes:pVal('p_poNotesField')||pVal('p_spPoNotes'),items,signatures:{store:{name:byId('p_poStoreSignCanvas')?.toDataURL('image/png'),time:pStamp()}}};
-     d.subtotal=items.reduce((s,x)=>s+pNum(x.total),0);d.gstAmount=(d.subtotal+d.freight+d.otherExpense)*d.gstPercent/100;if(!d.grandTotal)d.grandTotal=d.subtotal+d.freight+d.otherExpense+d.gstAmount;
+     // GST on items is per-line (x.taxPct); d.gstPercent now only covers freight + other expense.
+     d.subtotal=items.reduce((s,x)=>s+pNum(x.total),0);
+     d.gstAmount=items.reduce((s,x)=>s+pNum(x.total)*pNum(x.taxPct||0)/100,0)+(d.freight+d.otherExpense)*d.gstPercent/100;
+     if(!d.grandTotal)d.grandTotal=d.subtotal+d.freight+d.otherExpense+d.gstAmount;
      const poRecord=await persistPurchaseOrder(d);await loadOpenPoDropdown();
      // GM/CEO -> MD -> Vendor Verified come from the approval chain (captured
      // via mobile.html or desktop); the Store Incharge pad above is always
