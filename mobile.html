@@ -437,6 +437,11 @@
 
             <div class="req-meta-info" id="approvedVendorInfo" style="display:none;"></div>
 
+            <div class="form-group" id="deliveryDateGroup" style="display:none;">
+                <label>Delivery Date <span style="color:#dc3545;">*</span></label>
+                <input type="date" id="deliveryDateInput" class="form-select">
+            </div>
+
             <div class="form-group">
                 <label>Remarks / Notes</label>
                 <textarea id="remarksInput" rows="2" placeholder="Enter remarks (optional)..."></textarea>
@@ -703,14 +708,16 @@
         const pageW=doc.internal.pageSize.getWidth(), pageH=doc.internal.pageSize.getHeight();
         const M=8, W=pageW-M*2;
         const AMBER=[253,230,138];
+        const GRAY_HEAD=[209,213,219]; // items table header — gray theme
         doc.setTextColor(0,0,0);
 
         const items=(d.items||[]).map((it,i)=>{
             const up=pNum(it.unitPrice),disc=pNum(it.discountPercent),qty=pNum(it.qty);
             const netUp=disc>0?Math.round(up*(1-disc/100)*100)/100:up;
-            const total=pNum(it.total)||Math.round(netUp*qty*100)/100;
             const gw=(it.grossWeight!=null&&it.grossWeight!=='')?pNum(it.grossWeight):null;
-            return{sr:i+1,desc:(it.itemName||'')+(it.itemDesc?' - '+it.itemDesc:''),make:it.make||'',qty,uom:it.uom||'',up,disc,netUp,total,gw};
+            const basis=it.billBasis||'QTY';
+            const total=pNum(it.total)||Math.round(netUp*(basis==='WEIGHT'?pNum(gw):qty)*100)/100;
+            return{sr:i+1,desc:(it.itemName||'')+(it.itemDesc?' - '+it.itemDesc:''),make:it.make||'',qty,uom:it.uom||'',up,disc,netUp,total,gw,basis,gstPct:pNum(it.taxPct)};
         });
         const totalGW=items.reduce((s,r)=>s+(r.gw!=null?r.gw:0),0);
         const totalQty=items.reduce((s,r)=>s+r.qty,0);
@@ -720,7 +727,11 @@
         const gstAmt=pNum(d.gstAmount)||Math.round(taxable*gstPct/100*100)/100;
         const grand=pNum(d.grandTotal)||(taxable+gstAmt);
 
+        // Drawn for page 1 and repeated on every overflow page, so each sheet is a
+        // complete document (company header + party details + shipping box).
+        const drawPoPageHeader=()=>{
         let y=M;
+        doc.setTextColor(0,0,0);
         doc.setFontSize(9);doc.setFont(undefined,'bold');
         doc.text('GST IN: '+(SARV_COMPANY.gstin||''),M,y+4);
         doc.setFontSize(12);
@@ -764,7 +775,9 @@
 
         const c1=W*0.42,c2=W*0.25,c3=W-c1-c2;
         doc.setFillColor(243,244,246);
-        doc.rect(M,y,c1,6,'FD');doc.rect(M+c1,y,c2,6,'FD');doc.rect(M+c1+c2,y,c3,6,'FD');
+        doc.rect(M,y,c1,6,'FD');doc.rect(M+c1,y,c2,6,'FD');
+        doc.setFillColor(255,242,0); // Contact For Location — yellow highlight
+        doc.rect(M+c1+c2,y,c3,6,'FD');
         doc.setFontSize(8);doc.setFont(undefined,'bold');
         doc.text('Shipping Address:',M+c1/2,y+4,{align:'center'});
         doc.text('Delivery Date :',M+c1+c2/2,y+4,{align:'center'});
@@ -772,7 +785,9 @@
         y+=6;
         const rowH=12;
         doc.setFillColor(255,255,255);
-        doc.rect(M,y,c1,rowH);doc.rect(M+c1,y,c2,rowH);doc.rect(M+c1+c2,y,c3,rowH);
+        doc.rect(M,y,c1,rowH);doc.rect(M+c1,y,c2,rowH);
+        doc.setFillColor(255,242,0);
+        doc.rect(M+c1+c2,y,c3,rowH,'FD');
         doc.setFont(undefined,'normal');doc.setFontSize(7.5);
         const shipLines=doc.splitTextToSize(String(d.shippingAddress||SARV_COMPANY.address),c1-4);
         doc.text(shipLines,M+2,y+4.5);
@@ -787,24 +802,30 @@
         doc.setFont(undefined,'bold');doc.setFontSize(8.5);
         doc.text('**'+(d.paymentTerms||'Payment terms 30 days after receipt of bill')+'**',pageW/2,y+4,{align:'center'});
         y+=9;
+        return y;
+        };
+        let y=drawPoPageHeader();
 
         // Always render Rate/Disc%/Net Rate/Amount — a fixed column set avoids
         // a PO with 0% discount on every line silently losing the Disc%/Net
         // Rate columns whenever this PDF gets regenerated after a GM/CEO/MD
         // approval here.
-        const head=[['Sr.','Description','Make','Quantity','Gross Wt (kg)','Rate','Disc%','Net Rate','Amount']];
-        const body=items.map(r=>[String(r.sr),r.desc,r.make,pNum(r.qty)+' '+r.uom,r.gw!=null?String(r.gw):'',nNum_(r.up),r.disc>0?r.disc+'%':'-',nNum_(r.netUp),nNum_(r.total)]);
-        const columnStyles={0:{cellWidth:9},2:{cellWidth:18},3:{cellWidth:17},4:{cellWidth:17},5:{cellWidth:19},6:{cellWidth:13},7:{cellWidth:19},8:{cellWidth:22}};
-        const foot=[[{content:'Grand Total (Subtotal)',colSpan:3},String(totalQty),(totalGW>0?totalGW+' kg':''),{content:'',colSpan:3},nNum_(subtotal)]];
+        const head=[['Sr.','Description','Make','Quantity','Gross Wt (kg)','Rate','Disc%','Net Rate','GST%','Amount']];
+        const body=items.map(r=>[String(r.sr),r.desc,r.make,pNum(r.qty)+' '+r.uom+(r.basis==='WEIGHT'?'\n(billed on wt)':''),r.gw!=null?String(r.gw):'',nNum_(r.up),r.disc>0?r.disc+'%':'-',nNum_(r.netUp),r.gstPct>0?r.gstPct+'%':'-',nNum_(r.total)]);
+        const columnStyles={0:{cellWidth:9},2:{cellWidth:18},3:{cellWidth:17},4:{cellWidth:16},5:{cellWidth:18},6:{cellWidth:12},7:{cellWidth:18},8:{cellWidth:11},9:{cellWidth:21}};
+        const foot=[[{content:'Grand Total (Subtotal)',colSpan:3},String(totalQty),(totalGW>0?totalGW+' kg':''),{content:'',colSpan:4},nNum_(subtotal)]];
         doc.autoTable({
             head,body,foot,startY:y,
-            margin:{left:M,right:pageW-(M+W)},
+            // margin.top reserves room for the repeated header block on page 2+,
+            // which didDrawPage then draws.
+            margin:{left:M,right:pageW-(M+W),top:y},
             tableWidth:W,
             styles:{fontSize:7.5,cellPadding:1.4,overflow:'linebreak',textColor:[0,0,0],lineColor:[0,0,0],lineWidth:0.25,valign:'middle'},
-            headStyles:{fillColor:AMBER,textColor:[0,0,0],fontStyle:'bold',halign:'center',lineWidth:0.3,lineColor:[0,0,0]},
+            headStyles:{fillColor:GRAY_HEAD,textColor:[0,0,0],fontStyle:'bold',halign:'center',lineWidth:0.3,lineColor:[0,0,0]},
             footStyles:{fillColor:AMBER,textColor:[0,0,0],fontStyle:'bold',lineWidth:0.3,lineColor:[0,0,0]},
             columnStyles,
-            theme:'grid'
+            theme:'grid',
+            didDrawPage:(data)=>{if(data.pageNumber>1)drawPoPageHeader();}
         });
         y=doc.lastAutoTable.finalY+4;
         if(y>pageH-90){doc.addPage();y=M;}
@@ -815,7 +836,7 @@
             ['Freight / Transport',nNum_(freight)],
             [String(d.otherExpenseLabel||'Labour Other Exp.'),nNum_(other)],
             ['Taxable Value',nNum_(taxable)],
-            ['GST @ '+gstPct+'%',nNum_(gstAmt)],
+            ['GST (item-wise + freight/other @ '+gstPct+'%)',nNum_(gstAmt)],
         ];
         doc.setFontSize(8.5);
         sumRows.forEach(([l,v])=>{
@@ -836,7 +857,12 @@
         doc.text('IMPORTANT NOTES:',M,y);
         y+=2;
         doc.setFontSize(8);
-        const notesLines=doc.splitTextToSize(String(d.importantNotes||''),W-4);
+        // GM/CEO and MD approval remarks, one line each.
+        const poSigs=d.signatures||{};
+        const sigRemark_=s=>String((s&&(s.remarks||s.comment))||'').trim();
+        const notesLines=[]
+            .concat(doc.splitTextToSize('GM / CEO: '+(sigRemark_(poSigs.gmCeo)||'—'),W-4))
+            .concat(doc.splitTextToSize('MD: '+(sigRemark_(poSigs.md)||'—'),W-4));
         const notesH=Math.max(8,notesLines.length*3.6+3);
         doc.setFillColor(255,242,0);doc.rect(M,y,W,notesH,'F');
         doc.setDrawColor(212,184,0);doc.setLineWidth(0.3);doc.rect(M,y,W,notesH);
@@ -1080,6 +1106,29 @@
         return rows;
     }
 
+    // Every Purchase Requirement a PO was built from, with its PDF link.
+    // Requirement numbers come from the PO's own lines, falling back to the
+    // comma-separated linked_req_nos column on the PO header.
+    async function fetchLinkedPrPdfs(po){
+        try{
+            let reqNos = [];
+            const lq = await SB.from('purchase_order_lines').select('req_no').eq('purchase_order_id', po.id);
+            if(!lq.error) reqNos = [...new Set((lq.data||[]).map(l=>l.req_no).filter(Boolean))];
+            if(!reqNos.length && po.linked_req_nos){
+                reqNos = String(po.linked_req_nos).split(',').map(s=>s.trim()).filter(Boolean);
+            }
+            if(!reqNos.length) return [];
+            const urlByReq = {};
+            const pq = await SB.from('pdf_documents').select('document_no,public_url')
+                .eq('document_type','REQUIREMENT').in('document_no', reqNos);
+            if(!pq.error)(pq.data||[]).forEach(p=>{ if(p.public_url) urlByReq[p.document_no] = p.public_url; });
+            return reqNos.map(reqNo=>({reqNo, url: urlByReq[reqNo] || ''}));
+        }catch(e){
+            console.warn('[MOBILE] Linked PR lookup skipped:', e.message||e);
+            return [];
+        }
+    }
+
     async function fetchItems(record){
         if(currentModule === 'PR'){
             const {data, error} = await SB.from('purchase_requirement_lines')
@@ -1200,6 +1249,17 @@
             : `<strong>Requested By:</strong> ${escText(entry.requested_by||'-')} | <strong>Priority:</strong> ${escText(entry.priority||'Normal')}`;
         if(entry.pdf_url) metaHtml += `<br><a href="${escText(entry.pdf_url)}" target="_blank" rel="noopener" style="display:block;margin-top:8px;padding:9px;text-align:center;background:#eff6ff;border:1px solid #93c5fd;border-radius:6px;color:#1d4ed8;font-weight:700;font-size:0.85rem;text-decoration:none;">📄 View Updated PDF (with latest signatures)</a>`;
         else if(currentModule === 'PR') metaHtml += `<br><span style="display:block;margin-top:8px;font-size:0.75rem;color:#94a3b8;">PDF not generated yet.</span>`;
+        // For a PO, also link every Purchase Requirement PDF it was built from.
+        if(currentModule === 'PO'){
+            const prLinks = await fetchLinkedPrPdfs(entry);
+            if(prLinks.length){
+                metaHtml += `<div style="margin-top:8px;font-size:0.75rem;font-weight:700;color:#475569;">Linked Purchase Requirement(s):</div>`
+                    + prLinks.map(p => p.url
+                        ? `<a href="${escText(p.url)}" target="_blank" rel="noopener" style="display:block;margin-top:5px;padding:8px;text-align:center;background:#f0fdf4;border:1px solid #86efac;border-radius:6px;color:#166534;font-weight:700;font-size:0.8rem;text-decoration:none;">📋 ${escText(p.reqNo)} — View PR PDF</a>`
+                        : `<span style="display:block;margin-top:5px;padding:8px;text-align:center;background:#f8fafc;border:1px dashed #cbd5e1;border-radius:6px;color:#94a3b8;font-size:0.8rem;">📋 ${escText(p.reqNo)} — PDF not available</span>`
+                      ).join('');
+            }
+        }
         document.getElementById('modal-meta-info').innerHTML = metaHtml;
 
         const rateHeader = document.getElementById('rate-col-header');
@@ -1251,6 +1311,13 @@
         discHeader.style.display = showRateColumn ? '' : 'none';
 
         renderItemRows(items, currentItemRates, currentModule === 'PR' ? approvedIdx : -1, showRateColumn, currentItemDiscs);
+
+        // GM/CEO must set the Delivery Date while approving a PO.
+        const dlvGroup = document.getElementById('deliveryDateGroup');
+        const dlvInput = document.getElementById('deliveryDateInput');
+        const needsDeliveryDate = currentModule === 'PO' && myStage === 'gmCeo';
+        dlvGroup.style.display = needsDeliveryDate ? 'block' : 'none';
+        dlvInput.value = entry.delivery_date || '';
 
         document.getElementById('remarksInput').value = '';
         clearSignature();
@@ -1318,27 +1385,30 @@
         }catch(e){ console.warn('[MOBILE] PR PDF regen failed (approval still saved):', e); }
     }
 
-    async function approvePO(po, stage, sig){
+    async function approvePO(po, stage, sig, deliveryDate){
         const newApprovals = {...(po.approvals||{}), [stage]: sig};
         const newStatus = STAGE_RESULT_STATUS[stage];
+        const effDeliveryDate = deliveryDate || po.delivery_date;
         const lq = await SB.from('purchase_order_lines').select('*').eq('purchase_order_id', po.id).order('line_no');
         if(lq.error) throw lq.error;
         const lines = lq.data || [];
         const d = {
-            poNo: po.po_no, poDate: po.po_date, deliveryDate: po.delivery_date,
+            poNo: po.po_no, poDate: po.po_date, deliveryDate: effDeliveryDate,
             vendorName: po.vendor_name, vendorMail: po.vendor_mail, vendorContact: po.vendor_contact, vendorAddress: po.vendor_address,
             paymentTerms: po.payment_terms, locationContact: '', freight: po.freight, otherExpense: po.other_expense,
             otherExpenseLabel: 'Labour Other Exp.', gstPercent: po.gst_percent, grandTotal: po.grand_total,
-            importantNotes: po.important_notes,
             items: lines.map(l=>({
                 reqNo: l.req_no, itemName: l.item_name, itemDesc: l.item_description, make: l.make,
                 qty: l.ordered_qty, uom: l.uom, unitPrice: l.unit_price, discountPercent: l.discount_pct||0,
-                netUnitPrice: l.unit_price, total: l.line_total, grossWeight: 0,
+                netUnitPrice: l.unit_price, total: l.line_total, grossWeight: l.gross_weight||0,
+                billBasis: l.bill_basis||'QTY', taxPct: l.tax_pct||0,
             })),
             signatures: newApprovals,
         };
 
-        const updErr = await SB.from('purchase_orders').update({status:newStatus, approvals:newApprovals}).eq('id', po.id);
+        const poUpdate = {status:newStatus, approvals:newApprovals};
+        if(deliveryDate) poUpdate.delivery_date = deliveryDate;
+        const updErr = await SB.from('purchase_orders').update(poUpdate).eq('id', po.id);
         if(updErr.error) throw updErr.error;
 
         try{
@@ -1430,11 +1500,11 @@
             vendorName: po.vendor_name, vendorMail: po.vendor_mail, vendorContact: po.vendor_contact, vendorAddress: po.vendor_address,
             paymentTerms: po.payment_terms, locationContact: '', freight: po.freight, otherExpense: po.other_expense,
             otherExpenseLabel: 'Labour Other Exp.', gstPercent: po.gst_percent, grandTotal: po.grand_total,
-            importantNotes: po.important_notes,
             items: lines.map(l=>({
                 reqNo: l.req_no, itemName: l.item_name, itemDesc: l.item_description, make: l.make,
                 qty: l.ordered_qty, uom: l.uom, unitPrice: l.unit_price, discountPercent: l.discount_pct||0,
-                netUnitPrice: l.unit_price, total: l.line_total, grossWeight: 0,
+                netUnitPrice: l.unit_price, total: l.line_total, grossWeight: l.gross_weight||0,
+                billBasis: l.bill_basis||'QTY', taxPct: l.tax_pct||0,
             })),
             signatures: newApprovals,
         };
@@ -1538,11 +1608,11 @@
             vendorName: po.vendor_name, vendorMail: po.vendor_mail, vendorContact: po.vendor_contact, vendorAddress: po.vendor_address,
             paymentTerms: po.payment_terms, locationContact: '', freight: po.freight, otherExpense: po.other_expense,
             otherExpenseLabel: 'Labour Other Exp.', gstPercent: po.gst_percent, grandTotal: po.grand_total,
-            importantNotes: po.important_notes,
             items: lines.map(l=>({
                 reqNo: l.req_no, itemName: l.item_name, itemDesc: l.item_description, make: l.make,
                 qty: l.ordered_qty, uom: l.uom, unitPrice: l.unit_price, discountPercent: l.discount_pct||0,
-                netUnitPrice: l.unit_price, total: l.line_total, grossWeight: 0,
+                netUnitPrice: l.unit_price, total: l.line_total, grossWeight: l.gross_weight||0,
+                billBasis: l.bill_basis||'QTY', taxPct: l.tax_pct||0,
             })),
             signatures: newApprovals,
         };
@@ -1580,13 +1650,19 @@
             alert('Please select the approved vendor before approving.');
             return;
         }
+        // Delivery Date is mandatory for the GM/CEO stage of a PO.
+        let deliveryDate = null;
+        if(currentModule === 'PO' && myStage === 'gmCeo'){
+            deliveryDate = document.getElementById('deliveryDateInput').value;
+            if(!deliveryDate) { alert('Please set the Delivery Date before approving.'); return; }
+        }
         const remarks = document.getElementById('remarksInput').value;
         const sig = { name: canvas.toDataURL('image/png'), time: pStamp(), remarks };
         document.getElementById('approveBtn').disabled = true;
         setBusy(true, 'Saving signature & regenerating PDF...');
         try{
             if(currentModule === 'PR') await approvePR(currentEntry, myStage, sig, selectedVendorIndex);
-            else await approvePO(currentEntry, myStage, sig);
+            else await approvePO(currentEntry, myStage, sig, deliveryDate);
             closeModal();
             await renderList();
         }catch(e){
