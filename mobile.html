@@ -434,6 +434,7 @@
                     <option value="">-- Select Role --</option>
                     <option value="gmCeo">GM / CEO</option>
                     <option value="md">MD</option>
+                    <option value="purchaser">Purchaser</option>
                     <option value="vendor">Vendor Verified</option>
                 </select>
             </div>
@@ -441,6 +442,14 @@
                 <label>Vendor Name</label>
                 <select id="loginVendor" class="form-select">
                     <option value="">-- Select Vendor --</option>
+                </select>
+            </div>
+            <!-- Populated from the purchasers who actually have a PIN set; an
+                 Admin sets those in STORE.html > Settings > Change Passwords. -->
+            <div class="form-group" id="loginPurchaserGroup" style="display:none;">
+                <label>Purchaser Name</label>
+                <select id="loginPurchaser" class="form-select">
+                    <option value="">-- Select Purchaser --</option>
                 </select>
             </div>
             <div class="form-group">
@@ -476,8 +485,8 @@
     </div>
 
     <div class="module-selector">
-        <div class="module-btn active" onclick="switchModule('PR')">Purchase Requirements</div>
-        <div class="module-btn" onclick="switchModule('PO')">Purchase Orders</div>
+        <div class="module-btn active" id="moduleBtnPR" onclick="switchModule('PR')">Purchase Requirements</div>
+        <div class="module-btn" id="moduleBtnPO" onclick="switchModule('PO')">Purchase Orders</div>
     </div>
 
     <div class="tabs">
@@ -514,6 +523,38 @@
                     <tbody id="modal-item-tbody">
                     </tbody>
                 </table>
+            </div>
+
+            <!-- Vendor Rate & Info — the same V1..V4 quote grid as STORE.html's
+                 popup, laid out for a phone. Only shown at the PR GM/CEO stage,
+                 which is where a Purchaser signs. Saving it fills the Approved
+                 Vendor dropdown below. -->
+            <div id="vendorInfoPanel" style="display:none; margin-bottom:12px; border:1px solid #d7dde5; border-radius:8px; overflow:hidden;">
+                <div id="vendorInfoToggle" style="display:flex; align-items:center; justify-content:space-between; gap:8px; padding:10px 12px; background:#fff7e6; cursor:pointer; font-weight:700; font-size:0.85rem;">
+                    <span>&#128176; Vendor Rate &amp; Info</span>
+                    <span id="vendorInfoChevron">&#9662;</span>
+                </div>
+                <div id="vendorInfoBody" style="display:none; padding:10px 12px; background:#fff;">
+                    <div style="font-size:0.72rem; color:#6b7280; margin-bottom:8px;">
+                        Vendor chunein aur har item ka rate / discount bharein, phir Save Vendor Info dabayein.
+                        Uske baad neeche Approved Vendor select karke sign kar sakte hain.
+                    </div>
+                    <!-- Shown once quotes are saved: this form is one-shot from a phone. -->
+                    <div id="viLockedNote" style="display:none; background:#fff7e6; border:1px solid #fcd34d; border-radius:6px; padding:8px 10px; margin-bottom:8px; font-size:0.72rem; color:#92400e; font-weight:600;">
+                        &#128274; Vendor info save ho chuki hai. Ise ab sirf <b>STORE.html</b> (desktop) ke &#128176; Vendor Rate &amp; Info popup se badla ja sakta hai.
+                        Neeche <b>Approved Vendor</b> select karke sign kar sakte hain.
+                    </div>
+                    <div id="viVendorRows"></div>
+                    <label style="font-size:0.8rem; font-weight:600; margin:10px 0 6px; display:block;">Item Rates</label>
+                    <div class="table-container">
+                        <table class="item-table" id="viRateTable">
+                            <thead><tr id="viRateHead"></tr></thead>
+                            <tbody id="viRateBody"></tbody>
+                        </table>
+                    </div>
+                    <div class="err-banner" id="viError" style="display:none;"></div>
+                    <button class="btn" id="viSaveBtn" style="margin-top:10px;">&#128190; Save Vendor Info</button>
+                </div>
             </div>
 
             <div class="form-group" id="vendorSelectGroup" style="display:none;">
@@ -776,9 +817,13 @@
 
         const sigs=d.signatures||{};
         const segW=W/4;
+        // A Purchaser signs the PR's GM/CEO stage, so the column carries their
+        // own name — sig.signedBy is set in approveEntry() when that happens.
+        // Printing "GM / CEO" there would credit a signature nobody gave.
+        const gmCeoLabel=String((sigs.gmCeo&&sigs.gmCeo.signedBy)||'').trim()||'GM / CEO';
         const sigCols=[
             {label:'Store Incharge',sign:sigs.store},
-            {label:'GM / CEO',sign:sigs.gmCeo},
+            {label:gmCeoLabel,sign:sigs.gmCeo},
             {label:'MD',sign:sigs.md},
             {label:'Vendor Verified',sign:sigs.vendor},
         ];
@@ -1061,9 +1106,22 @@
     const STAGE_LABEL = {gmCeo:'GM / CEO', md:'MD', vendor:'Vendor Verified'};
     const STAGE_ROLE_PIN = {gmCeo:'USER_GM_PIN', md:'USER_MD_PIN', vendor:'VENDOR_VERIFY_PIN'};
     const STAGE_RESULT_STATUS = {gmCeo:'GM/CEO Approved', md:'MD Approved', vendor:'Vendor Verified'};
+    /* What to call the signed-in user on screen. A Purchaser signs at the
+       gmCeo stage, so STAGE_LABEL alone would call them "GM / CEO". */
+    function myStageLabel(){
+        return myPurchaserName ? ('Purchaser ('+myPurchaserName+')') : (STAGE_LABEL[myStage]||'');
+    }
 
     let myStage = null;         // 'gmCeo' | 'md' | 'vendor'
     let myVendorName = null;    // selected Supplier Master name, only when myStage === 'vendor'
+    /* A Purchaser signs the GM/CEO approval — that signature is what releases a
+       PR for PO generation, so myStage is set to 'gmCeo' and every piece of
+       approval-chain logic below works unchanged. What makes a Purchaser
+       different is scope, held separately here: they see only the PRs booked
+       against their own name, and no Purchase Orders at all.
+       approvals.gmCeo records who actually signed, so the audit trail never
+       claims the GM/CEO pressed the button. */
+    let myPurchaserName = null;
     const MOBILE_LOGIN_STORAGE_KEY = 'sarv_mobile_login';
     let currentModule = 'PR';
     let currentTab = 'pending';
@@ -1094,19 +1152,45 @@
             });
         }catch(e){ console.warn('[MOBILE] Vendor list load failed:', e.message||e); }
     }
+    async function loadLoginPurchaserOptions(){
+        const sel = document.getElementById('loginPurchaser');
+        if(!sel) return;
+        sel.innerHTML = '<option value="">-- Select Purchaser --</option>';
+        try{
+            const q = await SB.rpc('list_purchasers_with_pin');
+            if(q.error) throw q.error;
+            const rows = q.data || [];
+            if(!rows.length){
+                sel.innerHTML = '<option value="">-- Kisi purchaser ka PIN set nahi hai --</option>';
+                return;
+            }
+            rows.forEach(r=>{
+                const name = typeof r === 'string' ? r : r.purchaser_name;
+                if(!name) return;
+                const opt = document.createElement('option');
+                opt.value = name; opt.textContent = name;
+                sel.appendChild(opt);
+            });
+        }catch(e){ console.warn('[MOBILE] Purchaser list load failed:', e.message||e); }
+    }
     document.getElementById('loginRole').addEventListener('change', function(){
         const isVendor = this.value === 'vendor';
+        const isPurchaser = this.value === 'purchaser';
         document.getElementById('loginVendorGroup').style.display = isVendor ? 'block' : 'none';
+        document.getElementById('loginPurchaserGroup').style.display = isPurchaser ? 'block' : 'none';
         if(isVendor) loadLoginVendorOptions();
+        if(isPurchaser) loadLoginPurchaserOptions();
     });
     async function attemptLogin(){
         const role = document.getElementById('loginRole').value;
         const vendorName = document.getElementById('loginVendor').value;
+        const purchaserName = document.getElementById('loginPurchaser').value;
         const pin = document.getElementById('loginPin').value;
         const err = document.getElementById('loginError');
         err.style.display = 'none';
         if(!role){ err.textContent = 'Role select karo'; err.style.display='block'; return; }
         if(role==='vendor' && !vendorName){ err.textContent = 'Vendor Name select karo'; err.style.display='block'; return; }
+        if(role==='purchaser' && !purchaserName){ err.textContent = 'Purchaser Name select karo'; err.style.display='block'; return; }
         if(!pin){ err.textContent = 'PIN enter karo'; err.style.display='block'; return; }
         try{
             // PINs are compared on the server — no pin_hash is ever sent to
@@ -1122,22 +1206,33 @@
                 if(v.error) throw v.error;
                 verified = !!v.data;
             }else{
-                const roleKey = STAGE_ROLE_PIN[role];
+                // Each purchaser has their own role_pins row, so one
+                // purchaser's PIN cannot open another purchaser's list.
+                const roleKey = role==='purchaser' ? ('PURCHASER::'+purchaserName) : STAGE_ROLE_PIN[role];
                 const e1 = await SB.rpc('role_pin_exists', { p_role: roleKey });
                 if(e1.error) throw e1.error;
                 exists = !!e1.data;
-                if(!exists){ err.textContent = 'Is role ke liye PIN set nahi hai — pehle desktop app ke Settings > Change Passwords me set karo.'; err.style.display='block'; return; }
+                if(!exists){
+                    err.textContent = role==='purchaser'
+                        ? ('"'+purchaserName+'" ka PIN set nahi hai — desktop app ke Settings > Change Passwords me set karo.')
+                        : 'Is role ke liye PIN set nahi hai — pehle desktop app ke Settings > Change Passwords me set karo.';
+                    err.style.display='block'; return;
+                }
                 const v = await SB.rpc('verify_role_pin', { p_role: roleKey, p_pin: pin });
                 if(v.error) throw v.error;
                 verified = !!v.data;
             }
             if(!verified){ err.textContent = 'Galat PIN'; err.style.display='block'; return; }
-            myStage = role;
+            // A Purchaser signs at the GM/CEO stage — see myPurchaserName above.
+            myStage = role==='purchaser' ? 'gmCeo' : role;
             myVendorName = role==='vendor' ? vendorName : null;
-            document.getElementById('roleBadge').textContent = STAGE_LABEL[role] + (myVendorName?' — '+myVendorName:'') + ' ⏻';
+            myPurchaserName = role==='purchaser' ? purchaserName : null;
+            applyPurchaserScope();
+            document.getElementById('roleBadge').textContent =
+                (myPurchaserName ? 'Purchaser — '+myPurchaserName : STAGE_LABEL[myStage] + (myVendorName?' — '+myVendorName:'')) + ' ⏻';
             document.getElementById('loginScreen').style.display = 'none';
             document.getElementById('loginPin').value = '';
-            try{localStorage.setItem(MOBILE_LOGIN_STORAGE_KEY, JSON.stringify({stage:myStage, vendorName:myVendorName}));}catch(e){}
+            try{localStorage.setItem(MOBILE_LOGIN_STORAGE_KEY, JSON.stringify({stage:myStage, vendorName:myVendorName, purchaserName:myPurchaserName}));}catch(e){}
             renderList();
         }catch(e){
             if(/does not exist|relation/i.test(e.message||'')) err.textContent = '⚠️ role_pins / suppliers table missing — migration run karein';
@@ -1145,16 +1240,35 @@
             err.style.display = 'block';
         }
     }
+    /* A Purchaser deals only in Purchase Requirements, so the Purchase Orders
+       module button is removed rather than just hidden — nothing can switch to
+       a module whose button isn't there. Called on login and on restore. */
+    function applyPurchaserScope(){
+        const poBtn = document.getElementById('moduleBtnPO');
+        if(poBtn) poBtn.style.display = myPurchaserName ? 'none' : '';
+        if(myPurchaserName){
+            currentModule = 'PR';
+            const prBtn = document.getElementById('moduleBtnPR');
+            if(prBtn) prBtn.classList.add('active');
+            if(poBtn) poBtn.classList.remove('active');
+        }
+    }
     function logoutRole(){
         myStage = null;
         myVendorName = null;
+        myPurchaserName = null;
+        applyPurchaserScope();
         try{localStorage.removeItem(MOBILE_LOGIN_STORAGE_KEY);}catch(e){}
         document.getElementById('loginRole').value = '';
         document.getElementById('loginVendorGroup').style.display = 'none';
+        document.getElementById('loginPurchaserGroup').style.display = 'none';
         document.getElementById('loginVendor').innerHTML = '<option value="">-- Select Vendor --</option>';
+        document.getElementById('loginPurchaser').innerHTML = '<option value="">-- Select Purchaser --</option>';
         document.getElementById('loginScreen').style.display = 'flex';
     }
     document.getElementById('loginBtn').addEventListener('click', attemptLogin);
+    document.getElementById('vendorInfoToggle')?.addEventListener('click', toggleVendorInfo);
+    document.getElementById('viSaveBtn')?.addEventListener('click', () => saveVendorInfoMobile());
     document.getElementById('loginPin').addEventListener('keydown', e=>{ if(e.key==='Enter') attemptLogin(); });
     // Restore a previous login so the PIN isn't asked again on every reload —
     // only an explicit Logout (logoutRole, via the role badge) clears it.
@@ -1166,7 +1280,12 @@
             if(!saved || !saved.stage || !STAGE_LABEL[saved.stage]) return;
             myStage = saved.stage;
             myVendorName = saved.stage==='vendor' ? (saved.vendorName||null) : null;
-            document.getElementById('roleBadge').textContent = STAGE_LABEL[myStage] + (myVendorName?' — '+myVendorName:'') + ' ⏻';
+            // A restored Purchaser session is a gmCeo stage plus a name; the
+            // name is what keeps the scope narrow across a reload.
+            myPurchaserName = saved.purchaserName || null;
+            applyPurchaserScope();
+            document.getElementById('roleBadge').textContent =
+                (myPurchaserName ? 'Purchaser — '+myPurchaserName : STAGE_LABEL[myStage] + (myVendorName?' — '+myVendorName:'')) + ' ⏻';
             document.getElementById('loginScreen').style.display = 'none';
             renderList();
         }catch(e){}
@@ -1180,6 +1299,9 @@
 
     // ── Module / tab switching ───────────────────────────────────
     function switchModule(module) {
+        // Belt and braces: the PO button is removed for a Purchaser, but a
+        // stale click target must not be able to open that module either.
+        if(myPurchaserName && module !== 'PR') return;
         currentModule = module;
         document.querySelectorAll('.module-btn').forEach(btn => btn.classList.remove('active'));
         event.target.classList.add('active');
@@ -1216,6 +1338,12 @@
         }
         if(myStage === 'vendor' && myVendorName && currentModule === 'PO'){
             q = q.ilike('vendor_name', myVendorName);
+        }
+        // A Purchaser only ever sees the PRs booked against their own name.
+        // purchaser_name is the "Purchaser Name" dropdown on the New PR form —
+        // NOT requested_by, which is whichever employee raised the requirement.
+        if(myPurchaserName && currentModule === 'PR'){
+            q = q.eq('purchaser_name', myPurchaserName);
         }
         const {data, error} = await q;
         if(error){ console.error(error); return []; }
@@ -1410,7 +1538,7 @@
             ? rows.length + ' of ' + listCache.length + ' shown' : '';
 
         if(listCache.length === 0) {
-            listDiv.innerHTML = `<p class="empty-msg">No ${currentTab} ${currentModule}s waiting on ${STAGE_LABEL[myStage]}.</p>`;
+            listDiv.innerHTML = `<p class="empty-msg">No ${currentTab} ${currentModule}s waiting on ${myStageLabel()}.</p>`;
             return;
         }
         if(rows.length === 0) {
@@ -1442,9 +1570,9 @@
             if(item.pdf_url) html += `<a class="pdf-link" href="${escText(item.pdf_url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">📄 View Updated PDF</a>`;
 
             if(currentTab === 'completed') {
-                html += `<div class="status-tag">✔ Signed by ${escText(STAGE_LABEL[myStage])}</div>`;
+                html += `<div class="status-tag">✔ Signed by ${escText(myStageLabel())}</div>`;
             } else {
-                html += `<div class="stage-tag">Waiting on ${escText(STAGE_LABEL[myStage])}</div>`;
+                html += `<div class="stage-tag">Waiting on ${escText(myStageLabel())}</div>`;
             }
             card.innerHTML = html;
             if(currentTab === 'completed' && canCancelApproval(item)){
@@ -1478,6 +1606,271 @@
     let currentItemDiscs = [];         // per-item {V1,V2,V3,V4} discount% aligned with rendered item rows (PR)
     let selectedVendorIndex = -1;      // GM/CEO's in-progress pick (-1 = none yet)
 
+    /* ── Vendor Rate & Info (mobile) ──────────────────────────────
+       STORE.html has this as a desktop popup; without it here a Purchaser
+       could only pick between vendors somebody else had already entered, and
+       a PR with no quotes on it could never be moved forward from a phone.
+
+       It writes exactly the shape saveVendorInfo() writes in STORE.html —
+       pdf_snapshot.vendors[] plus per-item rates/discounts keyed V1..V4 —
+       because approvePR(), the PR PDF and the PO builder all read that shape.
+       The Store In-charge's own signature (signatures.store) is deliberately
+       left untouched: it belongs to that person's pad, not to this screen. */
+    const VI_SLOTS = ['V1','V2','V3','V4'];
+    let viSuppliers = [];       // Supplier Master, for the vendor dropdowns
+    let viLines = [];           // RAW requirement lines (line.id, machine, gross_weight)
+    // fetchItems()' flattened view of the same lines, which is what
+    // renderItemRows() draws. Kept apart from viLines on purpose: the two
+    // shapes are different and mixing them silently renders blank rows.
+    let viDisplayItems = [];
+
+    async function loadViSuppliers(){
+        if(viSuppliers.length) return viSuppliers;
+        try{
+            const q = await SB.from('suppliers')
+                .select('id,supplier_name,email,phone').order('supplier_name');
+            if(q.error) throw q.error;
+            viSuppliers = q.data || [];
+        }catch(e){ console.warn('[MOBILE] Supplier list load failed:', e.message||e); }
+        return viSuppliers;
+    }
+    function viFindSupplier(name){
+        const n = String(name||'').trim().toUpperCase();
+        return viSuppliers.find(s => String(s.supplier_name||'').trim().toUpperCase() === n) || null;
+    }
+    function viSupplierOptions(selectedName){
+        const matched = selectedName && viFindSupplier(selectedName);
+        let html = '<option value="">-- Select Supplier --</option>';
+        // A name saved before it existed in Supplier Master still has to show,
+        // otherwise opening the form would silently drop it.
+        if(selectedName && !matched){
+            html += `<option value="${escText(selectedName)}" selected>${escText(selectedName)} (not in Supplier Master)</option>`;
+        }
+        html += viSuppliers.map(s =>
+            `<option value="${escText(s.supplier_name)}"${matched && s.id===matched.id ? ' selected' : ''}>${escText(s.supplier_name)}</option>`
+        ).join('');
+        return html;
+    }
+
+    async function renderVendorInfoForm(entry){
+        const panel = document.getElementById('vendorInfoPanel');
+        if(!panel) return;
+        await loadViSuppliers();
+        // The RAW requirement lines, not fetchItems()' flattened view: the
+        // snapshot this form writes needs line.id, machine and gross_weight,
+        // and those are dropped by the flattening.
+        const lq = await SB.from('purchase_requirement_lines')
+            .select('*, items(name,description,make,category,uom)')
+            .eq('requirement_id', entry.id).order('id');
+        if(lq.error){ console.error(lq.error); return; }
+        viLines = lq.data || [];
+        const snap = entry.pdf_snapshot || {};
+        const vendors = (snap.vendors && snap.vendors.length === 4) ? snap.vendors : [{},{},{},{}];
+
+        document.getElementById('viVendorRows').innerHTML = VI_SLOTS.map((v,i)=>{
+            const info = vendors[i] || {};
+            return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+                <span style="flex:0 0 26px;font-weight:800;font-size:0.8rem;color:#6b7280;">${v}</span>
+                <select class="form-select vi-vendor-name" data-slot="${i}" style="flex:1;min-width:0;font-size:0.8rem;padding:6px;">${viSupplierOptions(info.name)}</select>
+                <input class="form-select vi-vendor-remarks" data-slot="${i}" placeholder="Remarks" value="${escText(info.remarks||'')}" style="flex:0 0 90px;font-size:0.8rem;padding:6px;">
+            </div>`;
+        }).join('');
+
+        document.getElementById('viRateHead').innerHTML =
+            '<th style="min-width:110px;">Item</th>' +
+            VI_SLOTS.map(v=>`<th style="min-width:64px;">${v} Rate</th><th style="min-width:56px;">${v} %</th>`).join('');
+
+        // Snapshot items line up with the DB lines by position — the same
+        // convention approvePR() and STORE.html's saveVendorInfo() rely on.
+        const snapItems = snap.items || [];
+        document.getElementById('viRateBody').innerHTML = viLines.map((line,i)=>{
+            const rates = (snapItems[i] && snapItems[i].rates) || {};
+            const discs = (snapItems[i] && snapItems[i].discounts) || {};
+            const name = line.item_name || (line.items && line.items.name) || 'Item';
+            return `<tr data-row="${i}"><td style="font-size:0.72rem;">${escText(name)}<br><span style="color:#6b7280;">${pNumM(line.requested_qty)} ${escText(line.uom||(line.items&&line.items.uom)||'')}</span></td>` +
+                VI_SLOTS.map(v=>
+                    `<td><input type="number" class="form-select vi-rate" data-slot="${v}" min="0" step="0.01" value="${pNumM(rates[v]||0)}" style="width:62px;font-size:0.75rem;padding:4px;"></td>` +
+                    `<td><input type="number" class="form-select vi-disc" data-slot="${v}" min="0" max="100" step="0.01" value="${pNumM(discs[v]||0)}" style="width:54px;font-size:0.75rem;padding:4px;"></td>`
+                ).join('') + '</tr>';
+        }).join('');
+
+        // Picking a supplier is all the contact detail this form needs; email
+        // and phone are copied from Supplier Master at save time.
+        panel.style.display = 'block';
+        document.getElementById('viError').style.display = 'none';
+        // Vendor rates are entered once from a phone. After that the figures
+        // are what a PO is priced on, so correcting them is a desk job in
+        // STORE.html, where the full popup and the audit trail live.
+        setVendorInfoLocked(vendors.some(v => v && String(v.name||'').trim()));
+    }
+
+    /* Freezes the Vendor Rate & Info form once quotes are on the PR. Nothing
+       here is a security control — the lock is about keeping one authoritative
+       place to correct rates, not about trust. */
+    function setVendorInfoLocked(locked){
+        const body = document.getElementById('vendorInfoBody');
+        if(!body) return;
+        body.querySelectorAll('select, input').forEach(el=>{
+            el.disabled = locked;
+            el.style.background = locked ? '#f1f5f9' : '';
+            el.style.cursor = locked ? 'not-allowed' : '';
+        });
+        const btn = document.getElementById('viSaveBtn');
+        if(btn){
+            btn.disabled = locked;
+            btn.style.opacity = locked ? '0.5' : '';
+            btn.style.cursor = locked ? 'not-allowed' : '';
+        }
+        const note = document.getElementById('viLockedNote');
+        if(note) note.style.display = locked ? 'block' : 'none';
+    }
+
+    function pNumM(v){ const n = Number(v); return isNaN(n) ? 0 : n; }
+
+    function toggleVendorInfo(){
+        const body = document.getElementById('vendorInfoBody');
+        const chev = document.getElementById('vendorInfoChevron');
+        if(!body) return;
+        const open = body.style.display !== 'none';
+        body.style.display = open ? 'none' : 'block';
+        if(chev) chev.innerHTML = open ? '&#9662;' : '&#9652;';
+    }
+
+    async function saveVendorInfoMobile(){
+        if(!currentEntry) return;
+        const err = document.getElementById('viError');
+        const show = m => { err.textContent = m; err.style.display = 'block'; };
+        err.style.display = 'none';
+        const btn = document.getElementById('viSaveBtn');
+
+        const vendors = VI_SLOTS.map((_,i)=>{
+            const sel = document.querySelector(`.vi-vendor-name[data-slot="${i}"]`);
+            const rem = document.querySelector(`.vi-vendor-remarks[data-slot="${i}"]`);
+            const name = (sel && sel.value || '').trim();
+            const sup = name ? viFindSupplier(name) : null;
+            return {
+                name,
+                email: (sup && sup.email) || '',
+                contact: (sup && sup.phone) || '',
+                remarks: (rem && rem.value || '').trim()
+            };
+        });
+        if(!vendors.some(v=>v.name)){ show('Kam se kam ek vendor select karein.'); return; }
+
+        const rowEls = [...document.querySelectorAll('#viRateBody tr')];
+        const ratesByRow = rowEls.map(tr=>{
+            const rates = {}, discounts = {};
+            VI_SLOTS.forEach(v=>{
+                rates[v] = pNumM(tr.querySelector(`.vi-rate[data-slot="${v}"]`)?.value);
+                discounts[v] = pNumM(tr.querySelector(`.vi-disc[data-slot="${v}"]`)?.value);
+            });
+            return {rates, discounts};
+        });
+
+        btn.disabled = true;
+        setBusy(true, 'Saving vendor info...');
+        try{
+            // Re-read the row first: the snapshot is rebuilt from it, and
+            // something else may have changed it since the modal opened.
+            const fresh = await SB.from('purchase_requirements').select('*').eq('id', currentEntry.id).single();
+            if(fresh.error) throw fresh.error;
+            const req = fresh.data;
+            const base = req.pdf_snapshot || {};
+            // Re-checked against what is actually stored, not against what the
+            // form was showing: if quotes landed while this modal sat open —
+            // from STORE.html or another phone — overwriting them here would
+            // silently discard someone else's work.
+            if((base.vendors||[]).some(v => v && String(v.name||'').trim())){
+                currentEntry.pdf_snapshot = base;
+                currentSnapshotVendors = base.vendors || [];
+                refreshApprovedVendorChoices();
+                setVendorInfoLocked(true);
+                show('Is PR par vendor info pehle se save hai — ise sirf STORE.html se badla ja sakta hai.');
+                return;
+            }
+            const d = {
+                ...base,
+                reqNo: req.req_no,
+                department: base.department || req.department,
+                requiredByDate: base.requiredByDate || req.required_by,
+                date: base.date || req.request_date,
+                priority: base.priority || req.priority,
+                personName: base.personName || req.requested_by,
+                empCode: base.empCode || req.employee_code,
+                purpose: base.purpose || req.purpose,
+                overallRemarks: base.overallRemarks || req.notes,
+                status: req.status,
+                items: viLines.map((line,i)=>({
+                    name: line.item_name || (line.items && line.items.name) || '',
+                    desc: line.specification || (line.items && line.items.description) || '',
+                    make: (line.items && line.items.make) || '',
+                    category: (line.items && line.items.category) || '',
+                    machine: line.machine || '',
+                    qty: line.requested_qty,
+                    uom: line.uom || (line.items && line.items.uom) || '',
+                    grossWeight: line.gross_weight || 0,
+                    rates: (ratesByRow[i] && ratesByRow[i].rates) || {},
+                    discounts: (ratesByRow[i] && ratesByRow[i].discounts) || {},
+                })),
+                vendors,
+                // approvals is the shared column; signatures mirrors it. The
+                // Store In-charge's pad signature rides along untouched.
+                signatures: {...(req.approvals||{}), ...(base.signatures && base.signatures.store ? {store: base.signatures.store} : {})},
+            };
+            const upd = await SB.from('purchase_requirements').update({pdf_snapshot:d}).eq('id', req.id);
+            if(upd.error) throw upd.error;
+
+            // Keep the open modal in step so the Approved Vendor dropdown can
+            // be filled straight away, without closing and reopening the PR.
+            currentEntry.pdf_snapshot = d;
+            currentSnapshotVendors = vendors;
+            // The item rows below show the chosen vendor's rate, so the arrays
+            // they read from have to move to the just-saved figures too.
+            currentItemRates = d.items.map(it => it.rates || {});
+            currentItemDiscs = d.items.map(it => it.discounts || {});
+            refreshApprovedVendorChoices();
+            // One-shot from a phone — freeze it the moment it lands.
+            setVendorInfoLocked(true);
+
+            try{
+                const blob = await buildRequirementNativePdfBlob(d);
+                const artifact = await uploadPdfArtifact(blob,'REQUIREMENT',req.req_no,'REQUIREMENT');
+                await indexPdfArtifact('REQUIREMENT', req.id, req.req_no, 'REQUIREMENT', artifact);
+            }catch(e){ console.warn('[MOBILE] PR PDF regen failed (vendor info still saved):', e); }
+
+            show('✅ Vendor info save ho gayi — ab neeche Approved Vendor select karke sign karein.');
+            err.style.background = '#e8f5e9'; err.style.color = '#1b5e20'; err.style.borderColor = '#a5d6a7';
+        }catch(e){
+            err.style.background = ''; err.style.color = ''; err.style.borderColor = '';
+            show('Error: ' + (e.message || e));
+        }finally{
+            setBusy(false);
+            btn.disabled = false;
+        }
+    }
+
+    /* Rebuilds the Approved Vendor dropdown from currentSnapshotVendors.
+       Shared by the modal's first render and by a Vendor Info save. */
+    function refreshApprovedVendorChoices(){
+        const vendorGroup = document.getElementById('vendorSelectGroup');
+        const vendorSelect = document.getElementById('vendorSelect');
+        if(!vendorGroup || !vendorSelect) return;
+        const options = currentSnapshotVendors
+            .map((v,i) => v && v.name ? {i, name:v.name} : null)
+            .filter(Boolean);
+        if(!options.length){ vendorGroup.style.display = 'none'; return; }
+        vendorGroup.style.display = 'block';
+        vendorSelect.innerHTML = '<option value="">-- Choose Vendor --</option>' +
+            options.map(o => `<option value="${o.i}">${escText(o.name)}</option>`).join('');
+        vendorSelect.onchange = () => {
+            selectedVendorIndex = vendorSelect.value === '' ? -1 : Number(vendorSelect.value);
+            // Re-render so the Rate / Disc% columns show the picked vendor's
+            // numbers rather than the previous vendor's.
+            renderItemRows(viDisplayItems, currentItemRates, selectedVendorIndex, true, currentItemDiscs);
+        };
+        selectedVendorIndex = -1;
+    }
+
     function renderItemRows(items, rates, forcedVendorIndex, showRateColumn, discs){
         const tbody = document.getElementById('modal-item-tbody');
         tbody.innerHTML = items.map((item,i) => {
@@ -1507,6 +1900,13 @@
     async function openModal(entry) {
         currentEntry = entry;
         selectedVendorIndex = -1;
+        // Hidden by default and collapsed; only the PR GM/CEO stage re-opens it.
+        const viPanel = document.getElementById('vendorInfoPanel');
+        if(viPanel) viPanel.style.display = 'none';
+        const viBody = document.getElementById('vendorInfoBody');
+        if(viBody) viBody.style.display = 'none';
+        const viChev = document.getElementById('vendorInfoChevron');
+        if(viChev) viChev.innerHTML = '&#9662;';
         const docNo = currentModule === 'PR' ? entry.req_no : entry.po_no;
         document.getElementById('modal-header-title').innerText = `${docNo} Details`;
 
@@ -1543,6 +1943,7 @@
         const tbody = document.getElementById('modal-item-tbody');
         tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#999;">Loading items...</td></tr>';
         const items = await fetchItems(entry);
+        viDisplayItems = items;
         // pdf_snapshot.items is always rebuilt from these same DB lines in
         // this same order (see approvePR / STORE.html's saveVendorInfo), so
         // index correspondence is safe here — same convention used there.
@@ -1551,19 +1952,12 @@
 
         let showRateColumn = false;
         if(currentModule === 'PR' && myStage === 'gmCeo'){
-            const options = currentSnapshotVendors
-                .map((v,i) => v && v.name ? {i, name:v.name} : null)
-                .filter(Boolean);
-            if(options.length){
-                showRateColumn = true;
-                vendorGroup.style.display = 'block';
-                vendorSelect.innerHTML = '<option value="">-- Choose Vendor --</option>' +
-                    options.map(o => `<option value="${o.i}">${escText(o.name)}</option>`).join('');
-                vendorSelect.onchange = () => {
-                    selectedVendorIndex = vendorSelect.value === '' ? -1 : Number(vendorSelect.value);
-                    renderItemRows(items, currentItemRates, selectedVendorIndex, true, currentItemDiscs);
-                };
-            }
+            // Vendor Rate & Info is editable at this stage, so a PR with no
+            // quotes on it yet can be filled in and moved forward from here —
+            // previously the vendor dropdown simply never appeared.
+            await renderVendorInfoForm(entry);
+            showRateColumn = true;
+            refreshApprovedVendorChoices();
         } else if(currentModule === 'PR' && approvedIdx >= 0){
             showRateColumn = true;
             const v = currentSnapshotVendors[approvedIdx] || {};
@@ -1904,7 +2298,7 @@
     async function cancelMyApproval(item){
         if(!canCancelApproval(item)) return;
         const docNo = currentModule === 'PR' ? item.req_no : item.po_no;
-        if(!confirm(`Cancel your ${STAGE_LABEL[myStage]} approval on ${docNo}? It will go back to pending for you.`)) return;
+        if(!confirm(`Cancel your ${myStageLabel()} approval on ${docNo}? It will go back to pending for you.`)) return;
         setBusy(true, 'Cancelling approval...');
         try{
             if(currentModule === 'PR') await cancelPRApproval(item);
@@ -1924,6 +2318,15 @@
             alert('Please select the approved vendor before approving.');
             return;
         }
+        // A Purchaser's approval is what releases the PR for PO generation, and
+        // a PO needs a vendor. Approving with no quotes filled would produce a
+        // PR that looks ready but can't become an order — so it is blocked
+        // here, where the form to fix it is one tap away. GM/CEO's existing
+        // behaviour is deliberately left as it was.
+        if(myPurchaserName && currentModule === 'PR' && !currentSnapshotVendors.some(v=>v&&v.name)) {
+            alert('Pehle "💰 Vendor Rate & Info" kholkar vendor aur rate bharein, phir Save Vendor Info dabayein — uske baad hi approve ho sakta hai.');
+            return;
+        }
         // Delivery Date is mandatory for the GM/CEO stage of a PO.
         let deliveryDate = null;
         if(currentModule === 'PO' && myStage === 'gmCeo'){
@@ -1932,6 +2335,10 @@
         }
         const remarks = document.getElementById('remarksInput').value;
         const sig = { name: canvas.toDataURL('image/png'), time: pStamp(), remarks };
+        // When a Purchaser signs the GM/CEO stage, the record says so. The
+        // approval still reads as gmCeo — that is what releases the PR for PO
+        // generation — but it must never look like the GM/CEO signed it.
+        if(myPurchaserName){ sig.signedBy = myPurchaserName; sig.signedAs = 'Purchaser'; }
         document.getElementById('approveBtn').disabled = true;
         setBusy(true, 'Saving signature & regenerating PDF...');
         try{
