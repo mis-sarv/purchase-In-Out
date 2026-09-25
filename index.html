@@ -3166,6 +3166,19 @@ body {
                                 <option value="VENDOR_VERIFY_PIN">Vendor Verified PIN (Mobile Approvals)</option>
                                 <option value="VIEW_PIN">View / Preview PIN</option>
                                 <option value="EDIT_PASSWORD">Edit Password (Record Edit)</option>
+                                <!-- One PIN per purchaser, keyed PURCHASER::<name>. These names must
+                                     match the "Purchaser Name" dropdown on the New PR form exactly —
+                                     that is what a PR is booked against and what the mobile
+                                     Purchaser login filters on. -->
+                                <optgroup label="&#128230; Purchaser PINs (Mobile Login)">
+                                    <option value="PURCHASER::Vishal ji">Purchaser &mdash; Vishal ji</option>
+                                    <option value="PURCHASER::Subdhesh ji">Purchaser &mdash; Subdhesh ji</option>
+                                    <option value="PURCHASER::Satinder Ji">Purchaser &mdash; Satinder Ji</option>
+                                    <option value="PURCHASER::Ankur ji">Purchaser &mdash; Ankur ji</option>
+                                    <option value="PURCHASER::Parkash ji">Purchaser &mdash; Parkash ji</option>
+                                    <option value="PURCHASER::Deepak Verma">Purchaser &mdash; Deepak Verma</option>
+                                    <option value="PURCHASER::Priya Verma">Purchaser &mdash; Priya Verma</option>
+                                </optgroup>
                             </select>
                         </div>
 
@@ -5995,7 +6008,7 @@ function addPurchaseMainRow(){
  refreshPurchaseTotals();
 }
 function refreshPurchaseTotals(){const rows=[...document.querySelectorAll('#p_itemTableBody tr')];let q=0;rows.forEach((r,i)=>{r.querySelector('.sr-cell').textContent=i+1;q+=+r.querySelector('.col-qty')?.value||0});if(byId('p_totalItemCount'))byId('p_totalItemCount').textContent=rows.length;if(byId('p_totalQty'))byId('p_totalQty').textContent=q}
-async function saveFullPurchaseRequirement(){if(!SB_READY)return showToast('Supabase URL/key configure karein','warn');const rows=[...document.querySelectorAll('#p_itemTableBody tr')].map(r=>({name:r.querySelector('.col-name')?.value,description:r.querySelector('.col-desc')?.value,make:r.querySelector('.col-make')?.value,category:r.querySelector('.col-cat')?.value,uom:r.querySelector('.col-uom')?.value,qty:+r.querySelector('.col-qty')?.value||0,specification:r.querySelector('.col-rem')?.value})).filter(x=>x.name&&x.qty>0);if(!rows.length)return showToast('At least one item required','warn');const no=await nextNo('REQ');const h=await SB.from('purchase_requirements').insert({req_no:no,request_date:byId('p_reqDate').value||today(),required_by:byId('p_requiredByDate').value||null,requested_by:byId('p_reqPersonName').value||byId('p_reqGeneratedBy').value||'Unknown',employee_code:byId('p_reqEmpCode').value||null,department:byId('p_reqDepartment').value||null,purpose:'Purchase requirement',priority:byId('p_priority').value||'Normal',notes:byId('p_overallRemarks').value||null}).select().single();if(h.error)throw h.error;const ls=[];for(const r of rows){const it=await ensureItem(r.name,r.description,r.make,r.category,r.uom);ls.push({requirement_id:h.data.id,item_id:it.id,specification:r.specification||r.description,requested_qty:r.qty,uom:r.uom||it.uom})}const ins=await SB.from('purchase_requirement_lines').insert(ls);if(ins.error)throw ins.error;showToast('Requirement saved: '+no);}
+async function saveFullPurchaseRequirement(){if(!SB_READY)return showToast('Supabase URL/key configure karein','warn');const rows=[...document.querySelectorAll('#p_itemTableBody tr')].map(r=>({name:r.querySelector('.col-name')?.value,description:r.querySelector('.col-desc')?.value,make:r.querySelector('.col-make')?.value,category:r.querySelector('.col-cat')?.value,uom:r.querySelector('.col-uom')?.value,qty:+r.querySelector('.col-qty')?.value||0,specification:r.querySelector('.col-rem')?.value})).filter(x=>x.name&&x.qty>0);if(!rows.length)return showToast('At least one item required','warn');const no=await nextNo('REQ');const h=await SB.from('purchase_requirements').insert({req_no:no,request_date:byId('p_reqDate').value||today(),required_by:byId('p_requiredByDate').value||null,requested_by:byId('p_reqPersonName').value||byId('p_reqGeneratedBy').value||'Unknown',purchaser_name:byId('p_reqGeneratedBy').value||null,employee_code:byId('p_reqEmpCode').value||null,department:byId('p_reqDepartment').value||null,purpose:'Purchase requirement',priority:byId('p_priority').value||'Normal',notes:byId('p_overallRemarks').value||null}).select().single();if(h.error)throw h.error;const ls=[];for(const r of rows){const it=await ensureItem(r.name,r.description,r.make,r.category,r.uom);ls.push({requirement_id:h.data.id,item_id:it.id,specification:r.specification||r.description,requested_qty:r.qty,uom:r.uom||it.uom})}const ins=await SB.from('purchase_requirement_lines').insert(ls);if(ins.error)throw ins.error;showToast('Requirement saved: '+no);}
 async function saveStoreInward(){if(!SB_READY)return showToast('Supabase URL/key configure karein','warn');const rows=[...document.querySelectorAll('#itemTableBody tr:not(.po-info-row)')].map(r=>({name:r.querySelector('.item-name')?.value,desc:r.querySelector('.item-desc')?.value,make:r.querySelector('.item-make')?.value,cat:r.querySelector('.item-cat')?.value,uom:r.querySelector('.item-uom')?.value,qty:+r.querySelector('.qty-field')?.value||0,weight:+r.querySelector('.weight-field')?.value||0,rate:+r.querySelector('.rate-field')?.value||0,tax:+r.querySelector('.item-gst-field')?.value||0})).filter(x=>x.name&&x.qty>0);if(!rows.length)return showToast('At least one inward item required','warn');const no=await nextNo('INWARD');const h=await SB.from('inward_entries').insert({document_no:no,entry_type:byId('entryTypeSelect')?.value||'INWARD',receiving_date:byId('receivingDate')?.value||today(),invoice_no:byId('invoiceNumber')?.value||null,invoice_date:byId('invoiceDate')?.value||null,party_state:byId('partyState')?.value||null,notes:byId('inwRemarks')?.value||null}).select().single();if(h.error)throw h.error;const ls=[];for(const r of rows){const it=await ensureItem(r.name,r.desc,r.make,r.cat,r.uom);ls.push({inward_id:h.data.id,item_id:it.id,qty:r.qty,uom:r.uom||it.uom,weight:r.weight,rate:r.rate,gst_pct:r.tax,line_total:r.qty*r.rate})}const ins=await SB.from('inward_lines').insert(ls);if(ins.error)throw ins.error;showToast('Inward saved: '+no)}
 async function saveStoreOutward(){if(!SB_READY)return showToast('Supabase URL/key configure karein','warn');const rows=[...document.querySelectorAll('#outwardItemTableBody tr')].map(r=>({name:r.querySelector('.out-item-name')?.value,desc:r.querySelector('.out-item-desc')?.value,make:r.querySelector('.out-item-make')?.value,cat:r.querySelector('.out-item-cat')?.value,uom:r.querySelector('.out-qty-uom')?.value,qty:+r.querySelector('.out-qty')?.value||0,weight:+r.querySelector('.out-weight')?.value||0})).filter(x=>x.name&&x.qty>0);if(!rows.length)return showToast('At least one outward item required','warn');const no=await nextNo('OUTWARD');const h=await SB.from('outward_entries').insert({document_no:no,entry_type:byId('outEntryTypeSelect')?.value||'OUTWARD',outward_date:byId('outDate')?.value||today(),party_name:byId('outPartyName')?.value||'Unknown',location:byId('outLocation')?.value||null,receiver_name:byId('outReceiverName')?.value||null,target_return_date:byId('outTargetReturnDate')?.value||null,gate_pass_no:byId('outGatePassNo')?.value||null,transport:byId('outTransport')?.value||null,notes:byId('outRemarks')?.value||null}).select().single();if(h.error)throw h.error;const ls=[];for(const r of rows){const it=await ensureItem(r.name,r.desc,r.make,r.cat,r.uom);ls.push({outward_id:h.data.id,item_id:it.id,qty:r.qty,uom:r.uom||it.uom,weight:r.weight})}const ins=await SB.from('outward_lines').insert(ls);if(ins.error)throw ins.error;showToast('Outward saved: '+no)}
 function bindOriginalControls(){
@@ -7162,10 +7175,23 @@ window.addMasterMachine=async function(){
   const btn=document.querySelector('#machineMasterSub .btn-primary');
   if(btn){btn.disabled=true;btn.textContent='⏳ Saving...';}
   try{
-    const chk=await SB.from('machines').select('id').eq('machine_no',no).maybeSingle();
-    if(chk.data){showToast(`⚠️ Machine No. "${no}" already exists!`,'warn');return;}
+    // A Machine No. may repeat across different machines — only the PAIR
+    // (Machine Name + Machine No.) has to be unique. Checking machine_no on
+    // its own used to reject perfectly valid second entries.
+    const chk=await SB.from('machines').select('id')
+      .ilike('machine_name',name).ilike('machine_no',no).limit(1);
+    if(chk.error)throw chk.error;
+    if((chk.data||[]).length){
+      showToast(`⚠️ "${name}" + "${no}" pehle se Machine List me hai!`,'warn');
+      return;
+    }
     const{error}=await SB.from('machines').insert({machine_name:name,machine_no:no,is_active:true});
-    if(error)throw error;
+    // The database enforces the same rule, so a race between two users still
+    // lands here rather than creating a duplicate pair.
+    if(error){
+      if(error.code==='23505'){showToast(`⚠️ "${name}" + "${no}" pehle se Machine List me hai!`,'warn');return;}
+      throw error;
+    }
     showToast(`✅ "${name}" (${no}) added to Machine Master!`);
     ['mm_machineName','mm_machineNo'].forEach(id=>{const e=byId(id);if(e)e.value='';});
     await loadMachineMaster();
@@ -8720,6 +8746,17 @@ window.addEventListener('DOMContentLoaded',()=>{
      +'.vendor-table td { height: 22px; }';
    const info=(l,v)=>'<td class="lbl">'+l+'</td><td class="val">'+pEsc(v)+'</td>';
    const sigs=d.signatures||(d.vendorSignature?{store:d.vendorSignature}:{});
+   /* Caption for the GM/CEO signature column on a PURCHASE REQUIREMENT.
+      A Purchaser signs at that stage from mobile.html, and the PR must then
+      carry their own name — printing "GM / CEO" over a Purchaser's signature
+      would put a signature on the document that nobody actually gave.
+      mobile.html writes sig.signedBy when a Purchaser approves; anything
+      signed by the GM/CEO has no such field and keeps the old caption.
+      PO signature footers are untouched — no Purchaser signs those. */
+   const prGmCeoLabel_=sign=>{
+     const by=String((sign&&sign.signedBy)||'').trim();
+     return by||'GM / CEO';
+   };
    const sigCellHtml=(label,sign)=>{
      const data=String((sign&&sign.name)||'').trim(),time=(sign&&sign.time)||'';
      let inner;
@@ -8749,7 +8786,7 @@ window.addEventListener('DOMContentLoaded',()=>{
      +'<table class="vendor-table"><thead><tr><th style="width:5%;">Sr No</th><th style="width:30%;">VENDOR NAME</th><th style="width:20%;">EMAIL_ID</th><th style="width:15%;">CONTACT</th><th style="width:30%;">REMARKS</th></tr></thead><tbody>'+vendorRows+'</tbody></table>'
      +'<table style="margin-top:26px;border-collapse:collapse;width:100%;"><tr>'
      +sigCellHtml('Store Incharge',sigs.store)
-     +sigCellHtml('GM / CEO',sigs.gmCeo)
+     +sigCellHtml(prGmCeoLabel_(sigs.gmCeo),sigs.gmCeo)
      +sigCellHtml('MD',sigs.md)
      +sigCellHtml('Vendor Verified',sigs.vendor)
      +'</tr></table>'
@@ -8877,9 +8914,12 @@ window.addEventListener('DOMContentLoaded',()=>{
    // approval chain feeds both PDFs identically.
    const sigs=d.signatures||(d.vendorSignature?{store:d.vendorSignature}:{});
    const segW=W/4;
+   // A Purchaser signing from mobile.html puts their own name on the GM/CEO
+   // column — same rule as the HTML variant, see prGmCeoLabel_ there.
+   const gmCeoLabel=String((sigs.gmCeo&&sigs.gmCeo.signedBy)||'').trim()||'GM / CEO';
    const sigCols=[
      {label:'Store Incharge',sign:sigs.store},
-     {label:'GM / CEO',sign:sigs.gmCeo},
+     {label:gmCeoLabel,sign:sigs.gmCeo},
      {label:'MD',sign:sigs.md},
      {label:'Vendor Verified',sign:sigs.vendor},
    ];
@@ -9788,7 +9828,11 @@ window.addEventListener('DOMContentLoaded',()=>{
    if(btn){btn.disabled=true;btn.innerHTML='⏳ Saving...';}
    if(overlay){setMsg(sarvEditingRequirementId?'Updating Requirement...':'Saving Requirement...');overlay.classList.add('active');}
    try{
-     const payload={request_date:pVal('p_reqDate')||today(),required_by:pVal('p_requiredByDate')||null,requested_by:pVal('p_reqPersonName')||pVal('p_reqGeneratedBy')||'Unknown',employee_code:pVal('p_reqEmpCode')||null,department:pVal('p_reqDepartment')||null,purpose:'Purchase requirement',priority:pVal('p_priority')||'Normal',notes:pVal('p_overallRemarks')||null};
+     // purchaser_name is its own column, NOT requested_by: requested_by is the
+     // employee who raised the requirement (anyone), while Purchaser Name is
+     // the buyer the PR is booked against. The mobile Purchaser login filters
+     // on this column, so it has to be stored, not just put in the PDF.
+     const payload={request_date:pVal('p_reqDate')||today(),required_by:pVal('p_requiredByDate')||null,requested_by:pVal('p_reqPersonName')||pVal('p_reqGeneratedBy')||'Unknown',purchaser_name:pVal('p_reqGeneratedBy')||null,employee_code:pVal('p_reqEmpCode')||null,department:pVal('p_reqDepartment')||null,purpose:'Purchase requirement',priority:pVal('p_priority')||'Normal',notes:pVal('p_overallRemarks')||null};
      let h,no;
      if(sarvEditingRequirementId){
        h=await SB.from('purchase_requirements').update(payload).eq('id',sarvEditingRequirementId).select().single();if(h.error)throw h.error;no=h.data.req_no;
@@ -9976,6 +10020,11 @@ window.addEventListener('DOMContentLoaded',()=>{
      const snapshot=req.pdf_snapshot||{};
      const approvedIdx=(snapshot.approvedVendorIndex!=null)?snapshot.approvedVendorIndex:-1;
      const approvedVendor=approvedIdx>=0?(snapshot.vendors&&snapshot.vendors[approvedIdx])||null:null;
+     // Has anyone put quotes on this PR yet — from STORE.html's popup or the
+     // Purchaser's mobile form? Drives the Vendor Info button's colour, so a
+     // PR still waiting for rates is distinguishable at a glance from one
+     // that has them but no approved vendor picked.
+     const vendorInfoFilled=(snapshot.vendors||[]).some(v=>v&&String(v.name||'').trim());
      const reqLines=(lq.data||[]).filter(line=>line.requirement_id===req.id);
      reqLines.forEach((line,index)=>{
        const item=itemMap.get(line.item_id)||{},name=line.item_name||line.name||item.name||'Item';
@@ -9988,7 +10037,7 @@ window.addEventListener('DOMContentLoaded',()=>{
        const approvedRate=(approvedVendor&&snapItem&&snapItem.rates)?pNum(snapItem.rates['V'+(approvedIdx+1)])||null:null;
        const approvedDiscount=(approvedVendor&&snapItem&&snapItem.discounts)?pNum(snapItem.discounts['V'+(approvedIdx+1)])||0:0;
        const poEligible=['GM/CEO Approved','MD Approved','Vendor Verified'].includes(req.status);
-       if(available>0&&String(req.status||'')!=='Cancelled')sarvPendingRequirements.push({req,line,item,name,requested,inPo,available,sr:index+1,prPdfUrl:prPdfMap[req.req_no]||'',approvedVendor,approvedRate,approvedDiscount,poEligible});
+       if(available>0&&String(req.status||'')!=='Cancelled')sarvPendingRequirements.push({req,line,item,name,requested,inPo,available,sr:index+1,prPdfUrl:prPdfMap[req.req_no]||'',approvedVendor,approvedRate,approvedDiscount,poEligible,vendorInfoFilled});
      });
    });
    renderPendingRequirementsTable();
@@ -10024,10 +10073,24 @@ window.addEventListener('DOMContentLoaded',()=>{
      const statusVal=x.req.status||'Pending',sc=statusColors[statusVal]||'#64748b';
      const statusBadge='<span style="background:'+sc+'18;color:'+sc+';border:1px solid '+sc+'33;border-radius:4px;padding:2px 8px;font-size:10px;font-weight:800;white-space:nowrap;">'+pEsc(statusVal)+'</span>';
      const vendorBtnLabel=x.approvedVendor?'&#9989; '+pEsc(x.approvedVendor.name||'Vendor'):'&#128176; Vendor Info';
+     /* Three states, so the PO desk can see where each PR stands without
+        opening it:
+          purple — no vendor quotes on this PR yet
+          yellow — quotes filled (desktop popup or a Purchaser's mobile form),
+                   but no approved vendor chosen yet
+          green  — an approved vendor is locked in; ready for PO */
+     const vendorBtnBg=x.approvedVendor
+       ? 'linear-gradient(180deg,#22c55e 0%,#15803d 100%)'
+       : (x.vendorInfoFilled
+            ? 'linear-gradient(180deg,#fbbf24 0%,#d97706 100%)'
+            : 'linear-gradient(180deg,#8b5cf6 0%,#6d28d9 100%)');
+     const vendorBtnTitle=x.approvedRate!=null
+       ? 'Approved rate: '+nNum_(x.approvedRate)
+       : (x.vendorInfoFilled?'Vendor rates bhari hui hain — approved vendor abhi select nahi hua':'Vendor rates abhi bhari nahi gayi');
      const pickCell=x.poEligible
        ?'<input type="checkbox" class="sarv-po-pick" data-index="'+i+'">'
        :'<input type="checkbox" class="sarv-po-pick" data-index="'+i+'" disabled title="PO sirf GM/CEO Approved (ya aage) requirements se hi build ho sakta hai">';
-     const tr=document.createElement('tr');tr.innerHTML='<td>'+pickCell+'</td><td>'+pEsc(x.req.req_no)+'</td><td>'+x.sr+'</td><td>'+pEsc(x.name)+'</td><td>'+pEsc(x.line.specification||x.item.description||'')+'</td><td>'+pEsc(x.item.make||'')+'</td><td>'+pEsc(x.req.department||'')+'</td><td style="text-align:center;">'+pNum(x.requested)+'</td><td style="text-align:center;">'+pNum(x.inPo)+'</td><td style="text-align:center;">'+pNum(x.available)+'</td><td>'+pEsc(x.line.uom||x.item.uom||'PCS')+'</td><td>'+statusBadge+'</td><td>'+pEsc(x.req.priority||'Normal')+'</td><td style="text-align:center;">'+(x.prPdfUrl?'<a href="'+pEsc(x.prPdfUrl)+'" target="_blank" rel="noopener" style="color:#1d4ed8;font-weight:700;text-decoration:none;">&#128196; PDF</a>':'<span style="color:#cbd5e1;">—</span>')+'</td><td style="text-align:center;"><button type="button" class="btn btn-sm sarv-vendor-info" data-req="'+pEsc(x.req.req_no)+'" style="background:'+(x.approvedVendor?'linear-gradient(180deg,#22c55e 0%,#15803d 100%)':'linear-gradient(180deg,#8b5cf6 0%,#6d28d9 100%)')+';color:#fff;padding:3px 10px;font-size:11px;" title="'+(x.approvedRate!=null?'Approved rate: '+nNum_(x.approvedRate):'')+'">'+vendorBtnLabel+'</button></td><td><button type="button" class="btn btn-neutral btn-sm sarv-edit-pr" data-index="'+i+'">✎ Edit PR</button></td>';tb.appendChild(tr);
+     const tr=document.createElement('tr');tr.innerHTML='<td>'+pickCell+'</td><td>'+pEsc(x.req.req_no)+'</td><td>'+x.sr+'</td><td>'+pEsc(x.name)+'</td><td>'+pEsc(x.line.specification||x.item.description||'')+'</td><td>'+pEsc(x.item.make||'')+'</td><td>'+pEsc(x.req.department||'')+'</td><td style="text-align:center;">'+pNum(x.requested)+'</td><td style="text-align:center;">'+pNum(x.inPo)+'</td><td style="text-align:center;">'+pNum(x.available)+'</td><td>'+pEsc(x.line.uom||x.item.uom||'PCS')+'</td><td>'+statusBadge+'</td><td>'+pEsc(x.req.priority||'Normal')+'</td><td style="text-align:center;">'+(x.prPdfUrl?'<a href="'+pEsc(x.prPdfUrl)+'" target="_blank" rel="noopener" style="color:#1d4ed8;font-weight:700;text-decoration:none;">&#128196; PDF</a>':'<span style="color:#cbd5e1;">—</span>')+'</td><td style="text-align:center;"><button type="button" class="btn btn-sm sarv-vendor-info" data-req="'+pEsc(x.req.req_no)+'" style="background:'+vendorBtnBg+';color:#fff;padding:3px 10px;font-size:11px;font-weight:700;" title="'+pEsc(vendorBtnTitle)+'">'+vendorBtnLabel+'</button></td><td><button type="button" class="btn btn-neutral btn-sm sarv-edit-pr" data-index="'+i+'">✎ Edit PR</button></td>';tb.appendChild(tr);
    });
    if(!shown){
      const total=sarvPendingRequirements.length;
@@ -10263,6 +10326,9 @@ window.addEventListener('DOMContentLoaded',()=>{
    const entry=byId('p_tab-entry');if(entry){entry.style.display='block';entry.classList.add('active')}
    const set=(id,v)=>{if(byId(id))byId(id).value=v??''};
    sarvEditingRequirementId=req.id;set('p_reqDate',req.request_date);set('p_requiredByDate',req.required_by);set('p_priority',req.priority||'Normal');syncPriorityButtons();set('p_reqPersonName',req.requested_by);set('p_reqEmpCode',req.employee_code);set('p_reqDepartment',req.department);set('p_overallRemarks',req.notes);set('p_reqNoField',req.req_no);
+   // Purchaser Name falls back to the PDF snapshot for PRs saved before the
+   // purchaser_name column existed; without it an edit would blank the field.
+   set('p_reqGeneratedBy',req.purchaser_name||(req.pdf_snapshot&&req.pdf_snapshot.generatedBy)||'');
    renderReqEmpDetails();
    const tb=byId('p_itemTableBody');if(tb)tb.innerHTML='';
    const lines=sarvPendingRequirements.filter(y=>y.req.id===req.id).map(y=>({...y.line,item_name:y.name,item:y.item}));
