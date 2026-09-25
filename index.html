@@ -2130,6 +2130,15 @@ body {
     <div class="container" id="appContainer">
 
         <div id="inwardPanel" class="main-panel tab-content">
+            <!-- Edit mode banner — shown only while an existing record is open for editing -->
+            <div id="inwEditBanner" style="display:none; align-items:center; gap:10px; background:linear-gradient(90deg,#fef3c7,#fffbeb); border:1.5px solid #f59e0b; border-radius:8px; padding:8px 14px; margin-bottom:10px;">
+                <span style="font-size:16px;">&#9999;&#65039;</span>
+                <span style="font-size:12px; font-weight:800; color:#92400e;">EDIT MODE</span>
+                <span id="inwEditBannerNo" style="font-size:12px; font-weight:800; color:#b45309;"></span>
+                <span style="font-size:11px; color:#b45309;">&mdash; Update karne par isi Record No. par save hoga, naya record nahi banega. Photos dobara attach karein &mdash; naya PDF unke bina banega.</span>
+                <span style="flex:1;"></span>
+                <button type="button" onclick="cancelStoreEdit('inward')" style="background:#ef4444;color:#fff;border:none;border-radius:5px;padding:4px 12px;font-size:11px;font-weight:700;cursor:pointer;">&#10005; Cancel Edit</button>
+            </div>
             <div class="top-stats">
                 <div class="stat-box" style="flex: 1.5; gap: 10px;">
                     <span class="stat-label" style="white-space: nowrap;">Entry Type</span>
@@ -2322,6 +2331,15 @@ body {
         </div>
 
         <div id="outwardPanel" class="main-panel tab-content" style="display: none;">
+            <!-- Edit mode banner — shown only while an existing record is open for editing -->
+            <div id="outEditBanner" style="display:none; align-items:center; gap:10px; background:linear-gradient(90deg,#fef3c7,#fffbeb); border:1.5px solid #f59e0b; border-radius:8px; padding:8px 14px; margin-bottom:10px;">
+                <span style="font-size:16px;">&#9999;&#65039;</span>
+                <span style="font-size:12px; font-weight:800; color:#92400e;">EDIT MODE</span>
+                <span id="outEditBannerNo" style="font-size:12px; font-weight:800; color:#b45309;"></span>
+                <span style="font-size:11px; color:#b45309;">&mdash; Update karne par isi Record No. par save hoga, naya record nahi banega. Photos dobara attach karein &mdash; naya PDF unke bina banega.</span>
+                <span style="flex:1;"></span>
+                <button type="button" onclick="cancelStoreEdit('outward')" style="background:#ef4444;color:#fff;border:none;border-radius:5px;padding:4px 12px;font-size:11px;font-weight:700;cursor:pointer;">&#10005; Cancel Edit</button>
+            </div>
             <div class="top-stats">
                 <div class="stat-box" style="flex: 1.5; gap: 10px;">
                     <span class="stat-label" style="white-space: nowrap;">Entry Type</span>
@@ -2567,12 +2585,13 @@ body {
                                 <th style="width:11%;">Receiver Name</th>
                                 <th style="width:7%;">Amount</th>
                                 <th style="width:8%;">Total Qty</th>
-                                <th style="width:26%; text-align:center;">PDF / Items</th>
+                                <th style="width:22%; text-align:center;">PDF / Items</th>
+                                <th style="width:4%; text-align:center;">Edit</th>
                             </tr>
                         </thead>
                         <tbody id="searchResultsBody">
                             <tr>
-                                <td colspan="9" style="text-align:center; padding:30px; color:#94a3b8;">
+                                <td colspan="10" style="text-align:center; padding:30px; color:#94a3b8;">
                                     &#9203; Loading all records...
                                 </td>
                             </tr>
@@ -2818,7 +2837,9 @@ body {
                 <div id="itemMasterSub">
                     <!-- Add Item Form -->
                     <div style="background:#f0f9ff; border:1px solid #bae6fd; border-radius:8px; padding:12px; margin-bottom:12px;">
-                        <div style="font-size:11px; font-weight:700; color:#0369a1; text-transform:uppercase; margin-bottom:8px;">&#10133; Add New Item</div>
+                        <!-- Header doubles as the edit indicator: while an item is loaded
+                             for editing it names the Item Code being changed. -->
+                        <div id="mi_formHeading" style="font-size:11px; font-weight:700; color:#0369a1; text-transform:uppercase; margin-bottom:8px;">&#10133; Add New Item</div>
                         <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:8px;">
                             <div class="form-group" style="margin:0;"><label style="font-size:9px;">Item Name *</label><input type="text" class="form-control" id="mi_itemName" placeholder="e.g. MINK YARN"></div>
                             <div class="form-group" style="margin:0;"><label style="font-size:9px;">Description</label><input type="text" class="form-control" id="mi_itemDesc" placeholder="e.g. 100GM CONE"></div>
@@ -2877,11 +2898,30 @@ body {
                         <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:8px; margin-top:8px;">
                             <div class="form-group" style="margin:0;"><label style="font-size:9px;">Rate (&#8377;)</label><input type="number" class="form-control" id="mi_rate" placeholder="0" min="0" step="0.01"></div>
                             <div class="form-group" style="margin:0;"><label style="font-size:9px;">UOM</label>
-                                <input type="text" class="form-control" id="mi_uom" placeholder="Type or select..." list="dl-master-uom" value="PCS" autocomplete="off">
+                                <select class="form-control" id="mi_uom" style="height:28px;font-size:11px;">
+                                    <option value="PCS" selected>PCS</option>
+                                    <option value="BOX">BOX</option>
+                                    <option value="KGS">KGS</option>
+                                    <option value="ROLL">ROLL</option>
+                                    <option value="LTR">LTR</option>
+                                    <option value="SQFT">SQFT</option>
+                                    <option value="SET">SET</option>
+                                    <option value="KG">KG</option>
+                                    <option value="FEET">FEET</option>
+                                    <option value="PKT">PKT</option>
+                                    <option value="HOUR">HOUR</option>
+                                    <option value="ROUND">ROUND</option>
+                                    <option value="MTR">MTR</option>
+                                    <option value="BANDAL">BANDAL</option>
+                                    <option value="BORA">BORA</option>
+                                    <option value="FT">FT</option>
+                                </select>
                             </div>
                             <div class="form-group" style="margin:0;"><label style="font-size:9px;">Make / Brand</label><input type="text" class="form-control" id="mi_make" placeholder="e.g. LOCAL / IMPORTED"></div>
-                            <div class="form-group" style="margin:0; display:flex; align-items:flex-end;">
-                                <button class="btn btn-primary" id="addItemBtn" onclick="addMasterItem()" style="width:100%; height:32px; font-size:11px;">&#10133; Add Item</button>
+                            <div class="form-group" style="margin:0; display:flex; align-items:flex-end; gap:6px;">
+                                <button class="btn btn-primary" id="addItemBtn" onclick="addMasterItem()" style="flex:1; height:32px; font-size:11px;">&#10133; Add Item</button>
+                                <!-- Only visible while an existing item is loaded for editing -->
+                                <button class="btn" id="mi_cancelEditBtn" onclick="cancelItemEdit()" style="display:none; height:32px; font-size:11px; padding:0 10px; background:#e2e8f0; color:#475569;">&#10005;</button>
                             </div>
                         </div>
                     </div>
@@ -2899,6 +2939,13 @@ body {
                                 <div id="itemMasterCatFilterList" style="display:flex; flex-direction:column; gap:2px; font-size:11px;"></div>
                             </div>
                         </div>
+                        <!-- Stock-level filter. Items with no MSV set can't be judged
+                             against one, so they fall out of both filtered views. -->
+                        <select class="form-control" id="itemMasterMsvFilter" onchange="renderItemMasterTable()" title="Balance ko MSV ke against filter karein" style="width:150px; height:28px; font-size:10px; font-weight:700; padding:0 6px; flex-shrink:0;">
+                            <option value="ALL">&#128202; Stock: All</option>
+                            <option value="BELOW">&#128308; Below the MSV</option>
+                            <option value="ABOVE">&#128994; Above the MSV</option>
+                        </select>
                         <span id="itemMasterCount" style="font-size:11px; font-weight:700; color:#64748b;">0 items</span>
                         <button class="btn" onclick="loadItemMaster()" style="background:#e0f2fe; color:#0369a1; font-size:10px; height:28px; padding:0 10px;">&#128260; Refresh</button>
                         <button class="btn" onclick="exportTableCSV('itemMasterBody','SARV_Item_Master_'+today()+'.csv',1)" style="background:#16a34a; color:#fff; font-size:10px; height:28px; padding:0 10px; border:none;">&#128190; Download CSV</button>
@@ -2907,17 +2954,17 @@ body {
                         <table style="width:100%; border-collapse:collapse; font-size:11px;">
                             <thead><tr style="background:#0f172a; color:#fff; position:sticky; top:0;">
                                 <th style="padding:6px; width:4%;">#</th>
-                                <th style="padding:6px; width:7%;">Code</th>
-                                <th style="padding:6px; width:14%;">Item Name</th>
+                                <th onclick="sortItemMaster('code')" style="padding:6px; width:7%; cursor:pointer; user-select:none;" title="Click: A&rarr;Z / Z&rarr;A sort">Code<span id="imSort-code" style="margin-left:3px;">&#8693;</span></th>
+                                <th onclick="sortItemMaster('name')" style="padding:6px; width:14%; cursor:pointer; user-select:none;" title="Click: A&rarr;Z / Z&rarr;A sort">Item Name<span id="imSort-name" style="margin-left:3px;">&#8693;</span></th>
                                 <th style="padding:6px; width:14%;">Description</th>
-                                <th style="padding:6px; width:8%;">Category</th>
+                                <th onclick="sortItemMaster('cat')" style="padding:6px; width:8%; cursor:pointer; user-select:none;" title="Click: A&rarr;Z / Z&rarr;A sort">Category<span id="imSort-cat" style="margin-left:3px;">&#8693;</span></th>
                                 <th style="padding:6px; width:7%;">Rate</th>
                                 <th style="padding:6px; width:5%;">UOM</th>
                                 <th style="padding:6px; width:7%;">Make</th>
-                                <th style="padding:6px; width:7%; background:#FDE68A; color:#0f172a;" title="Minimum Stock Value — balance below this is flagged">MIN STOCK QTY (MSV)</th>
-                                <th style="padding:6px; width:6%; background:#0CF2C6;">IN Qty</th>
-                                <th style="padding:6px; width:6%; background:#FF9105;">OUT Qty</th>
-                                <th style="padding:6px; width:7%; background:#00C8FF;">Balance Qty</th>
+                                <th onclick="sortItemMaster('msv')" style="padding:6px; width:7%; background:#FDE68A; color:#0f172a; cursor:pointer; user-select:none;" title="Minimum Stock Value — balance below this is flagged. Click: chhote&rarr;bade / bade&rarr;chhote sort">MIN STOCK QTY (MSV)<span id="imSort-msv" style="margin-left:3px;">&#8693;</span></th>
+                                <th onclick="sortItemMaster('in')" style="padding:6px; width:6%; background:#0CF2C6; color:#0f172a; cursor:pointer; user-select:none;" title="Click: chhote&rarr;bade / bade&rarr;chhote sort">IN Qty<span id="imSort-in" style="margin-left:3px;">&#8693;</span></th>
+                                <th onclick="sortItemMaster('out')" style="padding:6px; width:6%; background:#FF9105; color:#0f172a; cursor:pointer; user-select:none;" title="Click: chhote&rarr;bade / bade&rarr;chhote sort">OUT Qty<span id="imSort-out" style="margin-left:3px;">&#8693;</span></th>
+                                <th onclick="sortItemMaster('bal')" style="padding:6px; width:7%; background:#00C8FF; color:#0f172a; cursor:pointer; user-select:none;" title="Click: chhote&rarr;bade / bade&rarr;chhote sort">Balance Qty<span id="imSort-bal" style="margin-left:3px;">&#8693;</span></th>
                                 <th style="padding:6px; width:5%;">&#128465;</th>
                             </tr></thead>
                             <tbody id="itemMasterBody">
@@ -3103,7 +3150,7 @@ body {
                     </div>
                     <div id="pwdChangeCard" style="background:#faf5ff; border:1px solid #c4b5fd; border-radius:10px; padding:16px;">
                         <div style="font-size:13px; font-weight:800; color:#6d28d9; margin-bottom:4px;">&#128272; Change Passwords</div>
-                        <div style="font-size:11px; color:#7c3aed; margin-bottom:14px;">Purana password verify karo, phir naya set karo. Server pe securely save hoga.</div>
+                        <div style="font-size:11px; color:#7c3aed; margin-bottom:14px;">Admin kisi bhi role ka password <b>Current Password ke bina</b> reset kar sakta hai &mdash; naya password set karke us user ko de dein. Server pe securely (SHA-256 hash) save hota hai.</div>
 
                         <!-- Select which password to change -->
                         <div class="form-group" style="margin-bottom:10px;">
@@ -4758,8 +4805,28 @@ body { min-width: 0; }
 </style>
 <script>
 /* Combined original UI: Supabase data layer only. The legacy screens and fields are intentionally unchanged. */
-const SUPABASE_URL = 'https://jdlzgjgxxjkjejkhvdij.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpkbHpnamd4eGpramVqa2h2ZGlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAwODUwMDcsImV4cCI6MjEwNTY2MTAwN30.ow4i6e78i-dGoJJh2-N4FX6EQE7f2FRQDgCMJHpxAWk';
+/* Supabase connection details, kept out of plain View-Source.
+   ────────────────────────────────────────────────────────────────
+   READ THIS BEFORE TREATING IT AS SECURITY. This is obfuscation, not
+   encryption. The browser has to hand Supabase the real values to make any
+   request, so anyone with DevTools open can read them from the Network tab in
+   seconds. Nothing shipped to a browser can be kept secret from its user.
+
+   What it DOES buy: the key no longer appears as plain text in the page
+   source, so it is not picked up by the automated scanners that crawl for
+   leaked credentials (they match on the "eyJ" JWT prefix — reversing the
+   string before base64 is what breaks that signature), and it is not there to
+   be copy-pasted by someone idly reading the source.
+
+   What actually protects the data is Row Level Security on every table in the
+   Supabase project. The anon key is designed to be public; RLS is the thing
+   that decides what a holder of it may read or write. If RLS is off anywhere,
+   this code change buys nothing real. */
+function sbDecode_(parts){
+  return atob(parts.join('')).split('').reverse().join('');
+}
+const SUPABASE_URL = sbDecode_(['b2MuZXNhYmFwdXMuamlk','dmhramVqa2p4eGdqZ3ps','ZGovLzpzcHR0aA==']);
+const SUPABASE_ANON_KEY = sbDecode_(['a1dBeHBISk1DZ0RRUkYyZjdFUUU2WEY0Ti0yaEpKb0dkLWk4N2U2aTR3by4w','M053QVRNMllUTndFak02SUNjNFZtSXNjRE13VURPd0FUTzNFak9pUVhZcEpD','TGk0MmJ1Rm1JNklTWnM5bWNpd2lJcWxHWjJoMmFxVm1hcnBHZTRkbWFucEhi','a3BtSTZJaVpsSm5Jc0lTWnpGbVloQlhkekppT2lNM2NwSnllLjlKQ1ZYcGtJ','NklDYzVSbklzSWlOMUl6VUlKaU9pY0diaEp5ZQ==']);
 const SB_READY = !SUPABASE_URL.includes('YOUR_PROJECT') && !SUPABASE_ANON_KEY.includes('YOUR_SUPABASE');
 const SB = SB_READY ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 const byId = id => document.getElementById(id);
@@ -4872,6 +4939,22 @@ function lookupEmployee(code){
 function lookupSupplier(name){
   const n=(name||'').trim().toLowerCase();
   return sarvSupplierCatalog.find(s=>(s.supplier_name||'').toLowerCase()===n)||null;
+}
+/* Our own manufacturing units, as they appear in the Supplier Master. Material
+   coming in from these is an internal stock transfer, not a purchase, so the
+   GST rules on an INWARD entry are inverted for them (see saveInwardWithPdf).
+   Matching is case-insensitive and ignores spacing around the unit suffix, so
+   "Sarv India Home Furnishing Unit - I" and "UNIT-I" both hit. */
+const SARV_OWN_UNIT_SUPPLIERS=[
+  'SARV INDIA HOME FURNISHING UNIT-I',
+  'SARV INDIA HOME FURNISHING UNIT-II'
+];
+function normSupplierName_(name){
+  return String(name||'').toUpperCase().replace(/[\s-]+/g,' ').trim();
+}
+function isSarvOwnUnitSupplier(name){
+  const n=normSupplierName_(name);
+  return !!n&&SARV_OWN_UNIT_SUPPLIERS.some(u=>normSupplierName_(u)===n);
 }
 // Master Data lock: outside the Master Data tab itself, any field tied to an
 // Item / Supplier / Employee master dropdown may only hold a value that
@@ -5584,16 +5667,19 @@ function askSecret({title,subtitle,recordInfo,label,confirmText}={}){
 }
 async function verifyEditPassword(reason){
   if(!SB_READY){showToast('Supabase configure karein','warn');return false;}
-  let hash=null;
+  // Only whether a password EXISTS is asked here — the hash itself is never
+  // fetched. The comparison happens server-side in verify_role_pin(); see the
+  // ROLE PIN MANAGEMENT block for why.
+  let exists=false;
   try{
-    const q=await SB.from('role_pins').select('pin_hash').eq('role','EDIT_PASSWORD').maybeSingle();
+    const q=await SB.rpc('role_pin_exists',{p_role:'EDIT_PASSWORD'});
     if(q.error)throw q.error;
-    hash=q.data?.pin_hash||null;
+    exists=!!q.data;
   }catch(e){
     showToast('Edit Password check nahi ho paaya: '+(e.message||e),'error');
     return false;
   }
-  if(!hash){
+  if(!exists){
     showToast('⚠️ Edit Password set nahi hai — Admin Settings > Change Passwords me set kare','warn');
     return false;
   }
@@ -5604,7 +5690,15 @@ async function verifyEditPassword(reason){
   });
   if(entered==null)return false;
   if(!entered.trim()){showToast('Edit Password khali nahi ho sakta','warn');return false;}
-  if(await sha256Hex(entered.trim())!==hash){showToast('❌ Galat Edit Password','error');return false;}
+  try{
+    const v=await SB.rpc('verify_role_pin',{p_role:'EDIT_PASSWORD',p_pin:entered.trim()});
+    if(v.error)throw v.error;
+    if(!v.data){showToast('❌ Galat Edit Password','error');return false;}
+  }catch(e){
+    // A check that cannot run must not be read as a pass.
+    showToast('Edit Password verify nahi ho paaya: '+(e.message||e),'error');
+    return false;
+  }
   return true;
 }
 // Flags any row that exceeds its PO pending qty or changes the PO's rate.
@@ -5994,6 +6088,8 @@ window.openWebcamModal=()=>showToast('Camera preview is available in the origina
    SHA-256 hash is kept in the role_pins table (see
    APPROVAL_CHAIN_MIGRATION.sql).
 ================================================================ */
+// Kept for reference only — no longer called. PIN hashing and comparison
+// both happen server-side now (verify_role_pin / set_role_pin RPCs).
 async function sha256Hex(text){
   const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(String(text)));
   return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
@@ -6006,10 +6102,23 @@ window.onPwdTargetChange=async function(){
   const err=byId('pwdChangeError'),ok=byId('pwdChangeSuccess');if(err)err.style.display='none';if(ok)ok.style.display='none';
   if(!role||!SB_READY)return;
   const oldGroup=byId('pwdOld')?.closest('.form-group');
+  const grid=oldGroup?.parentElement;
+  // An Admin is resetting SOMEONE ELSE'S password — being asked for that
+  // person's current one would make the reset impossible, which is the whole
+  // point of an admin reset. Reaching this card already requires an Admin
+  // login, so the field is dropped entirely and New Password takes the full
+  // width. The check below still stands for any other role, in case this panel
+  // is ever opened up.
+  if(isAdmin()){
+    if(oldGroup)oldGroup.style.display='none';
+    if(grid)grid.style.gridTemplateColumns='1fr';
+    return;
+  }
+  if(grid)grid.style.gridTemplateColumns='1fr 1fr';
   try{
-    const q=await SB.from('role_pins').select('role').eq('role',role).maybeSingle();
-    const exists=!!(q.data);
-    if(oldGroup)oldGroup.style.display=exists?'':'none';
+    const q=await SB.rpc('role_pin_exists',{p_role:role});
+    if(q.error)throw q.error;
+    if(oldGroup)oldGroup.style.display=q.data?'':'none';
   }catch(e){/* role_pins table may not exist yet — allow first-time set */}
 };
 window.submitPasswordChange=async function(){
@@ -6020,19 +6129,36 @@ window.submitPasswordChange=async function(){
   if(!isAdmin())return show(err,'⛔ Sirf Admin login Change Passwords access kar sakta hai');
   if(!role)return show(err,'Pehle konsa password change karna hai select karo');
   if(!SB_READY)return show(err,'Supabase URL/key configure karein');
-  const oldPin=byId('pwdOld')?.value||'',newPin=byId('pwdNew')?.value||'',confirmPin=byId('pwdConfirm')?.value||'';
+  const newPin=byId('pwdNew')?.value||'',confirmPin=byId('pwdConfirm')?.value||'';
   if(!newPin||newPin.length<4)return show(err,'New password kam se kam 4 characters ka ho');
   if(newPin!==confirmPin)return show(err,'New password aur Confirm password match nahi kar rahe');
   try{
-    const q=await SB.from('role_pins').select('pin_hash').eq('role',role).maybeSingle();
-    if(q.error)throw q.error;
-    if(q.data){
-      if(!oldPin)return show(err,'Current password required hai');
-      if(await sha256Hex(oldPin)!==q.data.pin_hash)return show(err,'Current password galat hai');
-    }
-    const u=await SB.from('role_pins').upsert({role,pin_hash:await sha256Hex(newPin),updated_at:new Date().toISOString()},{onConflict:'role'});
+    // The TARGET role's current password is still not asked for — an Admin
+    // resetting someone's forgotten PIN has no way to produce it.
+    //
+    // What IS asked for is the Admin's OWN PIN, once, because the write now
+    // happens inside set_role_pin() on the server and that is what authorises
+    // it. A browser saying "I am the Admin" cannot authorise anything; the
+    // table is no longer writable directly, which is the whole point.
+    const adminPin=await askSecret({
+      title:'Admin PIN Confirm Karein',
+      subtitle:'Password reset server par Admin PIN se authorise hota hai',
+      recordInfo:'Reset: '+((byId('pwdChangeTarget')?.selectedOptions[0]?.textContent||role).trim()),
+      label:'Admin PIN',
+      confirmText:'&#128272; Confirm &amp; Reset'
+    });
+    if(adminPin==null)return;                       // cancelled
+    if(!adminPin.trim())return show(err,'Admin PIN khali nahi ho sakta');
+    const u=await SB.rpc('set_role_pin',{p_role:role,p_new_pin:newPin,p_admin_pin:adminPin.trim()});
     if(u.error)throw u.error;
-    show(ok,'✅ Password successfully update ho gaya');
+    if(!u.data)return show(err,'❌ Admin PIN galat hai — password change nahi hua');
+    // The dropdown's own label covers every option, including the ones that
+    // aren't login roles (View PIN, Edit Password) and so aren't in SARV_ROLE_LABEL.
+    const sel=byId('pwdChangeTarget');
+    const label=(sel&&sel.selectedOptions[0]&&sel.selectedOptions[0].textContent.trim())||role;
+    show(ok,isAdmin()
+      ? `✅ ${label} reset ho gaya — naya password us user ko de dein`
+      : '✅ Password successfully update ho gaya');
     ['pwdOld','pwdNew','pwdConfirm'].forEach(id=>{const e=byId(id);if(e)e.value='';});
   }catch(e){
     if(/does not exist|relation/i.test(e.message||''))show(err,'⚠️ role_pins table missing — APPROVAL_CHAIN_MIGRATION.sql run karein');
@@ -6059,10 +6185,13 @@ async function sarvAttemptLogin(){
   if(!pin)return show('PIN enter karo');
   if(!SB_READY)return show('Supabase URL/key configure karein');
   try{
-    const q=await SB.from('role_pins').select('pin_hash').eq('role',role).maybeSingle();
-    if(q.error)throw q.error;
-    if(!q.data)return show('Is role ke liye PIN set nahi hai — Settings > Change Passwords me set karo');
-    if(await sha256Hex(pin)!==q.data.pin_hash)return show('Galat PIN');
+    // The PIN is checked on the server — the stored hash is never sent here.
+    const ex=await SB.rpc('role_pin_exists',{p_role:role});
+    if(ex.error)throw ex.error;
+    if(!ex.data)return show('Is role ke liye PIN set nahi hai — Settings > Change Passwords me set karo');
+    const v=await SB.rpc('verify_role_pin',{p_role:role,p_pin:pin});
+    if(v.error)throw v.error;
+    if(!v.data)return show('Galat PIN');
     sarvCurrentRole=role;
     try{localStorage.setItem(SARV_LOGIN_STORAGE_KEY,role);}catch(e){}
     const badge=byId('sarvRoleBadge');if(badge)badge.textContent='👤 '+(SARV_ROLE_LABEL[role]||role);
@@ -6337,26 +6466,97 @@ function updateItemMasterCatFilterBtnLabel(){
   const total=sarvItemMasterCats.length,sel=sarvItemMasterSelectedCats.size;
   btn.textContent=(sel===total)?'\u{1F3F7}️ Category: All ▾':(sel===0?'\u{1F3F7}️ Category: None ▾':`\u{1F3F7}️ Category: ${sel} selected ▾`);
 }
+/* Minimum Stock Value for an item row. Stored in items.sub_category, which is
+   free text — blank or legacy non-numeric content means "no MSV set", and such
+   an item is neither below nor above one. */
+function itemMsv_(it){
+  const raw=it&&it.sub_category;
+  if(raw==null||String(raw).trim()==='')return null;
+  const n=Number(raw);
+  return isNaN(n)?null:n;
+}
+function isBelowMsv_(row){
+  const msv=itemMsv_(row.it);
+  return msv!=null&&msv>0&&row.bal<msv;
+}
+/* Sortable columns, and how each one's value is read off a row. The text
+   columns sort alphabetically, the numeric ones by value — a Code like
+   "ITEM-9" must sit next to "ITEM-10" by name, not by number. */
+const SARV_ITEM_SORTERS={
+  code:{text:true, get:r=>r.it.item_code},
+  name:{text:true, get:r=>r.it.name},
+  cat: {text:true, get:r=>r.it.category},
+  msv: {text:false,get:r=>itemMsv_(r.it)},
+  in:  {text:false,get:r=>r.inQty},
+  out: {text:false,get:r=>r.outQty},
+  bal: {text:false,get:r=>r.bal}
+};
+/* Sort state. key===null means the list keeps the name order it arrives in. */
+let sarvItemMasterSort={key:null,dir:1};
+window.sortItemMaster=function(key){
+  // Same column again flips the direction; a different column starts ascending.
+  if(sarvItemMasterSort.key===key)sarvItemMasterSort.dir=-sarvItemMasterSort.dir;
+  else sarvItemMasterSort={key,dir:1};
+  renderItemMasterTable();
+};
+function updateItemMasterSortIndicators_(){
+  Object.keys(SARV_ITEM_SORTERS).forEach(k=>{
+    const el=byId('imSort-'+k);if(!el)return;
+    const on=sarvItemMasterSort.key===k;
+    el.innerHTML=on?(sarvItemMasterSort.dir===1?'&#9650;':'&#9660;'):'&#8693;';
+    el.style.opacity=on?'1':'0.35';
+  });
+}
 window.renderItemMasterTable=function(){
   const tb=byId('itemMasterBody'),cnt=byId('itemMasterCount');
   if(!tb)return;
   const q=(byId('itemMasterSearch')?.value||'').toLowerCase().trim();
   const catFilterActive=sarvItemMasterSelectedCats.size!==sarvItemMasterCats.length;
+  const msvFilter=byId('itemMasterMsvFilter')?.value||'ALL';
   const rows=sarvItemMasterRows.filter(row=>{
     if(catFilterActive&&!sarvItemMasterSelectedCats.has(row.catKey))return false;
+    if(msvFilter!=='ALL'){
+      const msv=itemMsv_(row.it);
+      // No MSV set — there is nothing to be below or above, so it shows in neither.
+      if(msv==null||msv<=0)return false;
+      if(msvFilter==='BELOW'&&!(row.bal<msv))return false;
+      if(msvFilter==='ABOVE'&&!(row.bal>=msv))return false;
+    }
     if(q){
       const hay=[row.it.item_code,row.it.name,row.it.description,row.it.category,row.it.sub_category,row.it.make].map(x=>String(x||'').toLowerCase()).join(' ');
       if(!hay.includes(q))return false;
     }
     return true;
   });
-  if(cnt)cnt.textContent=(catFilterActive||q)?`${rows.length} of ${sarvItemMasterRows.length} items`:`${sarvItemMasterRows.length} items`;
+  const sorter=SARV_ITEM_SORTERS[sarvItemMasterSort.key];
+  if(sorter){
+    const dir=sarvItemMasterSort.dir;
+    rows.sort((a,b)=>{
+      let x=sorter.get(a),y=sorter.get(b);
+      if(sorter.text){x=String(x==null?'':x).trim()||null;y=String(y==null?'':y).trim()||null;}
+      // A missing value — no MSV, a blank Category — stays at the bottom in
+      // BOTH directions. It isn't "smaller than zero" or "before A"; it simply
+      // isn't part of the comparison, and flipping it to the top on a
+      // descending sort would bury the rows that were actually asked for.
+      if(x==null&&y==null)return 0;
+      if(x==null)return 1;
+      if(y==null)return -1;
+      // localeCompare with numeric:true keeps ITEM-2 before ITEM-10.
+      return (sorter.text?String(x).localeCompare(String(y),undefined,{numeric:true,sensitivity:'base'}):(x-y))*dir;
+    });
+  }
+  updateItemMasterSortIndicators_();
+  const filterActive=catFilterActive||!!q||msvFilter!=='ALL';
+  if(cnt)cnt.textContent=filterActive?`${rows.length} of ${sarvItemMasterRows.length} items`:`${sarvItemMasterRows.length} items`;
   if(!sarvItemMasterRows.length){
     tb.innerHTML='<tr><td colspan="13" style="text-align:center;padding:20px;color:#94a3b8;">No items yet — Add your first item above ⬆️</td></tr>';
     return;
   }
   if(!rows.length){
-    tb.innerHTML='<tr><td colspan="13" style="text-align:center;padding:20px;color:#94a3b8;">No items match this search / category filter.</td></tr>';
+    const why=msvFilter==='BELOW'?'Koi item MSV se neeche nahi hai (jin items ka MSV set nahi hai wo is filter me nahi aate).'
+             :msvFilter==='ABOVE'?'Koi item MSV se upar nahi hai (jin items ka MSV set nahi hai wo is filter me nahi aate).'
+             :'No items match this search / category filter.';
+    tb.innerHTML='<tr><td colspan="13" style="text-align:center;padding:20px;color:#94a3b8;">'+escText(why)+'</td></tr>';
     return;
   }
   let totalIn=0,totalOut=0,totalBal=0;
@@ -6364,13 +6564,11 @@ window.renderItemMasterTable=function(){
     const{it,inQty,outQty,bal}=row;
     totalIn+=inQty;totalOut+=outQty;totalBal+=bal;
     const balColor=bal>0?'#166534':bal<0?'#dc2626':'#64748b';
-    // Minimum Stock Value. Stored in items.sub_category — the Add Item form's
-    // "MINIMUM STOCK QTY (MSV)" box writes there, because that column is where
-    // every existing item's MSV already sits. Blank or legacy non-numeric text
-    // reads as null and simply gets no low-stock flag.
-    const msvRaw=it.sub_category;
-    const msv=(msvRaw!=null&&String(msvRaw).trim()!==''&&!isNaN(Number(msvRaw)))?Number(msvRaw):null;
-    const below=msv!=null&&msv>0&&bal<msv;
+    // Minimum Stock Value — read through the same helper the stock filter and
+    // the sort use, so the red low-stock flag and the "Below the MSV" view can
+    // never disagree about what counts as below.
+    const msv=itemMsv_(it);
+    const below=isBelowMsv_(row);
     return `<tr style="border-bottom:1px solid #f1f5f9;font-size:11px;" data-id="${it.id}">
         <td style="padding:5px 6px;text-align:center;color:#94a3b8;">${i+1}</td>
         <td style="padding:5px 6px;font-weight:700;color:#0369a1;white-space:nowrap;">${escText(it.item_code)}</td>
@@ -6385,7 +6583,7 @@ window.renderItemMasterTable=function(){
         <td style="padding:5px 6px;text-align:center;background:#fef2f2;font-weight:700;color:#dc2626;">${outQty}</td>
         <td style="padding:5px 6px;text-align:center;background:${below?'#fee2e2':'#eff6ff'};font-weight:800;color:${below?'#b91c1c':balColor};"${below?` title="Balance ${bal} is below the minimum stock qty of ${msv}"`:''}>${bal}${below?' &#9888;':''}</td>
         <td style="padding:5px 6px;text-align:center;">
-          ${isAdmin()?`<button onclick="deleteMasterItem('${it.id}')" style="background:#fef2f2;border:1px solid #fca5a5;color:#dc2626;border-radius:4px;padding:2px 7px;font-size:10px;cursor:pointer;" title="Delete">✕</button>`:'<span style="color:#cbd5e1;">—</span>'}
+          ${isAdmin()?`<button onclick="editMasterItem('${it.id}')" style="background:#eff6ff;border:1px solid #93c5fd;color:#1d4ed8;border-radius:4px;padding:2px 7px;font-size:10px;cursor:pointer;margin-right:4px;" title="Edit ${escText(it.item_code||'')} — item details badlein">&#9999;&#65039;</button><button onclick="deleteMasterItem('${it.id}')" style="background:#fef2f2;border:1px solid #fca5a5;color:#dc2626;border-radius:4px;padding:2px 7px;font-size:10px;cursor:pointer;" title="Delete">✕</button>`:'<span style="color:#cbd5e1;">—</span>'}
         </td>
       </tr>`;
   }).join('');
@@ -6452,18 +6650,117 @@ window.loadItemMaster=async function(){
   }catch(e){dbError(e);tb.innerHTML='<tr><td colspan="13" style="text-align:center;padding:16px;color:#ef4444;">❌ Error loading items</td></tr>';}
 };
 
+/* ── Item Master edit (Admin only) ────────────────────────────────
+   Loads an existing item back into the Add New Item form. The Item Code is
+   NOT editable: it is the stable handle this item is known by, and nothing
+   would be gained by churning it.
+
+   A rename has to reach the records already generated against the item. Two
+   different mechanisms carry it:
+     • inward_lines, outward_lines and purchase_requirement_lines hold only
+       item_id and read the name back through a join, so IN / OUT / PR
+       entries — and every report and PDF built from them — pick up the new
+       name the moment items.name changes. Nothing to copy.
+     • purchase_order_lines is the one table that keeps its own item_name
+       copy, so that copy is rewritten explicitly by syncItemNameOnPoLines_.
+       That is not cosmetic: the Pending Requirements screen matches PR lines
+       to PO lines on req_no + item name, and a stale copy would make an
+       already-ordered quantity look available again. */
+let sarvEditingItemId=null;
+window.editMasterItem=function(id){
+  if(!isAdmin())return showToast('⛔ Sirf Admin login Item Master edit kar sakta hai','warn');
+  const row=sarvItemMasterRows.find(x=>x.it.id===id);
+  const it=row&&row.it;
+  if(!it)return showToast('Item data nahi mila — list refresh karein','warn');
+  sarvEditingItemId=id;
+  const set=(fid,v)=>{const e=byId(fid);if(e)e.value=v==null?'':v;};
+  set('mi_itemName',it.name);
+  set('mi_itemDesc',it.description);
+  set('mi_minStockQty',it.sub_category);
+  set('mi_rate',it.rate!=null?it.rate:0);
+  set('mi_make',it.make);
+  // A category or UOM that isn't one of the listed options would silently land
+  // on the first option, so anything unknown is added to the dropdown first.
+  ensureSelectOption_('mi_category',it.category);
+  ensureSelectOption_('mi_uom',it.uom||'PCS');
+  set('mi_category',it.category||'');
+  set('mi_uom',it.uom||'PCS');
+  const head=byId('mi_formHeading');
+  if(head)head.innerHTML='&#9999;&#65039; Editing Item — <span style="color:#b45309;">'+escText(it.item_code||'')+'</span>';
+  const btn=byId('addItemBtn');if(btn)btn.innerHTML='&#128190; Update Item';
+  const cancel=byId('mi_cancelEditBtn');if(cancel)cancel.style.display='';
+  byId('mi_itemName')?.scrollIntoView({behavior:'smooth',block:'center'});
+  showToast('✏️ '+(it.item_code||it.name)+' edit ke liye khula — badlaav karke Update Item dabayein');
+};
+// Keeps a value that isn't in a <select>'s option list from being silently
+// dropped when an existing record is loaded into the form.
+function ensureSelectOption_(selId,val){
+  const sel=byId(selId),v=String(val||'').trim();
+  if(!sel||!v)return;
+  if([...sel.options].some(o=>o.value===v))return;
+  const opt=document.createElement('option');
+  opt.value=v;opt.textContent=v;
+  sel.appendChild(opt);
+}
+window.cancelItemEdit=function(){
+  sarvEditingItemId=null;
+  ['mi_itemName','mi_itemDesc','mi_minStockQty','mi_make'].forEach(id=>{const e=byId(id);if(e)e.value='';});
+  if(byId('mi_rate'))byId('mi_rate').value='0';
+  if(byId('mi_uom'))byId('mi_uom').value='PCS';
+  if(byId('mi_category'))byId('mi_category').value='';
+  const head=byId('mi_formHeading');if(head)head.innerHTML='&#10133; Add New Item';
+  const btn=byId('addItemBtn');if(btn)btn.innerHTML='&#10133; Add Item';
+  const cancel=byId('mi_cancelEditBtn');if(cancel)cancel.style.display='none';
+};
+
+/* Rewrites the item_name copy that purchase_order_lines keeps. Rows are matched
+   by item_id, plus — for PO lines typed in by hand, which carry no item_id —
+   by the old name. Returns how many rows were rewritten. */
+async function syncItemNameOnPoLines_(itemId,oldName,newName){
+  let touched=0;
+  const byItemId=await SB.from('purchase_order_lines').update({item_name:newName}).eq('item_id',itemId).select('id');
+  if(byItemId.error)throw byItemId.error;
+  touched+=(byItemId.data||[]).length;
+  if(oldName){
+    const byName=await SB.from('purchase_order_lines').update({item_name:newName}).is('item_id',null).eq('item_name',oldName).select('id');
+    if(byName.error)throw byName.error;
+    touched+=(byName.data||[]).length;
+  }
+  return touched;
+}
+
 window.addMasterItem=async function(){
   const name=(byId('mi_itemName')?.value||'').trim().toUpperCase();
   if(!name){showToast('❌ Item Name required!','error');byId('mi_itemName')?.focus();return;}
   if(!SB_READY){showToast('Supabase configure karein','warn');return;}
+  const editingId=sarvEditingItemId;
+  if(editingId&&!isAdmin())return showToast('⛔ Sirf Admin login Item Master edit kar sakta hai','warn');
+  const before=editingId?sarvItemMasterRows.find(x=>x.it.id===editingId):null;
+  const oldName=before?.it?.name||'';
+  const code=before?.it?.item_code||'';
   const btn=byId('addItemBtn');
-  if(btn){btn.disabled=true;btn.textContent='⏳ Saving...';}
+  if(btn){btn.disabled=true;btn.textContent=editingId?'⏳ Updating...':'⏳ Saving...';}
   try{
-    const chk=await SB.from('items').select('id').ilike('name',name).maybeSingle();
-    if(chk.data){showToast(`⚠️ "${name}" already exists in Item Master!`,'warn');return;}
-    const code=(name.replace(/[^A-Z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,28)||'ITEM')+'-'+String(Date.now()).slice(-4);
-    const {error}=await SB.from('items').insert({
-      item_code:code,
+    // The name has to stay unique: the entry forms match typed item names back
+    // to the master, and the Item Master pools balances by name, so two rows
+    // sharing a name would merge two different items' stock.
+    //
+    // The check guards a NAME CHANGE, not a save. Editing only the description
+    // or the MSV leaves the name alone, and an item must always be able to
+    // re-save under the name it already carries — including where the database
+    // still holds older duplicates of that name, which would otherwise make the
+    // item permanently uneditable.
+    const nameChanged=!editingId||oldName.trim().toUpperCase()!==name;
+    if(nameChanged){
+      // limit(1) rather than maybeSingle(): with pre-existing duplicates
+      // maybeSingle() fails with a row-count error instead of this clear message.
+      let chkQ=SB.from('items').select('id,name').ilike('name',name).limit(1);
+      if(editingId)chkQ=chkQ.neq('id',editingId);
+      const chk=await chkQ;
+      if(chk.error)throw chk.error;
+      if((chk.data||[]).length){showToast(`⚠️ "${name}" already exists in Item Master!`,'warn');return;}
+    }
+    const payload={
       name:name,
       description:(byId('mi_itemDesc')?.value||'').trim()||null,
       category:byId('mi_category')?.value||null,
@@ -6474,16 +6771,53 @@ window.addMasterItem=async function(){
       rate:Number(byId('mi_rate')?.value||0),
       uom:(byId('mi_uom')?.value||'PCS').trim()||'PCS',
       make:(byId('mi_make')?.value||'').trim()||null
-    });
-    if(error)throw error;
-    showToast(`✅ "${name}" added to Item Master!`);
-    ['mi_itemName','mi_itemDesc','mi_minStockQty','mi_make'].forEach(id=>{const e=byId(id);if(e)e.value='';});
-    if(byId('mi_rate'))byId('mi_rate').value='0';
-    if(byId('mi_uom'))byId('mi_uom').value='PCS';
-    if(byId('mi_category'))byId('mi_category').value='';
+    };
+    if(editingId){
+      // item_code is deliberately left out of the payload — it is the handle
+      // this item is known by and does not follow a rename.
+      const {error}=await SB.from('items').update(payload).eq('id',editingId);
+      if(error)throw error;
+      const renamed=!!oldName&&oldName.trim().toUpperCase()!==name;
+      // IN / OUT / PR lines point at item_id and read the name back through a
+      // join, so they already show the new name — nothing to copy there. Only
+      // purchase_order_lines keeps its own item_name, and that copy is
+      // rewritten on EVERY save, not just a rename: writing the current name
+      // over the current name costs nothing, makes re-saving the item a real
+      // repair step if this ever fails, and heals any older drift.
+      //
+      // It runs after the rename is already committed and the client has no
+      // transaction spanning the two, so a failure is reported as what it is —
+      // a half-applied rename with a named next step — never swallowed.
+      let poCount=0, poFailed=null;
+      try{ poCount=await syncItemNameOnPoLines_(editingId,oldName,name); }
+      catch(poErr){ console.error('[SARV] PO line name sync failed:',poErr); poFailed=poErr; }
+      if(poFailed){
+        showToast(`⚠️ ${code||name} save ho gaya${renamed?` ("${oldName}" → "${name}")`:''}, lekin purane PO lines ka naam update nahi hua`
+          +` (${poFailed.message||poFailed}). Isi item ko dobara Update Item karein — wo PO lines ko phir se sync karega.`,'warn');
+      }else if(renamed){
+        showToast(`✅ "${oldName}" → "${name}" — IN / OUT / PR entries automatic naye naam se dikhengi`
+          +(poCount?`, ${poCount} PO line(s) bhi update ki gayin`:''));
+      }else{
+        showToast(`✅ ${code||name} updated`);
+      }
+      cancelItemEdit();
+    }else{
+      const newCode=(name.replace(/[^A-Z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,28)||'ITEM')+'-'+String(Date.now()).slice(-4);
+      const {error}=await SB.from('items').insert({item_code:newCode,...payload});
+      if(error)throw error;
+      showToast(`✅ "${name}" added to Item Master!`);
+      cancelItemEdit();   // same field reset the add path always did
+    }
     await loadItemMaster();
   }catch(e){dbError(e);}
-  finally{if(btn){btn.disabled=false;btn.innerHTML='&#10133; Add Item';}}
+  finally{
+    if(btn){
+      btn.disabled=false;
+      // cancelItemEdit() has already restored the label on the success path;
+      // on a failure the form must still read "Update Item".
+      btn.innerHTML=sarvEditingItemId?'&#128190; Update Item':'&#10133; Add Item';
+    }
+  }
 };
 
 window.deleteMasterItem=async function(id){
@@ -6503,15 +6837,29 @@ window.deleteMasterItem=async function(id){
 /* ================================================================
    MASTER DATA — Supplier Master (Full Implementation)
 ================================================================ */
+/* Every suppliers column except pin_hash, which the anon key may not read.
+   Used anywhere the old code said select('*'). */
+const SARV_SUPPLIER_COLS='id,supplier_code,supplier_name,contact_person,phone,email,gst_no,state,city,created_at';
 window.loadSupplierMaster=async function(){
   const tb=byId('supplierMasterBody'),cnt=byId('supplierMasterCount');
   if(!tb)return;
   if(!SB_READY){tb.innerHTML='<tr><td colspan="11" style="text-align:center;padding:20px;color:#f59e0b;">⚠️ Supabase not configured</td></tr>';return;}
   tb.innerHTML='<tr><td colspan="11" style="text-align:center;padding:20px;color:#94a3b8;">⏳ Loading...</td></tr>';
   try{
-    const{data,error}=await SB.from('suppliers').select('*').order('supplier_name');
+    // Columns are listed explicitly rather than '*' because pin_hash is no
+    // longer readable by this key — selecting it would fail the whole query.
+    // Whether a vendor HAS a PIN comes from an RPC instead, which answers the
+    // question without handing over the hash.
+    const{data,error}=await SB.from('suppliers').select(SARV_SUPPLIER_COLS).order('supplier_name');
     if(error)throw error;
     sarvSupplierMasterRows=data||[];
+    try{
+      const p=await SB.rpc('suppliers_with_pin');
+      if(!p.error){
+        const hasPin=new Map((p.data||[]).map(r=>[r.id,!!r.has_pin]));
+        sarvSupplierMasterRows.forEach(s=>{s.has_pin=hasPin.get(s.id)===true;});
+      }
+    }catch(e){console.warn('[SARV] supplier PIN flags skipped:',e.message||e);}
     // Refresh supplier datalists everywhere a supplier/vendor name is picked.
     // Driven by the full set, never by what the search box is showing.
     refreshSupplierDatalist(sarvSupplierMasterRows);
@@ -6541,7 +6889,7 @@ window.renderSupplierMasterTable=function(){
       <td style="padding:5px 6px;font-size:10px;">${escText(s.gst_no||'—')}</td>
       <td style="padding:5px 6px;">${escText(s.state||'—')}</td>
       <td style="padding:5px 6px;">${escText(s.city||'—')}</td>
-      <td style="padding:5px 6px;text-align:center;">${isAdmin()?`<button onclick="setSupplierPin('${s.id}','${escText(s.supplier_name).replace(/'/g,"\\'")}')" style="background:${s.pin_hash?'#eff6ff':'#fef9c3'};border:1px solid ${s.pin_hash?'#93c5fd':'#fde68a'};color:${s.pin_hash?'#1d4ed8':'#92400e'};border-radius:4px;padding:2px 7px;font-size:10px;cursor:pointer;" title="${s.pin_hash?'Change vendor login PIN':'Set vendor login PIN'}">${s.pin_hash?'🔑 Change':'🔑 Set'}</button>`:(s.pin_hash?'<span style="color:#16a34a;" title="PIN set">✓ Set</span>':'<span style="color:#cbd5e1;">—</span>')}</td>
+      <td style="padding:5px 6px;text-align:center;">${isAdmin()?`<button onclick="setSupplierPin('${s.id}','${escText(s.supplier_name).replace(/'/g,"\\'")}')" style="background:${s.has_pin?'#eff6ff':'#fef9c3'};border:1px solid ${s.has_pin?'#93c5fd':'#fde68a'};color:${s.has_pin?'#1d4ed8':'#92400e'};border-radius:4px;padding:2px 7px;font-size:10px;cursor:pointer;" title="${s.has_pin?'Change vendor login PIN':'Set vendor login PIN'}">${s.has_pin?'🔑 Change':'🔑 Set'}</button>`:(s.has_pin?'<span style="color:#16a34a;" title="PIN set">✓ Set</span>':'<span style="color:#cbd5e1;">—</span>')}</td>
       <td style="padding:5px 6px;text-align:center;">${isAdmin()?`<button onclick="editMasterSupplier('${s.id}')" style="background:#eff6ff;border:1px solid #93c5fd;color:#1d4ed8;border-radius:4px;padding:2px 7px;font-size:10px;cursor:pointer;" title="Edit supplier details">&#9999;&#65039;</button>`:'<span style="color:#cbd5e1;">—</span>'}</td>
       <td style="padding:5px 6px;text-align:center;">${isAdmin()?`<button onclick="deleteMasterSupplier('${s.id}')" style="background:#fef2f2;border:1px solid #fca5a5;color:#dc2626;border-radius:4px;padding:2px 7px;font-size:10px;cursor:pointer;" title="Delete">✕</button>`:'<span style="color:#cbd5e1;">—</span>'}</td>
     </tr>`).join('');
@@ -6557,7 +6905,7 @@ window.editMasterSupplier=function(id){
   set('ms_supplierName',s.supplier_name);set('ms_contactPerson',s.contact_person);set('ms_phone',s.phone);
   set('ms_email',s.email);set('ms_gstNo',s.gst_no);set('ms_city',s.city);
   if(byId('ms_state'))byId('ms_state').value=s.state||'HARYANA (LOCAL)';
-  const pinEl=byId('ms_vendorPin');if(pinEl){pinEl.value='';pinEl.placeholder=s.pin_hash?'leave blank to keep existing PIN':'optional — 4+ digits';}
+  const pinEl=byId('ms_vendorPin');if(pinEl){pinEl.value='';pinEl.placeholder=s.has_pin?'leave blank to keep existing PIN':'optional — 4+ digits';}
   const saveBtn=byId('ms_saveBtn');if(saveBtn)saveBtn.innerHTML='💾 Update Supplier';
   if(byId('ms_cancelEditBtn'))byId('ms_cancelEditBtn').style.display='';
   byId('ms_supplierName')?.scrollIntoView({behavior:'smooth',block:'center'});
@@ -6588,22 +6936,25 @@ window.addMasterSupplier=async function(){
       state:byId('ms_state')?.value||'HARYANA (LOCAL)',
       city:(byId('ms_city')?.value||'').trim().toUpperCase()||null
     };
-    if(pin)payload.pin_hash=await sha256Hex(pin);
+    // pin_hash is deliberately NOT part of the payload — that column is not
+    // writable with this key. A typed PIN goes through set_supplier_pin()
+    // below, which authorises the write with the Admin PIN on the server.
+    let supplierId=editingId;
     if(editingId){
-      let{error}=await SB.from('suppliers').update(payload).eq('id',editingId);
-      if(error&&/pin_hash|column/i.test(error.message||'')){const{pin_hash,...rest}=payload;({error}=await SB.from('suppliers').update(rest).eq('id',editingId));if(pin)showToast('⚠️ Vendor PIN save nahi hua — suppliers table me pin_hash column add karein','warn');}
+      const{error}=await SB.from('suppliers').update(payload).eq('id',editingId);
       if(error)throw error;
       showToast(`✅ "${name}" updated in Supplier Master!`);
       cancelSupplierEdit();
     }else{
       const code='SUP-'+name.replace(/[^A-Z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,20)+'-'+String(Date.now()).slice(-4);
       payload.supplier_code=code;
-      let{error}=await SB.from('suppliers').insert(payload);
-      if(error&&/pin_hash|column/i.test(error.message||'')){const{pin_hash,...rest}=payload;({error}=await SB.from('suppliers').insert(rest));if(pin)showToast('⚠️ Vendor PIN save nahi hua — suppliers table me pin_hash column add karein','warn');}
+      const{data,error}=await SB.from('suppliers').insert(payload).select('id').single();
       if(error)throw error;
+      supplierId=data?.id||null;
       showToast(`✅ "${name}" added to Supplier Master!`);
       ['ms_supplierName','ms_contactPerson','ms_phone','ms_email','ms_gstNo','ms_city','ms_vendorPin'].forEach(id=>{const e=byId(id);if(e)e.value='';});
     }
+    if(pin&&supplierId)await applySupplierPin_(supplierId,pin,name);
     await loadSupplierMaster();
   }catch(e){
     if(e?.message?.includes('does not exist')||e?.code==='42P01')showToast('❌ Suppliers table missing — SQL patch run karein','error');
@@ -6625,17 +6976,29 @@ window.setSupplierPin=async function(id,name){
   if(pin==null)return;
   if(!pin.trim())return showToast('PIN khali nahi ho sakta','warn');
   try{
-    const hash=await sha256Hex(pin.trim());
-    const{error}=await SB.from('suppliers').update({pin_hash:hash}).eq('id',id);
-    if(error){
-      if(/pin_hash|column/i.test(error.message||''))showToast('⚠️ suppliers table me pin_hash column missing — SQL patch run karein','warn');
-      else dbError(error);
-      return;
-    }
-    showToast('✅ PIN updated for '+name);
-    await loadSupplierMaster();
+    if(await applySupplierPin_(id,pin.trim(),name))await loadSupplierMaster();
   }catch(e){dbError(e);}
 };
+
+/* Writes a vendor's login PIN through set_supplier_pin(), which hashes it and
+   authorises the write with the Admin PIN server-side. The hash is never
+   computed in, or sent from, this page. Returns true on success. */
+async function applySupplierPin_(supplierId,pin,name){
+  const adminPin=await askSecret({
+    title:'Admin PIN Confirm Karein',
+    subtitle:'Vendor PIN set karna server par Admin PIN se authorise hota hai',
+    recordInfo:'Vendor: '+(name||'—'),
+    label:'Admin PIN',
+    confirmText:'&#128273; Confirm &amp; Save PIN'
+  });
+  if(adminPin==null)return false;                  // cancelled
+  if(!adminPin.trim()){showToast('Admin PIN khali nahi ho sakta','warn');return false;}
+  const r=await SB.rpc('set_supplier_pin',{p_supplier_id:supplierId,p_new_pin:pin,p_admin_pin:adminPin.trim()});
+  if(r.error){dbError(r.error);return false;}
+  if(!r.data){showToast('❌ Admin PIN galat hai — vendor PIN save nahi hua','error');return false;}
+  showToast('✅ PIN updated for '+(name||'vendor'));
+  return true;
+}
 
 window.deleteMasterSupplier=async function(id){
   if(!isAdmin())return showToast('⛔ Sirf Admin login Master Data delete kar sakta hai','warn');
@@ -7154,8 +7517,8 @@ window.loadReports=async function(){
   const tb=byId('searchResultsBody'),statusEl=byId('searchStatusText');
   if(!tb)return;
   const csvBtn=byId('excelDownloadBtn');if(csvBtn)csvBtn.style.display=isAdmin()?'':'none';
-  if(!SB_READY){tb.innerHTML='<tr><td colspan="9" style="text-align:center;padding:20px;color:#f59e0b;">⚠️ Supabase not configured</td></tr>';return;}
-  tb.innerHTML='<tr><td colspan="9" style="text-align:center;padding:24px;color:#94a3b8;">⏳ Loading entries...</td></tr>';
+  if(!SB_READY){tb.innerHTML='<tr><td colspan="10" style="text-align:center;padding:20px;color:#f59e0b;">⚠️ Supabase not configured</td></tr>';return;}
+  tb.innerHTML='<tr><td colspan="10" style="text-align:center;padding:24px;color:#94a3b8;">⏳ Loading entries...</td></tr>';
   if(statusEl)statusEl.textContent='Loading...';
   try{
     const typeF=byId('searchTypeFilter')?.value||'ALL';
@@ -7210,8 +7573,11 @@ window.loadReports=async function(){
     filtered.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
     sarvLastReportsFiltered=filtered;
     if(statusEl)statusEl.textContent=filtered.length+' records found';
-    if(!filtered.length){tb.innerHTML='<tr><td colspan="9" style="text-align:center;padding:30px;color:#94a3b8;">No records found</td></tr>';return;}
+    if(!filtered.length){tb.innerHTML='<tr><td colspan="10" style="text-align:center;padding:30px;color:#94a3b8;">No records found</td></tr>';return;}
     const tc={'INWARD':'#0284c7','INWARD NB':'#dc2626','OUTWARD':'#166534','ISSUE':'#7c3aed'};
+    // Editing an already-saved record is an Admin-only action — everyone else
+    // sees a dash in the Edit column.
+    const canEdit=isAdmin();
     tb.innerHTML=filtered.map(r=>{
       const col=tc[r.type]||'#64748b';
       return `<tr style="font-size:11px;border-bottom:1px solid #f1f5f9;">
@@ -7232,10 +7598,260 @@ window.loadReports=async function(){
             <span style="font-size:9px;color:#94a3b8;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escText(r.items)}">${escText(r.items||'—')}</span>
           </div>
         </td>
+        <td style="padding:5px 6px;text-align:center;">
+          ${canEdit?`<button type="button" data-edit-kind="${escText(r.kind)}" data-edit-id="${escText(r.id)}" data-edit-no="${escText(r.no||'')}" title="Is Record No. ki poori entry edit mode me kholein" style="background:#eff6ff;border:1px solid #93c5fd;color:#1d4ed8;border-radius:5px;padding:3px 8px;font-size:11px;font-weight:700;cursor:pointer;">&#9999;&#65039;</button>`:'<span style="color:#cbd5e1;">—</span>'}
+        </td>
       </tr>`;
     }).join('');
-  }catch(e){dbError(e);tb.innerHTML='<tr><td colspan="9" style="text-align:center;padding:20px;color:#ef4444;">❌ Error loading reports</td></tr>';}
+    // Delegated so it survives every re-render; the record's identity travels
+    // on data-* attributes rather than an inline onclick, so a document number
+    // containing a quote can't break the markup.
+    tb.querySelectorAll('button[data-edit-id]').forEach(b=>{
+      b.addEventListener('click',()=>editStoreRecord(b.dataset.editKind,b.dataset.editId,b.dataset.editNo));
+    });
+  }catch(e){dbError(e);tb.innerHTML='<tr><td colspan="10" style="text-align:center;padding:20px;color:#ef4444;">❌ Error loading reports</td></tr>';}
 };
+
+/* ================================================================
+   RECORD EDIT — Print History / Reports → ✏️  (Admin only)
+
+   Loads a saved Inward / Outward entry back into its own entry form in
+   full edit mode and writes it BACK ONTO THE SAME Record No.
+
+   How duplicates are kept out, top to bottom:
+     • nextNo() is never called in edit mode, so no fresh document number
+       is drawn from the series — the record keeps the number it had.
+     • The header goes through .update().eq('id',…): a primary-key update
+       can only ever touch the one row that already exists.
+     • Child lines are deleted for that parent id and re-inserted, so a
+       row the Admin removed really disappears and an untouched row is
+       not written twice.
+     • Entry Type is locked while editing. It decides which series the
+       document number came from (INWARD vs NB, OUTWARD vs ISSUE), so
+       letting it change would file the record under the wrong series.
+     • PDFs regenerate under the same document number, and pdf_documents
+       is an upsert on (document_no, variant) — the old files are
+       replaced in the index, not added alongside.
+     • PO receipts are RECOMPUTED from inward_lines instead of being
+       incremented, so re-saving a PO-linked receipt cannot inflate
+       received_qty no matter how many times it is edited.
+================================================================ */
+let sarvEditingInwardId=null,  sarvEditingInwardNo='';
+let sarvEditingOutwardId=null, sarvEditingOutwardNo='';
+// PO lines the record pointed at when it was opened — kept so that a line
+// the Admin deletes during the edit still gets its PO receipt recomputed.
+let sarvEditingInwardPoLineIds=[];
+
+function lockEntryTypeForEdit_(sel,locked){
+  if(!sel)return;
+  sel.disabled=locked;
+  sel.style.background=locked?'#f1f5f9':'';
+  sel.style.cursor=locked?'not-allowed':'pointer';
+  sel.title=locked?'Edit mode me Entry Type change nahi ho sakta — Record No. isi series ka hai':'';
+}
+function refreshStoreEditUi(){
+  const inOn=!!sarvEditingInwardId, outOn=!!sarvEditingOutwardId;
+  const ib=byId('inwEditBanner');     if(ib)ib.style.display=inOn?'flex':'none';
+  const ibn=byId('inwEditBannerNo');  if(ibn)ibn.textContent=sarvEditingInwardNo||'';
+  const isb=byId('submitBtn');        if(isb)isb.textContent=inOn?('💾 Update '+(sarvEditingInwardNo||'Inward')):'Submit Inward';
+  lockEntryTypeForEdit_(byId('entryTypeSelect'),inOn);
+  const ob=byId('outEditBanner');     if(ob)ob.style.display=outOn?'flex':'none';
+  const obn=byId('outEditBannerNo');  if(obn)obn.textContent=sarvEditingOutwardNo||'';
+  const osb=byId('outSubmitBtn');     if(osb)osb.textContent=outOn?('💾 Update '+(sarvEditingOutwardNo||'Outward')):'Submit Outward';
+  lockEntryTypeForEdit_(byId('outEntryTypeSelect'),outOn);
+}
+window.cancelStoreEdit=function(kind){
+  if(kind==='outward'){sarvEditingOutwardId=null;sarvEditingOutwardNo='';clearOutwardForm();}
+  else{sarvEditingInwardId=null;sarvEditingInwardNo='';sarvEditingInwardPoLineIds=[];clearInwardForm();}
+  showToast('Edit cancel — form ab naye entry ke liye khaali hai');
+};
+
+window.editStoreRecord=async function(kind,id,no){
+  if(!isAdmin())return showToast('⛔ Sirf Admin login saved record edit kar sakta hai','warn');
+  if(!SB_READY)return showToast('Supabase URL/key configure karein','warn');
+  if(!id)return showToast('⚠️ Record ki id nahi mili — Reports refresh karein','warn');
+  const busy=sarvEditingInwardNo||sarvEditingOutwardNo;
+  if(busy&&busy!==no&&!window.confirm(busy+' abhi edit mode me khula hai.\nUse chhod kar '+no+' kholein?'))return;
+  try{
+    if(kind==='outward')await loadOutwardForEdit(id,no);
+    else await loadInwardForEdit(id,no);
+  }catch(e){dbError(e);}
+};
+
+async function loadInwardForEdit(id,no){
+  const h=await SB.from('inward_entries').select('*').eq('id',id).maybeSingle();
+  if(h.error)throw h.error;
+  if(!h.data){showToast('❌ '+(no||'Record')+' ab database me nahi hai — shayad delete ho chuka hai','error');return loadReports();}
+  const lq=await SB.from('inward_lines').select('*, items(name,description,make,category,uom)').eq('inward_id',id).order('id');
+  if(lq.error)throw lq.error;
+  const e=h.data, lines=lq.data||[];
+
+  activatePanel('inwardPanel');
+  clearInwardForm();                       // also clears any previous edit state
+  sarvEditingInwardId=e.id;
+  sarvEditingInwardNo=e.document_no||no||'';
+  sarvEditingInwardPoLineIds=lines.map(l=>l.po_line_id).filter(Boolean);
+
+  const set=(f,v)=>{const el=byId(f);if(el)el.value=v??''};
+  // Entry Type is assigned directly, never through a change event: that
+  // handler fetches the NEXT number in the series and would overwrite the
+  // Record No. being edited.
+  const et=byId('entryTypeSelect');if(et)et.value=e.entry_type||'INWARD';
+  const panel=byId('inwardPanel');
+  if(panel){panel.classList.remove('theme-nb','theme-issue');if((e.entry_type||'')==='INWARD NB')panel.classList.add('theme-nb');}
+
+  set('receivingDate',e.receiving_date||today());
+  set('regEntryNo',e.document_no||'');
+  set('invoiceNumber',e.invoice_no);
+  set('invoiceDate',e.invoice_date);
+  set('partyState',e.party_state);
+  set('supplierName',e.supplier_name);
+  set('inwMachineName',e.machine_name);
+  set('inwRemarks',e.notes);
+  // Nature of Inward goes first — its change handler blanks Gate Pass for a
+  // non-repair entry, so gate pass and lot no are written after it has run.
+  const nat=byId('inwNatureOfInward');
+  if(nat){nat.value=e.nature_of_inward||'Purchase';nat.dispatchEvent(new Event('change'));}
+  set('gatePassNo',e.gate_pass_no);
+  set('lotNo',e.lot_no);
+
+  // PO linkage is displayed, not re-driven. Re-ticking the PO picker would
+  // rebuild the rows from the PO's ordered quantities and throw away what was
+  // actually received — the per-line po_line_id below is what keeps the link.
+  const poNos=String(e.po_number||'').split(',').map(s=>s.trim()).filter(Boolean);
+  const poBtn=byId('poNumberBtnText');
+  if(poBtn)poBtn.textContent=poNos.length?poNos.join(', '):'Without PO';
+
+  const tb=byId('itemTableBody');if(tb)tb.innerHTML='';
+  lines.forEach(line=>{
+    addNewRow();
+    const tr=tb&&tb.lastElementChild;if(!tr)return;
+    if(line.po_line_id)tr.dataset.poLineId=line.po_line_id;
+    if(poNos.length===1)tr.dataset.poNo=poNos[0];
+    if(line.repair_outward_no)tr.dataset.repairOutNo=line.repair_outward_no;
+    const it=line.items||{};
+    const sr=(s,v)=>{const el=tr.querySelector(s);if(el)el.value=v??''};
+    sr('.item-name',it.name||'');
+    sr('.item-desc',it.description||'');
+    sr('.item-make',it.make||'');
+    sr('.item-cat',it.category||'General');
+    sr('.qty-field',pNum(line.qty));
+    sr('.item-uom',line.uom||it.uom||'');
+    sr('.weight-field',pNum(line.weight));
+    sr('.item-gst-field',pNum(line.gst_pct));
+    // Rate is a computed field (list price minus discount%), so the saved rate
+    // is restored by putting it in List Price at 0% discount.
+    sr('.list-price-field',pNum(line.rate));
+    sr('.discount-field',0);
+    sr('.rate-field',pNum(line.rate));
+    // Bill Basis isn't stored, so it is inferred from whichever of qty / weight
+    // reproduces the saved line total — that keeps the amounts identical.
+    const rate=pNum(line.rate),tot=pNum(line.line_total);
+    const byQty=Math.abs(rate*pNum(line.qty)-tot), byWt=Math.abs(rate*pNum(line.weight)-tot);
+    sr('.bill-basis-field',(pNum(line.weight)>0&&byWt<byQty)?'WEIGHT':'QTY');
+  });
+  if(!lines.length)addNewRow();
+  applyInwardNbGstLock();
+  updateStoreTotals();
+  refreshStoreEditUi();
+  showToast('✏️ '+(sarvEditingInwardNo||'Record')+' edit mode me khul gaya — badlaav karke Update dabayein');
+}
+
+async function loadOutwardForEdit(id,no){
+  const h=await SB.from('outward_entries').select('*').eq('id',id).maybeSingle();
+  if(h.error)throw h.error;
+  if(!h.data){showToast('❌ '+(no||'Record')+' ab database me nahi hai — shayad delete ho chuka hai','error');return loadReports();}
+  const lq=await SB.from('outward_lines').select('*, items(name,description,make,category,uom)').eq('outward_id',id).order('id');
+  if(lq.error)throw lq.error;
+  const e=h.data, lines=lq.data||[];
+
+  activatePanel('outwardPanel');
+  clearOutwardForm();
+  sarvEditingOutwardId=e.id;
+  sarvEditingOutwardNo=e.document_no||no||'';
+
+  const set=(f,v)=>{const el=byId(f);if(el)el.value=v??''};
+  const et=byId('outEntryTypeSelect');if(et)et.value=e.entry_type||'OUTWARD';
+  const panel=byId('outwardPanel');
+  if(panel){panel.classList.remove('theme-nb','theme-issue');if((e.entry_type||'')==='ISSUE')panel.classList.add('theme-issue');}
+  // Lot No. is an ISSUE-only field; the Entry Type change handler normally
+  // shows and hides it, and that handler is deliberately not fired here.
+  const lotGrp=byId('outLotNoFieldGroup');
+  if(lotGrp)lotGrp.style.display=((e.entry_type||'')==='ISSUE')?'':'none';
+
+  set('outDate',e.outward_date||today());
+  set('outRegEntryNo',e.document_no||'');
+  set('outPartyName',e.party_name);
+  set('outLocation',e.location);
+  set('outReceiverName',e.receiver_name);
+  set('outTargetReturnDate',e.target_return_date);
+  set('outGatePassNo',e.gate_pass_no);
+  set('outTransport',e.transport);
+  set('outLotNo',e.lot_no);
+  set('outRemarks',e.notes);
+  const nod=byId('outNatureOfDispatch');
+  if(nod&&e.nature_of_dispatch){nod.value=e.nature_of_dispatch;nod.dispatchEvent(new Event('change'));}
+
+  const tb=byId('outwardItemTableBody');if(tb)tb.innerHTML='';
+  lines.forEach(line=>{
+    addOutwardItemRow();
+    const tr=tb&&tb.lastElementChild;if(!tr)return;
+    const it=line.items||{};
+    const sr=(s,v)=>{const el=tr.querySelector(s);if(el)el.value=v??''};
+    sr('.out-item-name',it.name||'');
+    sr('.out-item-desc',it.description||'');
+    sr('.out-item-make',it.make||'');
+    sr('.out-item-cat',it.category||'General');
+    sr('.out-qty',pNum(line.qty));
+    sr('.out-qty-uom',line.uom||it.uom||'');
+    sr('.out-weight',pNum(line.weight));
+  });
+  if(!lines.length)addOutwardItemRow();
+  updateOutTotals();
+  refreshStoreEditUi();
+  showToast('✏️ '+(sarvEditingOutwardNo||'Record')+' edit mode me khul gaya — badlaav karke Update dabayein');
+}
+
+/* The PO number an edited Inward should keep. Loading a record for edit fills
+   the PO widget's label with the numbers the record was saved against without
+   ticking the picker (ticking it would rebuild the rows from the PO), so the
+   label is where that value lives until the record is saved again. */
+function inwardEditPoNumber_(){
+  const txt=(byId('poNumberBtnText')?.textContent||'').trim();
+  return (!txt||txt==='Without PO')?null:txt;
+}
+
+/* Recomputes received_qty for the given PO lines straight from inward_lines,
+   then rolls each affected PO's total and status up from its own lines.
+   Recomputing (rather than adding to what was already there) is what makes an
+   edited receipt safe to save again and again — the figure always matches the
+   inward lines that actually exist. */
+async function syncPoReceiptsForLines(lineIds){
+  const ids=[...new Set((lineIds||[]).filter(Boolean))];
+  if(!ids.length)return;
+  const q=await SB.from('inward_lines').select('po_line_id,qty').in('po_line_id',ids);
+  if(q.error){console.warn('[SARV] PO receipt recompute skipped:',q.error.message||q.error);return;}
+  const sums={};ids.forEach(i=>{sums[i]=0});
+  (q.data||[]).forEach(r=>{if(Object.prototype.hasOwnProperty.call(sums,r.po_line_id))sums[r.po_line_id]+=pNum(r.qty)});
+  const poIds=new Set();
+  for(const lineId of ids){
+    const u=await SB.from('purchase_order_lines').update({received_qty:sums[lineId]}).eq('id',lineId).select('purchase_order_id').maybeSingle();
+    if(u.error)throw u.error;
+    if(u.data&&u.data.purchase_order_id)poIds.add(u.data.purchase_order_id);
+  }
+  for(const poId of poIds){
+    const lq=await SB.from('purchase_order_lines').select('ordered_qty,received_qty').eq('purchase_order_id',poId);
+    if(lq.error)throw lq.error;
+    const t=(lq.data||[]).reduce((a,x)=>({ordered:a.ordered+pNum(x.ordered_qty),received:a.received+pNum(x.received_qty)}),{ordered:0,received:0});
+    const po=sarvPoCatalog.find(x=>x.id===poId);
+    // A short-closed PO stays closed — a corrected receipt must not reopen it.
+    const status=(po&&po.status==='Closed (Short)')?po.status
+      :(t.received>=t.ordered&&t.ordered>0?'Received':t.received>0?'Partially Received':((po&&po.status)||'Generated'));
+    const u=await SB.from('purchase_orders').update({received_qty:t.received,status,updated_at:new Date().toISOString()}).eq('id',poId);
+    if(u.error)throw u.error;
+  }
+  await loadOpenPoDropdown();await refreshGeneratedPoList();
+}
 // Downloads the currently filtered Reports result set as CSV, straight
 // from the database rows (not just what's rendered in the table) — Admin
 // login only.
@@ -7362,7 +7978,7 @@ window.addEventListener('DOMContentLoaded',()=>{
     const e=byId(id);
     if(e&&!e.dataset.itLeBound){e.addEventListener('keydown',ev=>{if(ev.key==='Enter'){ev.preventDefault();loadItemTracker().catch(dbError)}});e.dataset.itLeBound='1'}
   });
-  add2('clearSearchBtn',()=>{['searchQuery','filterDateFrom','filterDateTo'].forEach(id=>{const e=byId(id);if(e)e.value='';});byId('searchTypeFilter')&&(byId('searchTypeFilter').value='ALL');const tb=byId('searchResultsBody');if(tb)tb.innerHTML='<tr><td colspan="9" style="text-align:center;padding:30px;color:#94a3b8;">&#9203; Use Search or Load All Records</td></tr>';});
+  add2('clearSearchBtn',()=>{['searchQuery','filterDateFrom','filterDateTo'].forEach(id=>{const e=byId(id);if(e)e.value='';});byId('searchTypeFilter')&&(byId('searchTypeFilter').value='ALL');const tb=byId('searchResultsBody');if(tb)tb.innerHTML='<tr><td colspan="10" style="text-align:center;padding:30px;color:#94a3b8;">&#9203; Use Search or Load All Records</td></tr>';});
 });
 
 /* ================================================================
@@ -8942,23 +9558,50 @@ window.addEventListener('DOMContentLoaded',()=>{
    // A taxable INWARD with a 0% line needs authorisation — it usually means a
    // mis-keyed GST rather than a genuinely exempt receipt. INWARD NB is exempt
    // by definition (its GST is pinned to 0 and locked), so it never asks.
-   if(pVal('entryTypeSelect')==='INWARD'){
+   //
+   // Own-unit stock transfers (SARV INDIA HOME FURNISHING UNIT-I / UNIT-II) are
+   // internal movements, not purchases — whatever the GST%, they save straight
+   // through without the Edit Password.
+   if(pVal('entryTypeSelect')==='INWARD'&&!isSarvOwnUnitSupplier(pVal('supplierName'))){
      const zeroGst=rows.filter(r=>pNum(r.tax)===0).map(r=>r.name);
      if(zeroGst.length&&!await verifyEditPassword('GST% = 0 par item(s):\n• '+zeroGst.join('\n• ')))
        return showToast('⛔ Edit Password ke bina GST = 0 wali INWARD entry save nahi hogi','warn');
    }
    if(pVal('inwNatureOfInward')==='Repaired'&&!getSelectedRepairOutNos().length)return showToast('Repair Return ke liye pending Outward select karna zaroori hai','warn');
    const overlay=byId('syncOverlay'),msgEl=byId('syncOverlayText'),btn=byId('submitBtn');
+   // Editing an existing record? Then the document number is the one it
+   // already carries — nextNo() must not be called, or the record would be
+   // re-filed under a brand new number and the old one left orphaned.
+   const editId=sarvEditingInwardId, editNo=sarvEditingInwardNo;
    if(btn&&btn.disabled)return; // already processing — ignore double-click
-   if(btn){btn.disabled=true;btn.dataset.origLabel=btn.textContent;btn.textContent='⏳ Saving...';}
-   if(overlay){if(msgEl)msgEl.textContent='Saving Inward entry…';overlay.classList.add('active');}
+   if(btn){btn.disabled=true;btn.dataset.origLabel=btn.textContent;btn.textContent=editId?'⏳ Updating...':'⏳ Saving...';}
+   if(overlay){if(msgEl)msgEl.textContent=editId?('Updating '+editNo+'…'):'Saving Inward entry…';overlay.classList.add('active');}
    try{
-     const no=await nextNo(pVal('entryTypeSelect')==='INWARD NB'?'NB':'INWARD');
+     const no=editId?editNo:await nextNo(pVal('entryTypeSelect')==='INWARD NB'?'NB':'INWARD');
      const base={document_no:no,entry_type:pVal('entryTypeSelect')||'INWARD',receiving_date:pVal('receivingDate')||today(),invoice_no:pVal('invoiceNumber')||null,invoice_date:pVal('invoiceDate')||null,party_state:pVal('partyState')||null,notes:pVal('inwRemarks')||null};
-     const poNumberVal=selectedPoNos.join(', ')||null;
-     let h=await SB.from('inward_entries').insert({...base,po_number:poNumberVal,supplier_name:pVal('supplierName')||null,gate_pass_no:pVal('gatePassNo')||null,lot_no:pVal('lotNo')||null,machine_name:pVal('inwMachineName')||null,nature_of_inward:pVal('inwNatureOfInward')||null}).select().single();
-     if(h.error&&/column/i.test(h.error.message||''))h=await SB.from('inward_entries').insert({...base,po_number:poNumberVal,supplier_name:pVal('supplierName')||null}).select().single();
-     if(h.error)throw h.error;
+     // On an edit the PO picker is deliberately left untouched (re-ticking it
+     // would rebuild the rows from the PO), so the record's existing PO number
+     // is read back off the widget's label instead.
+     const poNumberVal=editId?inwardEditPoNumber_():(selectedPoNos.join(', ')||null);
+     const full={...base,po_number:poNumberVal,supplier_name:pVal('supplierName')||null,gate_pass_no:pVal('gatePassNo')||null,lot_no:pVal('lotNo')||null,machine_name:pVal('inwMachineName')||null,nature_of_inward:pVal('inwNatureOfInward')||null};
+     const slim={...base,po_number:poNumberVal,supplier_name:pVal('supplierName')||null};
+     let h;
+     if(editId){
+       // Primary-key update: one row in, one row out — a second header for the
+       // same Record No. is impossible.
+       h=await SB.from('inward_entries').update(full).eq('id',editId).select().maybeSingle();
+       if(h.error&&/column/i.test(h.error.message||''))h=await SB.from('inward_entries').update(slim).eq('id',editId).select().maybeSingle();
+       if(h.error)throw h.error;
+       if(!h.data)throw new Error(editNo+' database me nahi mila — ho sakta hai kisi ne delete kar diya ho. Kuch save nahi hua.');
+       // Old lines go before the new ones land, so a row the Admin removed
+       // really disappears and an unchanged row is never stored twice.
+       const del=await SB.from('inward_lines').delete().eq('inward_id',editId);
+       if(del.error)throw del.error;
+     }else{
+       h=await SB.from('inward_entries').insert(full).select().single();
+       if(h.error&&/column/i.test(h.error.message||''))h=await SB.from('inward_entries').insert(slim).select().single();
+       if(h.error)throw h.error;
+     }
      let ls=[];for(const r of rows){const it=await ensureItem(r.name,r.desc,r.make,r.cat,r.uom);ls.push({inward_id:h.data.id,item_id:it.id,qty:r.qty,uom:r.uom||it.uom,weight:r.weight,rate:r.rate,gst_pct:r.tax,line_total:r.total,po_line_id:r.poLineId||null,repair_outward_no:r.repairOutNo||null})}
      // repair_outward_no is what credits each outward when one repair return
      // covers several — gate_pass_no can only ever name one. Dropped on DBs
@@ -8966,11 +9609,18 @@ window.addEventListener('DOMContentLoaded',()=>{
      let ins=await SB.from('inward_lines').insert(ls);
      if(ins.error&&/repair_outward_no|column/i.test(ins.error.message||'')){ls=ls.map(({repair_outward_no,...x})=>x);ins=await SB.from('inward_lines').insert(ls)}
      if(ins.error&&/po_line_id|column/i.test(ins.error.message||'')){ls=ls.map(({po_line_id,...x})=>x);ins=await SB.from('inward_lines').insert(ls)}if(ins.error)throw ins.error;
-     if(selectedPoNos.length)await updatePoReceipt(selectedPoNos,rows);
+     if(editId){
+       // An edit must not ADD to received_qty — the PO lines this record ever
+       // touched (before and after the edit) are recomputed from inward_lines,
+       // so the figure lands on the truth however many times it is re-saved.
+       await syncPoReceiptsForLines([...sarvEditingInwardPoLineIds,...rows.map(r=>r.poLineId)]);
+     }else if(selectedPoNos.length){
+       await updatePoReceipt(selectedPoNos,rows);
+     }
      if(msgEl)msgEl.textContent='Generating PDF…';
      const d=collectInwardData(no,rows),pdfs=await generateStorePdfs('INWARD',d,rows,h.data.id,'inwPhotoGalleryInput');
      {const b=pdfs.SINGLE?.blob||pdfs.TWO_PAGE?.blob;showSarvPdfPreview(b,pdfs.SINGLE?.name||storePdfFilename_('INWARD',d,'SINGLE'),b?'':(pdfs.SINGLE?.html||pdfs.TWO_PAGE?.html||''));}
-     showToast('✅ Inward saved: '+no);
+     showToast(editId?('✅ '+no+' updated — usi Record No. par save hua'):('✅ Inward saved: '+no));
      // Repair-Return inward — refresh the Repair Items Tracker so the
      // received/balance figures for the matching outward update immediately.
      if(pVal('inwNatureOfInward')==='Repaired')loadRepairTracker().catch(()=>{});
@@ -8979,7 +9629,11 @@ window.addEventListener('DOMContentLoaded',()=>{
      return h.data;
    } finally {
      if(overlay)overlay.classList.remove('active');
-     if(btn){btn.disabled=false;btn.textContent=btn.dataset.origLabel||'Submit Inward';}
+     // The label comes from the edit state rather than the saved original:
+     // after a successful update the form is back to "new entry", after a
+     // failed one it must still read "Update <Record No.>".
+     if(btn)btn.disabled=false;
+     refreshStoreEditUi();
    }
  }
  /* ── Outward / Issue stock guard ──────────────────────────────────
@@ -8988,8 +9642,11 @@ window.addEventListener('DOMContentLoaded',()=>{
     item — so both screens always agree.
     Rows are aggregated BY ITEM first: two lines for the same item must be
     checked against one balance, not twice against the same figure.
-    Returns [{name, stock, want}] for every item that falls short. */
- async function outwardStockShortfalls(rows){
+    Returns [{name, stock, want}] for every item that falls short.
+    excludeOutwardId — when an existing outward is being re-saved from the
+    edit form, its own lines are still in the table and must be left out of
+    the "already gone" total, or the entry would be checked against itself. */
+ async function outwardStockShortfalls(rows,excludeOutwardId){
    const wanted=new Map();   // UPPER(item name) -> {name, want}
    rows.forEach(r=>{
      const key=String(r.itemName||'').trim().toUpperCase();
@@ -9002,11 +9659,14 @@ window.addEventListener('DOMContentLoaded',()=>{
    const [items,inLines,outLines]=await Promise.all([
      fetchAllRows('items','id,name','name'),
      fetchAllRows('inward_lines','item_id,qty'),
-     fetchAllRows('outward_lines','item_id,qty')
+     fetchAllRows('outward_lines','outward_id,item_id,qty')
    ]);
    const inMap={},outMap={};
    inLines.forEach(r=>{inMap[r.item_id]=(inMap[r.item_id]||0)+pNum(r.qty)});
-   outLines.forEach(r=>{outMap[r.item_id]=(outMap[r.item_id]||0)+pNum(r.qty)});
+   outLines.forEach(r=>{
+     if(excludeOutwardId&&String(r.outward_id)===String(excludeOutwardId))return;
+     outMap[r.item_id]=(outMap[r.item_id]||0)+pNum(r.qty);
+   });
    const balByName={};
    items.forEach(it=>{
      const key=String(it.name||'').trim().toUpperCase();
@@ -9039,8 +9699,12 @@ window.addEventListener('DOMContentLoaded',()=>{
    // Stock guard runs before ANY write — a blocked entry must leave no
    // outward_entries header behind.
    showOutStockWarning(null);
+   // Editing an existing record? Its own lines are still in outward_lines, so
+   // they are excluded from the stock check — otherwise the entry would be
+   // counted against itself and every re-save would look short.
+   const outEditId=sarvEditingOutwardId, outEditNo=sarvEditingOutwardNo;
    try{
-     const short=await outwardStockShortfalls(rows);
+     const short=await outwardStockShortfalls(rows,outEditId);
      if(short.length){
        showOutStockWarning(short);
        showToast('⛔ '+short.map(s=>escText(s.name)+': STOCK QTY '+nNum_(s.stock)+' &lt; OUT QTY '+nNum_(s.want)).join('<br>')+'<br><b>PLEASE INWARD FIRST</b>','error');
@@ -9054,19 +9718,34 @@ window.addEventListener('DOMContentLoaded',()=>{
    }
    const overlay=byId('syncOverlay'),msgEl=byId('syncOverlayText'),btn=byId('outSubmitBtn');
    if(btn&&btn.disabled)return; // already processing — ignore double-click
-   if(btn){btn.disabled=true;btn.dataset.origLabel=btn.textContent;btn.textContent='⏳ Saving...';}
-   if(overlay){if(msgEl)msgEl.textContent='Saving Outward entry…';overlay.classList.add('active');}
+   if(btn){btn.disabled=true;btn.dataset.origLabel=btn.textContent;btn.textContent=outEditId?'⏳ Updating...':'⏳ Saving...';}
+   if(overlay){if(msgEl)msgEl.textContent=outEditId?('Updating '+outEditNo+'…'):'Saving Outward entry…';overlay.classList.add('active');}
    try{
-     const no=await nextNo(pVal('outEntryTypeSelect')==='ISSUE'?'ISSUE':'OUTWARD');
+     // On an edit the record keeps the number it already has — nextNo() would
+     // hand out a fresh one and leave the original orphaned.
+     const no=outEditId?outEditNo:await nextNo(pVal('outEntryTypeSelect')==='ISSUE'?'ISSUE':'OUTWARD');
      const outBase={document_no:no,entry_type:pVal('outEntryTypeSelect')||'OUTWARD',outward_date:pVal('outDate')||today(),party_name:pVal('outPartyName')||'Unknown',location:pVal('outLocation')||null,receiver_name:pVal('outReceiverName')||null,target_return_date:pVal('outTargetReturnDate')||null,gate_pass_no:pVal('outGatePassNo')||null,transport:pVal('outTransport')||null,notes:pVal('outRemarks')||null};
-     let h=await SB.from('outward_entries').insert({...outBase,nature_of_dispatch:pVal('outNatureOfDispatch')||null,lot_no:pVal('outLotNo')||null}).select().single();
-     if(h.error&&/nature_of_dispatch|lot_no|column/i.test(h.error.message||''))h=await SB.from('outward_entries').insert(outBase).select().single();
-     if(h.error)throw h.error;
+     const outFull={...outBase,nature_of_dispatch:pVal('outNatureOfDispatch')||null,lot_no:pVal('outLotNo')||null};
+     let h;
+     if(outEditId){
+       // Primary-key update — a second header for the same Record No. is
+       // impossible, and the old lines go before the new ones land.
+       h=await SB.from('outward_entries').update(outFull).eq('id',outEditId).select().maybeSingle();
+       if(h.error&&/nature_of_dispatch|lot_no|column/i.test(h.error.message||''))h=await SB.from('outward_entries').update(outBase).eq('id',outEditId).select().maybeSingle();
+       if(h.error)throw h.error;
+       if(!h.data)throw new Error(outEditNo+' database me nahi mila — ho sakta hai kisi ne delete kar diya ho. Kuch save nahi hua.');
+       const del=await SB.from('outward_lines').delete().eq('outward_id',outEditId);
+       if(del.error)throw del.error;
+     }else{
+       h=await SB.from('outward_entries').insert(outFull).select().single();
+       if(h.error&&/nature_of_dispatch|lot_no|column/i.test(h.error.message||''))h=await SB.from('outward_entries').insert(outBase).select().single();
+       if(h.error)throw h.error;
+     }
      const ls=[];for(const r of rows){const it=await ensureItem(r.itemName,r.itemDesc,r.make,r.category,r.qtyUom);ls.push({outward_id:h.data.id,item_id:it.id,qty:r.qty,uom:r.qtyUom||it.uom,weight:r.weight})}const ins=await SB.from('outward_lines').insert(ls);if(ins.error)throw ins.error;
      if(msgEl)msgEl.textContent='Generating PDF…';
      const d=collectOutwardData(no),pdfs=await generateStorePdfs('OUTWARD',d,rows,h.data.id,'outPhotoGalleryInput');
      {const b=pdfs.SINGLE?.blob||pdfs.TWO_PAGE?.blob;showSarvPdfPreview(b,pdfs.SINGLE?.name||storePdfFilename_('OUTWARD',d,'SINGLE'),b?'':(pdfs.SINGLE?.html||pdfs.TWO_PAGE?.html||''));}
-     showToast('✅ Outward saved: '+no);
+     showToast(outEditId?('✅ '+no+' updated — usi Record No. par save hua'):('✅ Outward saved: '+no));
      // Repair-nature outward — refresh the Repair Items Tracker so this
      // entry (and its sent/balance figures) show up immediately, not only
      // after manually opening that tab and clicking Refresh.
@@ -9076,7 +9755,10 @@ window.addEventListener('DOMContentLoaded',()=>{
      return h.data;
    } finally {
      if(overlay)overlay.classList.remove('active');
-     if(btn){btn.disabled=false;btn.textContent=btn.dataset.origLabel||'Submit Outward';}
+     // Label follows the edit state, not the saved original — see the Inward
+     // save for the same reasoning.
+     if(btn)btn.disabled=false;
+     refreshStoreEditUi();
    }
  }
  async function saveRequirementWithPdf(){
@@ -9132,6 +9814,10 @@ window.addEventListener('DOMContentLoaded',()=>{
 
  /* ── Form clear helpers ─────────────────────────────────── */
  function clearInwardForm(){
+   // A cleared form is by definition no longer editing anything — this is also
+   // what ends the edit session after a successful update.
+   sarvEditingInwardId=null;sarvEditingInwardNo='';sarvEditingInwardPoLineIds=[];
+   refreshStoreEditUi();
    ['invoiceNumber','invoiceDate','partyState','supplierName','inwRemarks',
     'inwMachineName','lotNo','gatePassNo'].forEach(id=>{const e=byId(id);if(e)e.value='';});
    // .value='' doesn't reliably clear a multi-select — deselect explicitly.
@@ -9149,9 +9835,14 @@ window.addEventListener('DOMContentLoaded',()=>{
    // the files behind, so the next entry inherited the previous one's photos.
    if(window.clearPhotos)window.clearPhotos('inward');
    updateStoreTotals();
-   if(SB_READY){nextNo('INWARD').then(no=>{const e=byId('regEntryNo');if(e)e.value=no;}).catch(()=>{});refreshSerialNo('INWARD').catch(()=>{});}
+   // The !sarvEditingInwardId guard matters: loading a record for edit clears
+   // the form first and then writes the record's own number into the box. This
+   // lookup resolves later, and without the guard it would overwrite it.
+   if(SB_READY){nextNo('INWARD').then(no=>{const e=byId('regEntryNo');if(e&&!sarvEditingInwardId)e.value=no;}).catch(()=>{});refreshSerialNo('INWARD').catch(()=>{});}
  }
  function clearOutwardForm(){
+   sarvEditingOutwardId=null;sarvEditingOutwardNo='';
+   refreshStoreEditUi();
    ['outPartyName','outLocation','outReceiverName','outTargetReturnDate','outGatePassNo',
     'outTransport','outRemarks','outReceiverEmpCode','outDesignation','outDepartment'].forEach(id=>{const e=byId(id);if(e)e.value='';});
    sarvLastOutPartyCity='';   // fields are blank again, so nothing is "auto-filled"
@@ -9160,7 +9851,8 @@ window.addEventListener('DOMContentLoaded',()=>{
    const tb=byId('outwardItemTableBody');if(tb){tb.innerHTML='';addOutwardItemRow();}
    if(window.clearPhotos)window.clearPhotos('outward');
    updateOutTotals();
-   if(SB_READY){nextNo('OUTWARD').then(no=>{const e=byId('outRegEntryNo');if(e)e.value=no;}).catch(()=>{});refreshSerialNo('OUTWARD').catch(()=>{});}
+   // Guarded for the same reason as the Inward side — see clearInwardForm.
+   if(SB_READY){nextNo('OUTWARD').then(no=>{const e=byId('outRegEntryNo');if(e&&!sarvEditingOutwardId)e.value=no;}).catch(()=>{});refreshSerialNo('OUTWARD').catch(()=>{});}
  }
  function clearPrForm(){
    ['p_requiredByDate','p_reqPersonName','p_reqEmpCode','p_reqDesignation','p_reqDepartment','p_reqContact','p_reqGeneratedBy','p_overallRemarks'].forEach(id=>{const e=byId(id);if(e)e.value='';});
@@ -9444,7 +10136,7 @@ window.addEventListener('DOMContentLoaded',()=>{
      // Vendor Name must be picked from Supplier Master, not typed — make
      // sure the master cache is loaded before building the dropdowns.
      if(!sarvSupplierCatalog.length&&SB_READY){
-       const sq=await SB.from('suppliers').select('*').order('supplier_name');
+       const sq=await SB.from('suppliers').select(SARV_SUPPLIER_COLS).order('supplier_name');
        if(!sq.error)refreshSupplierDatalist(sq.data||[]);
      }
      const sortedSuppliers=[...sarvSupplierCatalog].sort((a,b)=>String(a.supplier_name||'').localeCompare(String(b.supplier_name||'')));
