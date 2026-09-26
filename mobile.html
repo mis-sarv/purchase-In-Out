@@ -436,6 +436,7 @@
                     <option value="md">MD</option>
                     <option value="purchaser">Purchaser</option>
                     <option value="vendor">Vendor Verified</option>
+                    <option value="poSender">PO Sender</option>
                 </select>
             </div>
             <div class="form-group" id="loginVendorGroup" style="display:none;">
@@ -489,7 +490,7 @@
         <div class="module-btn" id="moduleBtnPO" onclick="switchModule('PO')">Purchase Orders</div>
     </div>
 
-    <div class="tabs">
+    <div class="tabs" id="tabsBar">
         <div class="tab active" onclick="switchTab('pending')">Pending</div>
         <div class="tab" onclick="switchTab('completed')">Completed</div>
     </div>
@@ -510,6 +511,7 @@
                 <table class="item-table">
                     <thead>
                         <tr>
+                            <th id="vi-check-col-header" style="display:none;"><input type="checkbox" id="viCheckAllHeader" title="Select / clear all items"></th>
                             <th>Sr</th>
                             <th>Item Name</th>
                             <th>Description</th>
@@ -518,6 +520,7 @@
                             <th>Qty/UOM</th>
                             <th id="rate-col-header" style="display:none;">Rate</th>
                             <th id="disc-col-header" style="display:none;">Disc%</th>
+                            <th id="vendor-col-header" style="display:none;">Vendor</th>
                         </tr>
                     </thead>
                     <tbody id="modal-item-tbody">
@@ -537,12 +540,12 @@
                 <div id="vendorInfoBody" style="display:none; padding:10px 12px; background:#fff;">
                     <div style="font-size:0.72rem; color:#6b7280; margin-bottom:8px;">
                         Vendor chunein aur har item ka rate / discount bharein, phir Save Vendor Info dabayein.
-                        Uske baad neeche Approved Vendor select karke sign kar sakte hain.
+                        Uske baad neeche items tick karke har item ka Approved Vendor assign karein, phir sign karein.
                     </div>
                     <!-- Shown once quotes are saved: this form is one-shot from a phone. -->
                     <div id="viLockedNote" style="display:none; background:#fff7e6; border:1px solid #fcd34d; border-radius:6px; padding:8px 10px; margin-bottom:8px; font-size:0.72rem; color:#92400e; font-weight:600;">
                         &#128274; Vendor info save ho chuki hai. Ise ab sirf <b>STORE.html</b> (desktop) ke &#128176; Vendor Rate &amp; Info popup se badla ja sakta hai.
-                        Neeche <b>Approved Vendor</b> select karke sign kar sakte hain.
+                        Neeche items tick karke har item ka <b>Approved Vendor</b> assign karke sign kar sakte hain.
                     </div>
                     <div id="viVendorRows"></div>
                     <label style="font-size:0.8rem; font-weight:600; margin:10px 0 6px; display:block;">Item Rates</label>
@@ -558,10 +561,23 @@
             </div>
 
             <div class="form-group" id="vendorSelectGroup" style="display:none;">
-                <label>Select Approved Vendor</label>
-                <select id="vendorSelect" class="form-select">
-                    <option value="">-- Choose Vendor --</option>
-                </select>
+                <label>Assign Approved Vendor — per item</label>
+                <div style="font-size:0.72rem; color:#6b7280; margin-bottom:6px;">
+                    Item table me &#9745; tick karke items chunein (multiple bhi), neeche vendor select karke <b>Apply</b> dabayein.
+                    Alag-alag items ko alag-alag vendor de sakte hain.
+                </div>
+                <div style="display:flex; gap:8px; margin-bottom:6px;">
+                    <button type="button" class="clear-btn" id="viSelectAllBtn" style="flex:0 0 auto;">Select All</button>
+                    <button type="button" class="clear-btn" id="viSelectNoneBtn" style="flex:0 0 auto;">Clear</button>
+                    <span id="viSelectedCount" style="font-size:0.72rem; color:#6b7280; align-self:center;">0 selected</span>
+                </div>
+                <div style="display:flex; gap:6px;">
+                    <select id="vendorSelect" class="form-select" style="flex:1; min-width:0;">
+                        <option value="">-- Choose Vendor --</option>
+                    </select>
+                    <button type="button" class="btn" id="viApplyVendorBtn" style="flex:0 0 auto; width:auto; padding:0 16px;">Apply</button>
+                </div>
+                <div class="err-banner" id="viApplyError" style="display:none; margin-top:6px;"></div>
             </div>
 
             <div class="req-meta-info" id="approvedVendorInfo" style="display:none;"></div>
@@ -628,6 +644,10 @@
     // saved before purchase_orders.location_contact existed carry no value of
     // their own, so this default keeps the box filled on every regenerated PDF.
     const SARV_PO_LOCATION_CONTACT = '+91 90344 40871';
+    // Standing declaration printed under IMPORTANT NOTES on every Purchase
+    // Order, below the GM/CEO and MD remarks — same text as STORE.html's
+    // SARV_PO_ANTI_CORRUPTION_NOTE so an approval reprint matches the original.
+    const SARV_PO_ANTI_CORRUPTION_NOTE = 'Our company maintains a strict zero-tolerance policy for corruption. If any employee requests a commission, kickback, or unauthorized payment, please report it immediately. Verified reports will be rewarded with Smart prize worth INR 11,000.';
 
     // Company logo printed at the top-right of the Purchase Order PDF —
     // kept identical to STORE.html so a PDF regenerated after an approval
@@ -712,7 +732,8 @@
             make:it.make||'NA', cat:it.category||it.cat||'', machineNo:it.machineNo||it.machine||'',
             qty:pNum(it.qty), issued:pNum(it.issued||it.qtyIssued||0), uom:it.uom||'',
             grossWeight:(it.grossWeight!=null&&it.grossWeight!=='')?pNum(it.grossWeight):null,
-            rates:it.rates||{}, discounts:it.discounts||{}
+            rates:it.rates||{}, discounts:it.discounts||{},
+            approvedVendorIndex:(it.approvedVendorIndex!=null)?pNum(it.approvedVendorIndex):((d.approvedVendorIndex!=null&&d.approvedVendorIndex>=0)?pNum(d.approvedVendorIndex):-1)
         }));
         const totalGW=items.reduce((s,r)=>s+(r.grossWeight!=null?r.grossWeight:0),0);
         const totalQty=items.reduce((s,r)=>s+r.qty,0);
@@ -770,15 +791,22 @@
                 {content:totalGW>0?totalGW+' kg':'',styles:{fillColor:SUBTOTAL_BG,textColor:[10,58,94],fontStyle:'bold',halign:'center'}},
                 {content:'VENDOR RATE',colSpan:4,styles:{fillColor:SUBTOTAL_BG,textColor:[10,58,94],fontStyle:'bold',halign:'center'}},
             ],
-            ['Sr No','Item Name','Item Description','Make / Brand','Category','Machine','Qty','Qty Issued','UOM','Gross Wt (kg)','V1','V2','V3','V4']
+            ['Sr No','Item Name','Item Description','Make / Brand','Category','Machine','Qty','Qty Issued','UOM','Weight','V1','V2','V3','V4']
         ];
         const rateTxt=v=>(v!=null&&pNum(v)>0)?nNum_(v):'';
         const discTxt=v=>(v!=null&&pNum(v)>0)?' (-'+pNum(v)+'%)':'';
         const body=items.map(r=>[String(r.sr),r.name,r.desc,r.make,r.cat,r.machineNo,String(r.qty),String(r.issued),r.uom,(r.grossWeight!=null?String(r.grossWeight):''),rateTxt(r.rates.V1)+discTxt(r.discounts.V1),rateTxt(r.rates.V2)+discTxt(r.discounts.V2),rateTxt(r.rates.V3)+discTxt(r.discounts.V3),rateTxt(r.rates.V4)+discTxt(r.discounts.V4)]);
+        // PR-level field, kept only as a fallback for a PR approved before
+        // per-item vendor assignment existed.
         const approvedIdx=(d.approvedVendorIndex!=null&&d.approvedVendorIndex>=0)?d.approvedVendorIndex:-1;
-        // Light green (pista) — the approved vendor's V-column and vendor-table
-        // row. Same value STORE.html prints, so a PDF regenerated here after an
-        // approval highlights identically.
+        // Every distinct vendor slot actually used by an item — different
+        // items can now carry different approved vendors on the same PR.
+        const usedVendorIdx=new Set(items.map(r=>r.approvedVendorIndex).filter(v=>v!=null&&v>=0));
+        if(approvedIdx>=0) usedVendorIdx.add(approvedIdx);
+        // Light green (pista) — each item's own approved vendor's V-column,
+        // and every used vendor's row in the vendor table below. Same value
+        // STORE.html prints, so a PDF regenerated here after an approval
+        // highlights identically.
         const APPROVED_GREEN=[197,225,165];
         doc.autoTable({
             head,body,startY:y,
@@ -788,7 +816,9 @@
             columnStyles:{0:{cellWidth:9,halign:'center'},6:{cellWidth:12,halign:'center',fontStyle:'bold'},7:{cellWidth:12,halign:'center',fontStyle:'bold'},8:{cellWidth:10,halign:'center'},9:{cellWidth:14,halign:'center'},10:{cellWidth:18},11:{cellWidth:18},12:{cellWidth:18},13:{cellWidth:18}},
             theme:'grid',
             didParseCell:(hook)=>{
-                if(hook.section==='body'&&approvedIdx>=0&&hook.column.index===10+approvedIdx){
+                if(hook.section!=='body')return;
+                const rowIdx=items[hook.row.index]&&items[hook.row.index].approvedVendorIndex;
+                if(rowIdx!=null&&rowIdx>=0&&hook.column.index===10+rowIdx){
                     hook.cell.styles.fillColor=APPROVED_GREEN;hook.cell.styles.fontStyle='bold';
                 }
             }
@@ -807,7 +837,7 @@
             columnStyles:{0:{cellWidth:12,halign:'center',fontStyle:'bold',fillColor:TEAL,textColor:[255,255,255]},1:{cellWidth:W*0.30},2:{cellWidth:W*0.20},3:{cellWidth:W*0.15},4:{cellWidth:'auto'}},
             theme:'grid',
             didParseCell:(hook)=>{
-                if(hook.section==='body'&&approvedIdx>=0&&hook.row.index===approvedIdx){
+                if(hook.section==='body'&&usedVendorIdx.has(hook.row.index)){
                     hook.cell.styles.fillColor=APPROVED_GREEN;hook.cell.styles.textColor=[0,0,0];hook.cell.styles.fontStyle='bold';
                 }
             }
@@ -978,13 +1008,23 @@
         return y;
         };
         let y=drawPoPageHeader();
+        // Every break past page 1 must reprint the full upper block (company header,
+        // party details, shipping / delivery / contact box) so each sheet stands on
+        // its own. The items table already does this via didDrawPage; poNewPage_ is
+        // what the blocks AFTER it (summary, notes, signatures) use, which used to
+        // do a bare addPage() and start a naked page at y=M.
+        const poNewPage_=()=>{doc.addPage();return drawPoPageHeader()};
+        // Reserve `h` mm on the current page, moving to a fresh (fully re-headed)
+        // page when it doesn't fit. BOTTOM keeps clear of the page edge.
+        const BOTTOM=pageH-M-4;
+        const poFit_=h=>{if(y+h>BOTTOM)y=poNewPage_();return y};
 
         // Always render Rate/Disc%/Net Rate/Amount — a fixed column set avoids
         // a PO with 0% discount on every line silently losing the Disc%/Net
         // Rate columns whenever this PDF gets regenerated after a GM/CEO/MD
         // approval here.
-        const head=[['Sr.','Description','Make','Quantity','Gross Wt (kg)','Rate','Disc%','Net Rate','GST%','Amount']];
-        const body=items.map(r=>[String(r.sr),r.desc,r.make,pNum(r.qty)+' '+r.uom+(r.basis==='WEIGHT'?'\n(billed on wt)':''),r.gw!=null?String(r.gw):'',nNum_(r.up),r.disc>0?r.disc+'%':'-',nNum_(r.netUp),r.gstPct>0?r.gstPct+'%':'-',nNum_(r.total)]);
+        const head=[['Sr.','Description','Make','Quantity','Weight','Rate','Disc%','Net Rate','GST%','Amount']];
+        const body=items.map(r=>[String(r.sr),r.desc,r.make,pNum(r.qty)+' '+r.uom,r.gw!=null?String(r.gw):'',nNum_(r.up),r.disc>0?r.disc+'%':'-',nNum_(r.netUp),r.gstPct>0?r.gstPct+'%':'-',nNum_(r.total)]);
         const columnStyles={0:{cellWidth:9},2:{cellWidth:18},3:{cellWidth:17},4:{cellWidth:16},5:{cellWidth:18},6:{cellWidth:12},7:{cellWidth:18},8:{cellWidth:11},9:{cellWidth:21}};
         const foot=[[{content:'Grand Total (Subtotal)',colSpan:3},String(totalQty),(totalGW>0?totalGW+' kg':''),{content:'',colSpan:4},nNum_(subtotal)]];
         doc.autoTable({
@@ -1001,8 +1041,6 @@
             didDrawPage:(data)=>{if(data.pageNumber>1)drawPoPageHeader();}
         });
         y=doc.lastAutoTable.finalY+4;
-        if(y>pageH-90){doc.addPage();y=M;}
-
         const labelW=W*0.7;
         const sumRows=[
             ['Subtotal',nNum_(subtotal)],
@@ -1013,37 +1051,45 @@
         ];
         doc.setFontSize(8.5);
         sumRows.forEach(([l,v])=>{
+            poFit_(5.5);
             doc.setFillColor(249,250,251);doc.rect(M,y,W,5.5,'F');
             doc.setDrawColor(0,0,0);doc.setLineWidth(0.2);doc.rect(M,y,W,5.5);
             doc.setFont(undefined,'bold');
+            doc.setFontSize(8.5);
             doc.text(l,M+labelW-2,y+3.8,{align:'right'});
             doc.text(String(v),M+W-2,y+3.8,{align:'right'});
             y+=5.5;
         });
+        poFit_(7);
         doc.setFillColor(AMBER[0],AMBER[1],AMBER[2]);doc.rect(M,y,W,7,'F');doc.rect(M,y,W,7);
         doc.setFont(undefined,'bold');doc.setFontSize(10.5);
         doc.text('GRAND TOTAL',M+labelW-2,y+5,{align:'right'});
         doc.text(nMoney_(grand),M+W-2,y+5,{align:'right'});
         y+=11;
 
-        doc.setFont(undefined,'bold');doc.setFontSize(8.5);
-        doc.text('IMPORTANT NOTES:',M,y);
-        y+=2;
         doc.setFontSize(8);
-        // GM/CEO and MD approval remarks, one line each.
+        // GM/CEO and MD approval remarks, one line each, then the standing
+        // anti-corruption declaration that must appear on every PO.
         const poSigs=d.signatures||{};
         const sigRemark_=s=>String((s&&(s.remarks||s.comment))||'').trim();
         const notesLines=[]
             .concat(doc.splitTextToSize('GM / CEO: '+(sigRemark_(poSigs.gmCeo)||'—'),W-4))
-            .concat(doc.splitTextToSize('MD: '+(sigRemark_(poSigs.md)||'—'),W-4));
+            .concat(doc.splitTextToSize('MD: '+(sigRemark_(poSigs.md)||'—'),W-4))
+            .concat(doc.splitTextToSize(SARV_PO_ANTI_CORRUPTION_NOTE,W-4));
         const notesH=Math.max(8,notesLines.length*3.6+3);
+        // Heading + box travel together, so the label never ends a page alone.
+        poFit_(4+notesH);
+        doc.setFont(undefined,'bold');doc.setFontSize(8.5);
+        doc.text('IMPORTANT NOTES:',M,y);
+        y+=2;
+        doc.setFontSize(8);
         doc.setFillColor(255,242,0);doc.rect(M,y,W,notesH,'F');
         doc.setDrawColor(212,184,0);doc.setLineWidth(0.3);doc.rect(M,y,W,notesH);
         doc.setFont(undefined,'bold');doc.setTextColor(0,0,0);
         doc.text(notesLines,M+2,y+4.5);
         y+=notesH+6;
 
-        if(y>pageH-42){doc.addPage();y=M;}
+        poFit_(32);
         const sigs=d.signatures||{};
         const sigRoles=[['Store Incharge',sigs.store],['GM / CEO',sigs.gmCeo],['MD',sigs.md],['Vendor Verified',sigs.vendor]];
         const segW=W/4,sigTop=y;
@@ -1083,6 +1129,7 @@
         });
         y=sigTop+26+6;
 
+        poFit_(5);
         doc.setFont(undefined,'normal');doc.setFontSize(7.5);doc.setTextColor(71,85,105);
         doc.text(String(SARV_COMPANY.juris||''),pageW/2,y,{align:'center'});
         doc.setTextColor(0,0,0);
@@ -1107,8 +1154,8 @@
     }
 
     // ── Approval chain config ────────────────────────────────────
-    const STAGE_LABEL = {gmCeo:'GM / CEO', md:'MD', vendor:'Vendor Verified'};
-    const STAGE_ROLE_PIN = {gmCeo:'USER_GM_PIN', md:'USER_MD_PIN', vendor:'VENDOR_VERIFY_PIN'};
+    const STAGE_LABEL = {gmCeo:'GM / CEO', md:'MD', vendor:'Vendor Verified', poSender:'PO Sender'};
+    const STAGE_ROLE_PIN = {gmCeo:'USER_GM_PIN', md:'USER_MD_PIN', vendor:'VENDOR_VERIFY_PIN', poSender:'PO_SENDER_PIN'};
     const STAGE_RESULT_STATUS = {gmCeo:'GM/CEO Approved', md:'MD Approved', vendor:'Vendor Verified'};
     /* What to call the signed-in user on screen. A Purchaser signs at the
        gmCeo stage, so STAGE_LABEL alone would call them "GM / CEO". */
@@ -1257,13 +1304,20 @@
     function applyPurchaserScope(){
         const prBtn = document.getElementById('moduleBtnPR');
         const poBtn = document.getElementById('moduleBtnPO');
+        const tabsBar = document.getElementById('tabsBar');
         const loggedIn = !!myStage;
         const prOnly = !!myPurchaserName;
+        // PO Sender has exactly one flat view — every MD Approved PO, ready to
+        // send — so the Pending/Completed tabs (which mean "waiting on me" /
+        // "signed by me") don't apply and are hidden rather than left to
+        // confuse a role that never signs anything.
+        const isPoSender = myStage === 'poSender';
 
         if(!loggedIn){
             // Logged out: leave both in place so the next login can pick.
             if(prBtn){ prBtn.style.display=''; prBtn.classList.add('active'); }
             if(poBtn){ poBtn.style.display=''; poBtn.classList.remove('active'); }
+            if(tabsBar) tabsBar.style.display='';
             currentModule = 'PR';
             return;
         }
@@ -1277,6 +1331,7 @@
             poBtn.style.display = prOnly ? 'none' : '';
             poBtn.classList.toggle('active', !prOnly);
         }
+        if(tabsBar) tabsBar.style.display = isPoSender ? 'none' : '';
     }
     function logoutRole(){
         myStage = null;
@@ -1350,7 +1405,12 @@
         // Completed alike — this query backs both tabs.
         const sortCol = currentModule === 'PR' ? 'req_no' : 'po_no';
         let q = SB.from(table).select('*').order(sortCol, {ascending:false}).limit(200);
-        if(currentTab === 'pending'){
+        if(myStage === 'poSender'){
+            // PO Sender has one job — send every MD Approved PO to its vendor —
+            // so it gets that one list regardless of tab (the tabs are hidden
+            // for this role) and is never narrowed to a single vendor.
+            q = q.eq('status','MD Approved');
+        } else if(currentTab === 'pending'){
             if(myStage === 'gmCeo'){
                 q = currentModule === 'PR'
                     ? q.or('status.is.null,status.eq.Pending')
@@ -1379,11 +1439,16 @@
         // vendor lives inside pdf_snapshot, so a logged-in vendor's PR list
         // is filtered client-side instead of via the query above.
         if(myStage === 'vendor' && myVendorName && currentModule === 'PR'){
+            const wanted = myVendorName.trim().toUpperCase();
             rows = rows.filter(r=>{
                 const snap = r.pdf_snapshot || {};
-                const idx = snap.approvedVendorIndex;
-                const v = (idx!=null && idx>=0) ? (snap.vendors||[])[idx] : null;
-                return v && String(v.name||'').trim().toUpperCase() === myVendorName.trim().toUpperCase();
+                const vendors = snap.vendors || [];
+                // A vendor now sees the PR if ANY item was assigned to them —
+                // different items on the same PR can carry different approved
+                // vendors, so this can no longer be a single-index check.
+                const idxSet = new Set((snap.items||[]).map(it=>it&&it.approvedVendorIndex).filter(i=>i!=null&&i>=0));
+                if(snap.approvedVendorIndex!=null && snap.approvedVendorIndex>=0) idxSet.add(snap.approvedVendorIndex);
+                return [...idxSet].some(idx => String((vendors[idx]||{}).name||'').trim().toUpperCase() === wanted);
             });
         }
         // Same canonical PDF source STORE.html's PO Generation panel uses
@@ -1434,6 +1499,65 @@
             console.warn('[MOBILE] Linked PR lookup skipped:', e.message||e);
             return [];
         }
+    }
+
+    /* ── PO Sender: WhatsApp send ──────────────────────────────────
+       Same "party_sent_at column, else localStorage" fallback STORE.html
+       uses for its own Send button, so a PO marked sent from either app
+       shows as sent in both. Kept under the same storage key on purpose. */
+    const PO_PARTY_SENT_STORAGE_KEY_MOBILE = 'sarvPoPartySent';
+    function poPartySentLocalMobile(){
+        try{ const raw = localStorage.getItem(PO_PARTY_SENT_STORAGE_KEY_MOBILE); return new Set(raw ? JSON.parse(raw) : []); }
+        catch(e){ return new Set(); }
+    }
+    function isPoSentMobile(po){
+        if(!po) return false;
+        if(po.party_sent_at) return true;
+        return poPartySentLocalMobile().has(po.po_no);
+    }
+    async function markPoSentMobile(po){
+        if(!po || isPoSentMobile(po)) return;
+        let stored = false;
+        try{
+            const u = await SB.from('purchase_orders').update({party_sent_at: new Date().toISOString()}).eq('id', po.id);
+            stored = !u.error;
+            if(u.error && !/party_sent_at|column/i.test(u.error.message||'')) console.warn('[MOBILE] PO party-sent flag not saved:', u.error.message);
+        }catch(e){ console.warn('[MOBILE] PO party-sent flag not saved:', e.message||e); }
+        if(!stored){
+            try{
+                const set = poPartySentLocalMobile(); set.add(po.po_no);
+                localStorage.setItem(PO_PARTY_SENT_STORAGE_KEY_MOBILE, JSON.stringify([...set]));
+            }catch(e){}
+        }
+        po.party_sent_at = po.party_sent_at || new Date().toISOString();
+        paintList();
+    }
+    async function sendPoWhatsappMobile(po){
+        // Marked on the tap itself, same as STORE.html — not on confirmed
+        // delivery. Not awaited so the share sheet / WhatsApp window still
+        // opens inside this click's user-gesture window (required on mobile
+        // browsers, or the share sheet silently refuses to open).
+        markPoSentMobile(po).catch(e => console.warn('[MOBILE] PO party-sent flag not saved:', e.message||e));
+        const digits = String(po.vendor_contact||'').replace(/[^0-9]/g,'');
+        const phone = digits ? (digits.length===10 ? '91'+digits : digits) : '';
+        const msg = 'PO ' + (po.po_no||'') + ' dated ' + (po.po_date||'') + ' — Vendor: ' + (po.vendor_name||'-') + ', Grand Total: ' + nMoney_(po.grand_total);
+        if(po.pdf_url && navigator.share){
+            try{
+                const resp = await fetch(po.pdf_url);
+                if(!resp.ok) throw new Error('PDF fetch failed ('+resp.status+')');
+                const blob = await resp.blob();
+                const file = new File([blob], (po.po_no||'PO')+'.pdf', {type:'application/pdf'});
+                if(navigator.canShare && navigator.canShare({files:[file]})){
+                    await navigator.share({files:[file], title:'PO '+po.po_no, text:msg});
+                    return;
+                }
+            }catch(e){
+                if(e.name==='AbortError') return; // user cancelled the native share sheet
+                console.warn('[MOBILE] Native PDF share failed, falling back to WhatsApp link:', e.message||e);
+            }
+        }
+        const fallbackMsg = msg + (po.pdf_url ? '\nPDF: '+po.pdf_url : '');
+        window.open('https://wa.me/'+phone+'?text='+encodeURIComponent(fallbackMsg), '_blank');
     }
 
     // Marks every Purchase Requirement in `rows` with the live PO numbers
@@ -1564,8 +1688,11 @@
         if(countEl) countEl.textContent = (searchTerm || vendorInfoOnly)
             ? rows.length + ' of ' + listCache.length + ' shown' : '';
 
+        const isPoSender = myStage === 'poSender';
         if(listCache.length === 0) {
-            listDiv.innerHTML = `<p class="empty-msg">No ${currentTab} ${currentModule}s waiting on ${myStageLabel()}.</p>`;
+            listDiv.innerHTML = isPoSender
+                ? `<p class="empty-msg">No MD Approved POs waiting to be sent.</p>`
+                : `<p class="empty-msg">No ${currentTab} ${currentModule}s waiting on ${myStageLabel()}.</p>`;
             return;
         }
         if(rows.length === 0) {
@@ -1580,7 +1707,10 @@
             card.className = 'card' + (vendorFilled ? ' vendor-filled' : '');
             const docNo = currentModule === 'PR' ? item.req_no : item.po_no;
             const requestedBy = currentModule === 'PR' ? (item.requested_by||'-') : (item.vendor_name||'-');
-            if(currentTab === 'pending') card.onclick = () => openModal(item);
+            // PO Sender never signs anything — no Approve/Reject modal for
+            // this role, everything it needs (vendor, amount, PDF, Send
+            // button) is right on the card.
+            if(currentTab === 'pending' && !isPoSender) card.onclick = () => openModal(item);
 
             let html = `<div class="card-header"><span>${escText(docNo)}</span>`;
             if (currentModule === 'PO') {
@@ -1596,12 +1726,24 @@
             }
             if(item.pdf_url) html += `<a class="pdf-link" href="${escText(item.pdf_url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">📄 View Updated PDF</a>`;
 
-            if(currentTab === 'completed') {
+            if(isPoSender){
+                html += isPoSentMobile(item)
+                    ? `<div class="status-tag">✔ Sent to vendor${item.party_sent_at ? ' — '+escText(pStamp(item.party_sent_at)) : ''}</div>`
+                    : `<div class="stage-tag">Ready to send to vendor</div>`;
+            } else if(currentTab === 'completed') {
                 html += `<div class="status-tag">✔ Signed by ${escText(myStageLabel())}</div>`;
             } else {
                 html += `<div class="stage-tag">Waiting on ${escText(myStageLabel())}</div>`;
             }
             card.innerHTML = html;
+            if(isPoSender){
+                const waBtn = document.createElement('button');
+                waBtn.className = 'btn';
+                waBtn.style.cssText = 'margin-top:8px;background:#25d366;';
+                waBtn.textContent = isPoSentMobile(item) ? '💬 Send Again via WhatsApp' : '💬 Send via WhatsApp';
+                waBtn.onclick = (e) => { e.stopPropagation(); sendPoWhatsappMobile(item); };
+                card.appendChild(waBtn);
+            }
             if(currentTab === 'completed' && canCancelApproval(item)){
                 const cancelBtn = document.createElement('button');
                 cancelBtn.className = 'clear-btn';
@@ -1631,7 +1773,13 @@
     let currentSnapshotVendors = [];   // vendors[] from the PR's pdf_snapshot
     let currentItemRates = [];         // per-item {V1,V2,V3,V4} aligned with rendered item rows
     let currentItemDiscs = [];         // per-item {V1,V2,V3,V4} discount% aligned with rendered item rows (PR)
-    let selectedVendorIndex = -1;      // GM/CEO's in-progress pick (-1 = none yet)
+    // Per-item approved vendor slot index (-1 = none yet), aligned with the
+    // rendered item rows — different items on the same PR can carry different
+    // values here, which is the whole point: one PR can go to several
+    // vendors. Ticking items in the table and hitting Apply (see
+    // applyVendorToSelectedItems) is what sets these; approveEntry() reads
+    // this whole array when the Purchaser/GM-CEO signs.
+    let itemVendorIndex = [];
 
     /* ── Vendor Rate & Info (mobile) ──────────────────────────────
        STORE.html has this as a desktop popup; without it here a Purchaser
@@ -1810,7 +1958,14 @@
             if((base.vendors||[]).some(v => v && String(v.name||'').trim())){
                 currentEntry.pdf_snapshot = base;
                 currentSnapshotVendors = base.vendors || [];
+                itemVendorIndex = viLines.map((_,i)=>{
+                    const it=(base.items||[])[i];
+                    return (it && it.approvedVendorIndex!=null) ? it.approvedVendorIndex : -1;
+                });
+                currentItemRates = (base.items||[]).map(it => it.rates || {});
+                currentItemDiscs = (base.items||[]).map(it => it.discounts || {});
                 refreshApprovedVendorChoices();
+                renderItemRows(viDisplayItems, currentItemRates, itemVendorIndex, true, currentItemDiscs);
                 setVendorInfoLocked(true);
                 show('Is PR par vendor info pehle se save hai — ise sirf STORE.html se badla ja sakta hai.');
                 return;
@@ -1855,7 +2010,10 @@
             // they read from have to move to the just-saved figures too.
             currentItemRates = d.items.map(it => it.rates || {});
             currentItemDiscs = d.items.map(it => it.discounts || {});
+            // Fresh quotes — nothing has been assigned to a vendor yet.
+            itemVendorIndex = d.items.map(()=> -1);
             refreshApprovedVendorChoices();
+            renderItemRows(viDisplayItems, currentItemRates, itemVendorIndex, true, currentItemDiscs);
             // One-shot from a phone — freeze it the moment it lands.
             setVendorInfoLocked(true);
 
@@ -1865,7 +2023,7 @@
                 await indexPdfArtifact('REQUIREMENT', req.id, req.req_no, 'REQUIREMENT', artifact);
             }catch(e){ console.warn('[MOBILE] PR PDF regen failed (vendor info still saved):', e); }
 
-            show('✅ Vendor info save ho gayi — ab neeche Approved Vendor select karke sign karein.');
+            show('✅ Vendor info save ho gayi — ab items tick karke har item ka Approved Vendor assign karein, phir sign karein.');
             err.style.background = '#e8f5e9'; err.style.color = '#1b5e20'; err.style.borderColor = '#a5d6a7';
         }catch(e){
             err.style.background = ''; err.style.color = ''; err.style.borderColor = '';
@@ -1876,8 +2034,10 @@
         }
     }
 
-    /* Rebuilds the Approved Vendor dropdown from currentSnapshotVendors.
-       Shared by the modal's first render and by a Vendor Info save. */
+    /* Rebuilds the Approved Vendor picker from currentSnapshotVendors, and
+       wires the Select All / Clear / Apply controls that assign it to
+       whichever items are ticked. Shared by the modal's first render and by
+       a Vendor Info save. */
     function refreshApprovedVendorChoices(){
         const vendorGroup = document.getElementById('vendorSelectGroup');
         const vendorSelect = document.getElementById('vendorSelect');
@@ -1888,30 +2048,82 @@
         if(!options.length){ vendorGroup.style.display = 'none'; return; }
         vendorGroup.style.display = 'block';
         vendorSelect.innerHTML = '<option value="">-- Choose Vendor --</option>' +
-            options.map(o => `<option value="${o.i}">${escText(o.name)}</option>`).join('');
-        vendorSelect.onchange = () => {
-            selectedVendorIndex = vendorSelect.value === '' ? -1 : Number(vendorSelect.value);
-            // Re-render so the Rate / Disc% columns show the picked vendor's
-            // numbers rather than the previous vendor's.
-            renderItemRows(viDisplayItems, currentItemRates, selectedVendorIndex, true, currentItemDiscs);
+            options.map(o => `<option value="${o.i}">V${o.i+1} - ${escText(o.name)}</option>`).join('');
+        const selectAllBtn = document.getElementById('viSelectAllBtn');
+        const selectNoneBtn = document.getElementById('viSelectNoneBtn');
+        const applyBtn = document.getElementById('viApplyVendorBtn');
+        if(selectAllBtn) selectAllBtn.onclick = () => {
+            document.querySelectorAll('.vi-item-check').forEach(cb => cb.checked = true);
+            updateViSelectedCount();
         };
-        selectedVendorIndex = -1;
+        if(selectNoneBtn) selectNoneBtn.onclick = () => {
+            document.querySelectorAll('.vi-item-check').forEach(cb => cb.checked = false);
+            updateViSelectedCount();
+        };
+        if(applyBtn) applyBtn.onclick = () => applyVendorToSelectedItems();
+        updateViSelectedCount();
     }
 
-    function renderItemRows(items, rates, forcedVendorIndex, showRateColumn, discs){
+    /* Assigns whichever vendor is picked in the dropdown to every ticked item
+       row - this is what makes vendor selection "selected items wise": tick
+       item 1 and 3, pick V2, Apply; tick item 2, pick V1, Apply - item 2 now
+       goes to a different vendor than items 1 and 3, all on the same PR. */
+    function applyVendorToSelectedItems(){
+        const vendorSelect = document.getElementById('vendorSelect');
+        const errEl = document.getElementById('viApplyError');
+        const showErr = m => { if(errEl){ errEl.textContent = m; errEl.style.display = 'block'; } };
+        if(errEl) errEl.style.display = 'none';
+        const idx = (vendorSelect && vendorSelect.value !== '') ? Number(vendorSelect.value) : -1;
+        if(idx < 0){ showErr('Pehle ek vendor select karein.'); return; }
+        const checks = [...document.querySelectorAll('.vi-item-check:checked')];
+        if(!checks.length){ showErr('Kam se kam ek item tick karein.'); return; }
+        checks.forEach(cb => { itemVendorIndex[+cb.dataset.row] = idx; });
+        checks.forEach(cb => { cb.checked = false; });
+        updateViSelectedCount();
+        renderItemRows(viDisplayItems, currentItemRates, itemVendorIndex, true, currentItemDiscs);
+    }
+    function updateViSelectedCount(){
+        const el = document.getElementById('viSelectedCount');
+        if(el) el.textContent = document.querySelectorAll('.vi-item-check:checked').length + ' selected';
+    }
+
+    /* vendorIdxSource is an array (per-item vendor slot, -1 = none) for a PR
+       whose items can each carry their own approved vendor, or a single
+       number for the PO module's flat item list, which has no per-item
+       vendor concept. The item checkboxes (tick-to-select-for-Apply) only
+       ever show at the PR GM/CEO stage, where a vendor can still be
+       assigned/changed. */
+    function renderItemRows(items, rates, vendorIdxSource, showRateColumn, discs){
+        const perItem = Array.isArray(vendorIdxSource);
+        const showCheck = currentModule === 'PR' && myStage === 'gmCeo';
+        const checkHeader = document.getElementById('vi-check-col-header');
+        const vendorHeader = document.getElementById('vendor-col-header');
+        if(checkHeader) checkHeader.style.display = showCheck ? '' : 'none';
+        if(vendorHeader) vendorHeader.style.display = (perItem && showRateColumn) ? '' : 'none';
         const tbody = document.getElementById('modal-item-tbody');
         tbody.innerHTML = items.map((item,i) => {
-            let rateCell = '', discCell = '';
+            const rowVendorIdx = perItem
+                ? (vendorIdxSource[i]!=null ? pNum(vendorIdxSource[i]) : -1)
+                : vendorIdxSource;
+            let rateCell = '', discCell = '', vendorCell = '';
             if(currentModule === 'PO'){
                 rateCell = `<td><b>${escText(nNum_(item.rate))}</b></td>`;
                 discCell = `<td>${pNum(item.disc)>0?escText(item.disc)+'%':'-'}</td>`;
             } else if(showRateColumn){
-                const r = forcedVendorIndex >= 0 ? (rates[i]||{})['V'+(forcedVendorIndex+1)] : null;
+                const r = rowVendorIdx >= 0 ? (rates[i]||{})['V'+(rowVendorIdx+1)] : null;
                 rateCell = `<td><b>${r!=null&&pNum(r)>0?escText(nNum_(r)):'-'}</b></td>`;
-                const dc = forcedVendorIndex >= 0 ? pNum((discs[i]||{})['V'+(forcedVendorIndex+1)]) : 0;
+                const dc = rowVendorIdx >= 0 ? pNum((discs[i]||{})['V'+(rowVendorIdx+1)]) : 0;
                 discCell = `<td>${dc>0?escText(dc)+'%':'-'}</td>`;
+                if(perItem){
+                    const vName = rowVendorIdx >= 0 ? ((currentSnapshotVendors[rowVendorIdx]||{}).name||'') : '';
+                    vendorCell = rowVendorIdx >= 0
+                        ? `<td><span style="font-weight:800;color:#166534;">V${rowVendorIdx+1}</span> ${escText(vName)}</td>`
+                        : `<td><span style="color:#94a3b8;">not set</span></td>`;
+                }
             }
+            const checkCell = showCheck ? `<td onclick="event.stopPropagation()"><input type="checkbox" class="vi-item-check" data-row="${i}"></td>` : '';
             return `<tr>
+                ${checkCell}
                 <td>${i+1}</td>
                 <td><b>${escText(item.name)}</b></td>
                 <td>${escText(item.desc||'-')}</td>
@@ -1920,13 +2132,26 @@
                 <td><b>${escText(item.qty)} ${escText(item.uom)}</b></td>
                 ${rateCell}
                 ${discCell}
+                ${vendorCell}
             </tr>`;
-        }).join('') || `<tr><td colspan="8" style="text-align:center;color:#999;">No items</td></tr>`;
+        }).join('') || `<tr><td colspan="10" style="text-align:center;color:#999;">No items</td></tr>`;
+        if(showCheck){
+            document.querySelectorAll('.vi-item-check').forEach(cb => cb.addEventListener('change', updateViSelectedCount));
+            const headerCheck = document.getElementById('viCheckAllHeader');
+            if(headerCheck){
+                headerCheck.checked = false;
+                headerCheck.onclick = () => {
+                    document.querySelectorAll('.vi-item-check').forEach(cb => cb.checked = headerCheck.checked);
+                    updateViSelectedCount();
+                };
+            }
+            updateViSelectedCount();
+        }
     }
 
     async function openModal(entry) {
         currentEntry = entry;
-        selectedVendorIndex = -1;
+        itemVendorIndex = [];
         // Hidden by default and collapsed; only the PR GM/CEO stage re-opens it.
         const viPanel = document.getElementById('vendorInfoPanel');
         if(viPanel) viPanel.style.display = 'none';
@@ -1965,10 +2190,13 @@
 
         const snapshot = (currentModule === 'PR' && entry.pdf_snapshot) || {};
         currentSnapshotVendors = snapshot.vendors || [];
-        const approvedIdx = (snapshot.approvedVendorIndex != null) ? snapshot.approvedVendorIndex : -1;
+        // PR-level field, kept only as the fallback a PR approved before
+        // per-item assignment existed (or one where every item simply went to
+        // the same vendor) reads from.
+        const prLevelApprovedIdx = (snapshot.approvedVendorIndex != null) ? snapshot.approvedVendorIndex : -1;
 
         const tbody = document.getElementById('modal-item-tbody');
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#999;">Loading items...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#999;">Loading items...</td></tr>';
         const items = await fetchItems(entry);
         viDisplayItems = items;
         // pdf_snapshot.items is always rebuilt from these same DB lines in
@@ -1976,6 +2204,23 @@
         // index correspondence is safe here — same convention used there.
         currentItemRates = (snapshot.items || []).map(it => it.rates || {});
         currentItemDiscs = (snapshot.items || []).map(it => it.discounts || {});
+        // Each item's own approved vendor, falling back to the PR-level field.
+        itemVendorIndex = items.map((_,i)=>{
+            const it = (snapshot.items||[])[i];
+            return (it && it.approvedVendorIndex!=null) ? it.approvedVendorIndex : prLevelApprovedIdx;
+        });
+
+        // A logged-in Vendor Verified only ever gets to see THEIR OWN items'
+        // rate/vendor split — a different vendor's assigned items on the same
+        // (partially split) PR must not leak that other vendor's identity or
+        // price to this one. md and the Purchaser/GM-CEO see everything.
+        let myVendorIdxInSnapshot = -1;
+        if(myStage === 'vendor' && myVendorName){
+            myVendorIdxInSnapshot = currentSnapshotVendors.findIndex(v => v && String(v.name||'').trim().toUpperCase() === myVendorName.trim().toUpperCase());
+        }
+        const displayVendorIndex = (myStage === 'vendor')
+            ? itemVendorIndex.map(idx => idx === myVendorIdxInSnapshot ? idx : -1)
+            : itemVendorIndex;
 
         let showRateColumn = false;
         if(currentModule === 'PR' && myStage === 'gmCeo'){
@@ -1985,19 +2230,28 @@
             await renderVendorInfoForm(entry);
             showRateColumn = true;
             refreshApprovedVendorChoices();
-        } else if(currentModule === 'PR' && approvedIdx >= 0){
+        } else if(currentModule === 'PR' && (prLevelApprovedIdx >= 0 || displayVendorIndex.some(v=>v>=0))){
             showRateColumn = true;
-            const v = currentSnapshotVendors[approvedIdx] || {};
+            const usedIdx = [...new Set(displayVendorIndex.filter(v=>v>=0))];
             approvedInfo.style.display = 'block';
-            approvedInfo.innerHTML = `<strong>✅ Approved Vendor:</strong> ${escText(v.name||'-')}` +
-                (v.contact ? ` | <strong>Contact:</strong> ${escText(v.contact)}` : '');
+            if(usedIdx.length <= 1){
+                const solo = usedIdx.length ? usedIdx[0] : prLevelApprovedIdx;
+                const v = currentSnapshotVendors[solo] || {};
+                approvedInfo.innerHTML = `<strong>✅ Approved Vendor:</strong> ${escText(v.name||'-')}` +
+                    (v.contact ? ` | <strong>Contact:</strong> ${escText(v.contact)}` : '');
+            } else {
+                // Different items went to different vendors — list each one
+                // rather than naming just one, which would hide the split.
+                const names = usedIdx.map(i => `V${i+1} ${escText((currentSnapshotVendors[i]||{}).name||'-')}`).join(', ');
+                approvedInfo.innerHTML = `<strong>✅ Approved Vendors (split by item):</strong> ${names}`;
+            }
         } else if(currentModule === 'PO'){
             showRateColumn = true;
         }
         rateHeader.style.display = showRateColumn ? '' : 'none';
         discHeader.style.display = showRateColumn ? '' : 'none';
 
-        renderItemRows(items, currentItemRates, currentModule === 'PR' ? approvedIdx : -1, showRateColumn, currentItemDiscs);
+        renderItemRows(items, currentItemRates, currentModule === 'PR' ? displayVendorIndex : -1, showRateColumn, currentItemDiscs);
 
         // GM/CEO must set the Delivery Date while approving a PO.
         const dlvGroup = document.getElementById('deliveryDateGroup');
@@ -2018,7 +2272,7 @@
     }
 
     // ── Approve: write approvals + advance status + regenerate PDF ─
-    async function approvePR(req, stage, sig, vendorIndex){
+    async function approvePR(req, stage, sig, vendorIndexInput){
         const newApprovals = {...(req.approvals||{}), [stage]: sig};
         const newStatus = STAGE_RESULT_STATUS[stage];
         const lq = await SB.from('purchase_requirement_lines')
@@ -2027,11 +2281,28 @@
         if(lq.error) throw lq.error;
         const lines = lq.data || [];
         const base = req.pdf_snapshot || {};
-        // GM/CEO's vendor pick is made once and carried forward untouched
-        // through MD and Vendor Verified — only the gmCeo stage can set it.
-        const approvedVendorIndex = (stage==='gmCeo' && vendorIndex!=null && vendorIndex>=0)
-            ? vendorIndex
-            : (base.approvedVendorIndex!=null ? base.approvedVendorIndex : -1);
+        // The Purchaser/GM-CEO's vendor pick is made once, per item, and
+        // carried forward untouched through MD and Vendor Verified — only the
+        // gmCeo stage can set it. vendorIndexInput is an array aligned with
+        // `lines` (each item's own chosen vendor slot, -1/absent = none), so
+        // different items on the same PR can go to different vendors; a plain
+        // number is still accepted for any older caller and treated as "every
+        // item gets this vendor".
+        const perItemPick = Array.isArray(vendorIndexInput) ? vendorIndexInput : null;
+        const legacyPick = (!perItemPick && vendorIndexInput!=null && vendorIndexInput>=0) ? vendorIndexInput : null;
+        const itemApprovedVendorIndex = lines.map((_,i)=>{
+            if(stage!=='gmCeo'){
+                // MD / Vendor Verified never change the Purchaser's picks.
+                return (base.items && base.items[i] && base.items[i].approvedVendorIndex!=null) ? base.items[i].approvedVendorIndex : -1;
+            }
+            if(perItemPick) return (perItemPick[i]!=null && perItemPick[i]>=0) ? perItemPick[i] : -1;
+            if(legacyPick!=null) return legacyPick;
+            return (base.items && base.items[i] && base.items[i].approvedVendorIndex!=null) ? base.items[i].approvedVendorIndex : -1;
+        });
+        // Kept for anything that still only reads the PR-level field (an older
+        // STORE.html build, or a vendor-role PR list before that filter was
+        // made per-item) — the first item that actually has one assigned.
+        const approvedVendorIndex = itemApprovedVendorIndex.find(v=>v>=0) ?? -1;
         const d = {
             ...base,
             reqNo: req.req_no,
@@ -2056,6 +2327,7 @@
                 grossWeight: line.gross_weight || 0,
                 rates: (base.items && base.items[i] && base.items[i].rates) || {},
                 discounts: (base.items && base.items[i] && base.items[i].discounts) || {},
+                approvedVendorIndex: itemApprovedVendorIndex[i],
             })),
             vendors: base.vendors || [],
             signatures: newApprovals,
@@ -2125,9 +2397,14 @@
         if(lq.error) throw lq.error;
         const lines = lq.data || [];
         const base = req.pdf_snapshot || {};
-        // Sending it back past GM/CEO also clears their vendor pick — the
-        // next GM/CEO sign-off picks fresh, same as cancelPRApproval.
-        const approvedVendorIndex = (!prevStage || prevStage === 'gmCeo') ? -1 : (base.approvedVendorIndex!=null ? base.approvedVendorIndex : -1);
+        // Sending it back past GM/CEO also clears every item's vendor pick —
+        // the next GM/CEO sign-off picks fresh, per item, same as
+        // cancelPRApproval.
+        const clearsVendorPicks = !prevStage || prevStage === 'gmCeo';
+        const itemApprovedVendorIndex = lines.map((_,i)=> clearsVendorPicks
+            ? -1
+            : ((base.items && base.items[i] && base.items[i].approvedVendorIndex!=null) ? base.items[i].approvedVendorIndex : -1));
+        const approvedVendorIndex = itemApprovedVendorIndex.find(v=>v>=0) ?? -1;
         const d = {
             ...base,
             reqNo: req.req_no,
@@ -2152,6 +2429,7 @@
                 grossWeight: line.gross_weight || 0,
                 rates: (base.items && base.items[i] && base.items[i].rates) || {},
                 discounts: (base.items && base.items[i] && base.items[i].discounts) || {},
+                approvedVendorIndex: itemApprovedVendorIndex[i],
             })),
             vendors: base.vendors || [],
             signatures: newApprovals,
@@ -2248,9 +2526,12 @@
         if(lq.error) throw lq.error;
         const lines = lq.data || [];
         const base = req.pdf_snapshot || {};
-        // Cancelling GM/CEO's approval also clears the vendor pick made
-        // alongside it — the next GM/CEO sign-off picks fresh.
-        const approvedVendorIndex = myStage === 'gmCeo' ? -1 : (base.approvedVendorIndex!=null ? base.approvedVendorIndex : -1);
+        // Cancelling GM/CEO's approval also clears every item's vendor pick
+        // made alongside it — the next GM/CEO sign-off picks fresh, per item.
+        const itemApprovedVendorIndex = lines.map((_,i)=> myStage === 'gmCeo'
+            ? -1
+            : ((base.items && base.items[i] && base.items[i].approvedVendorIndex!=null) ? base.items[i].approvedVendorIndex : -1));
+        const approvedVendorIndex = itemApprovedVendorIndex.find(v=>v>=0) ?? -1;
         const d = {
             ...base,
             reqNo: req.req_no,
@@ -2275,6 +2556,7 @@
                 grossWeight: line.gross_weight || 0,
                 rates: (base.items && base.items[i] && base.items[i].rates) || {},
                 discounts: (base.items && base.items[i] && base.items[i].discounts) || {},
+                approvedVendorIndex: itemApprovedVendorIndex[i],
             })),
             vendors: base.vendors || [],
             signatures: newApprovals,
@@ -2341,11 +2623,12 @@
     async function approveEntry() {
         if(!hasDrawn) { alert('Please provide a signature before approving.'); return; }
         if(!currentEntry || !myStage) return;
-        if(currentModule === 'PR' && myStage === 'gmCeo' && currentSnapshotVendors.some(v=>v&&v.name) && selectedVendorIndex < 0) {
-            alert('Please select the approved vendor before approving.');
+        if(currentModule === 'PR' && myStage === 'gmCeo' && currentSnapshotVendors.some(v=>v&&v.name)
+           && viDisplayItems.some((_,i)=> itemVendorIndex[i]==null || itemVendorIndex[i] < 0)) {
+            alert('Har item ke liye Approved Vendor select karein — kuch items abhi bhi unassigned hain.');
             return;
         }
-        // A Purchaser's approval is what releases the PR for PO generation , and
+        // A Purchaser's approval is what releases the PR for PO generation, and
         // a PO needs a vendor. Approving with no quotes filled would produce a
         // PR that looks ready but can't become an order — so it is blocked
         // here, where the form to fix it is one tap away. GM/CEO's existing
@@ -2369,7 +2652,7 @@
         document.getElementById('approveBtn').disabled = true;
         setBusy(true, 'Saving signature & regenerating PDF...');
         try{
-            if(currentModule === 'PR') await approvePR(currentEntry, myStage, sig, selectedVendorIndex);
+            if(currentModule === 'PR') await approvePR(currentEntry, myStage, sig, itemVendorIndex);
             else await approvePO(currentEntry, myStage, sig, deliveryDate);
             closeModal();
             await renderList();
