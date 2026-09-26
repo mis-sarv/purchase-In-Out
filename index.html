@@ -3171,7 +3171,7 @@ body {
                                      that is what a PR is booked against and what the mobile
                                      Purchaser login filters on. -->
                                 <optgroup label="&#128230; Purchaser PINs (Mobile Login)">
-                                    <option value="PURCHASER::VISHAL JI">Purchaser &mdash; VISHAL JI</option>
+                                   <option value="PURCHASER::VISHAL JI">Purchaser &mdash; VISHAL JI</option>
                                     <option value="PURCHASER::SUVDESH JI">Purchaser &mdash; SUVDESH JI</option>
                                     <option value="PURCHASER::SATINDER JI">Purchaser &mdash; SATINDER JI</option>
                                     <option value="PURCHASER::ANKUR JI">Purchaser &mdash; ANKUR JI</option>
@@ -3703,7 +3703,7 @@ body {
                     <div class="form-group">
                         <label>Purchaser Name <span class="req">*</span></label>
                         <select class="form-control" id="p_reqGeneratedBy">
-                            <option value="">-- Select Purchaser --</option>
+                           <option value="">-- Select Purchaser --</option>
                             <option value="VISHAL JI">VISHAL JI</option>
                             <option value="SUVDESH JI">SUVDESH JI</option>
                             <option value="SATINDER JI">SATINDER JI</option>
@@ -5085,8 +5085,10 @@ function applyItemAutofill(nameVal,tr,prefix){
    overwritten — one PR cannot belong to two buyers, and quietly changing a
    field the user already saw is how a requirement reaches the wrong person.
    Manual selection always wins; this never overwrites a hand-picked name. */
-let sarvCategoryPurchasers={};          // UPPER(category) -> purchaser name
+let sarvCategoryPurchasers={};          // UPPER(TRIM(category)) -> purchaser name
 let sarvPurchaserAutoFilled=false;      // did WE set the field, or did a person?
+let sarvCatPurLoaded=false;             // has the map been fetched at all yet?
+const sarvCatPurWarned=new Set();       // so the same complaint isn't repeated
 
 async function loadCategoryPurchasers(){
   if(!SB_READY)return;
@@ -5097,36 +5099,70 @@ async function loadCategoryPurchasers(){
     (q.data||[]).forEach(r=>{
       const c=String(r.category||'').trim().toUpperCase();
       const p=String(r.purchaser_name||'').trim();
-      if(c&&p)map[c]=p;
+      if(c&&p)map[c]=p;              // blank purchaser_name = not mapped yet
     });
     sarvCategoryPurchasers=map;
+    sarvCatPurLoaded=true;
+    const n=Object.keys(map).length;
+    console.log('[SARV] category_purchasers loaded: '+n+' of '+((q.data||[]).length)+' categories have a purchaser');
   }catch(e){
     // Missing table or blocked read must not break the PR form — the field
     // simply stays manual.
     console.warn('[SARV] category_purchasers load skipped:',e.message||e);
   }
 }
+// Inspect from the browser console when a mapping seems not to apply.
+window.sarvShowCategoryPurchasers=function(){
+  console.table(Object.keys(sarvCategoryPurchasers).map(c=>({category:c,purchaser:sarvCategoryPurchasers[c]})));
+  return sarvCategoryPurchasers;
+};
+
+// Said once per distinct problem — a toast on every keystroke would be noise,
+// but staying silent is what made this look broken rather than unconfigured.
+function catPurWarnOnce_(key,msg,kind){
+  if(sarvCatPurWarned.has(key))return;
+  sarvCatPurWarned.add(key);
+  showToast(msg,kind||'warn');
+}
 
 function applyCategoryPurchaser(category){
   const sel=byId('p_reqGeneratedBy');if(!sel)return;
-  const want=sarvCategoryPurchasers[String(category||'').trim().toUpperCase()];
-  if(!want)return;                       // category has no purchaser mapped yet
-  // Name must exist in the dropdown, otherwise assigning it silently selects
-  // nothing and the field looks empty for no visible reason.
-  if(![...sel.options].some(o=>o.value===want)){
-    console.warn('[SARV] "'+want+'" category_purchasers me hai par Purchaser dropdown me nahi');
+  const cat=String(category||'').trim();
+  if(!cat)return;
+  if(!sarvCatPurLoaded){
+    catPurWarnOnce_('notloaded','⚠️ Category-wise Purchaser list load nahi hui — page refresh karein','warn');
+    return;
+  }
+  // Nothing mapped at all almost always means the table was seeded but never
+  // filled in. Saying so beats leaving the field mysteriously blank.
+  if(!Object.keys(sarvCategoryPurchasers).length){
+    catPurWarnOnce_('empty','⚠️ Kisi bhi category ka Purchaser set nahi hai — Supabase ke category_purchasers table me purchaser_name bharein','warn');
+    return;
+  }
+  const want=sarvCategoryPurchasers[cat.toUpperCase()];
+  if(!want){
+    catPurWarnOnce_('nocat:'+cat.toUpperCase(),'ℹ️ "'+cat+'" category ka Purchaser set nahi hai — category_purchasers table me add karein','warn');
+    return;
+  }
+  // Matched case- and space-insensitively, and the dropdown's OWN spelling is
+  // used. An exact compare meant "VISHAL JI" in the table silently matched
+  // nothing against "Vishal ji" in the list — which looked like a dead feature.
+  const norm=s=>String(s||'').trim().toUpperCase().replace(/\s+/g,' ');
+  const opt=[...sel.options].find(o=>o.value&&norm(o.value)===norm(want));
+  if(!opt){
+    catPurWarnOnce_('noopt:'+norm(want),'⚠️ "'+want+'" Purchaser dropdown me nahi hai — category_purchasers me spelling theek karein','warn');
     return;
   }
   if(!sel.value){
-    sel.value=want;sarvPurchaserAutoFilled=true;
-    showToast('👤 Purchaser auto-select: '+want+' ('+category+')');
+    sel.value=opt.value;sarvPurchaserAutoFilled=true;
+    showToast('👤 Purchaser auto-select: '+opt.value+' ('+cat+')');
     return;
   }
-  if(sel.value===want)return;            // already right
+  if(norm(sel.value)===norm(opt.value))return;   // already right
   if(sarvPurchaserAutoFilled){
     // We filled it from an earlier row and this row disagrees. Keep the first
     // one and say so — the user decides which is right.
-    showToast('⚠️ "'+category+'" ka Purchaser "'+want+'" hai, par PR par "'+sel.value+'" laga hai. Zaroorat ho to khud badlein.','warn');
+    showToast('⚠️ "'+cat+'" ka Purchaser "'+opt.value+'" hai, par PR par "'+sel.value+'" laga hai. Zaroorat ho to khud badlein.','warn');
   }
 }
 /* ── PO Number picker ────────────────────────────────────────────
