@@ -3164,6 +3164,7 @@ body {
                                 <option value="USER_GT_PIN">Gate Man PIN</option>
                                 <option value="ADMIN_PIN">Admin PIN (Cancel PO access)</option>
                                 <option value="VENDOR_VERIFY_PIN">Vendor Verified PIN (Mobile Approvals)</option>
+                                <option value="PO_SENDER_PIN">PO Sender PIN (Mobile — WhatsApp Send)</option>
                                 <option value="VIEW_PIN">View / Preview PIN</option>
                                 <option value="EDIT_PASSWORD">Edit Password (Record Edit)</option>
                                 <!-- One PIN per purchaser, keyed PURCHASER::<name>. These names must
@@ -3271,7 +3272,7 @@ body {
                 </div>
 
                 <div class="summary-row">
-                    <span>Weight</span>
+                    <span>Gross Weight</span>
                     <input type="number" class="summary-input" id="calcGrossWeight" value="0" min="0">
                 </div>
 
@@ -3771,7 +3772,7 @@ body {
                                 <th style="width: 11%;">Machine Name &amp; No. <span style="color:#dc2626;">*</span></th>
                                 <th style="width: 7%;">Qty <span style="color:#dc2626;">*</span></th>
                                 <th style="width: 7%;">UOM</th>
-                                <th style="width: 8%;">Weight</th>
+                                <th style="width: 8%;">Gross Wt. (kg)</th>
                                 <th style="width: 12%;">Item Remarks</th>
                                 <th style="width: 4%;"></th>
                             </tr>
@@ -3988,7 +3989,7 @@ body {
     <!-- ============ PO BUILD MODAL ============ -->
     <div class="modal-overlay" id="p_poBuildModal">
         <div class="modal-box" style="max-width: 1400px; width: 96vw; max-height: 92vh; overflow-y: auto;">
-            <h3 class="modal-title">🛒 Build New Purchase Order</h3>
+            <h3 class="modal-title" id="p_poBuildModalTitle">🛒 Build New Purchase Order</h3>
             <p class="modal-sub">Fill vendor &amp; pricing details. PDF will auto-generate &amp; save to Drive.</p>
 
             <div class="grid-3">
@@ -4060,7 +4061,7 @@ body {
                             <th style="width:6%; background:#dbeafe; color:#1d4ed8;">PO Qty <span style="color:#dc2626;">*</span></th>
                             <th style="width:5%; background:#fef2f2; color:#b91c1c;" title="Cancel remaining qty now (optional)">Cancel</th>
                             <th style="width:5%;">UOM</th>
-                            <th style="width:7%; background:#fef9c3; color:#854d0e;">Weight</th>
+                            <th style="width:7%; background:#fef9c3; color:#854d0e;">Gross Wt (kg)</th>
                             <th style="width:6%; background:#f1f5f9; color:#334155;" title="QTY = Qty × final rate · WEIGHT = Gross Wt × final rate">Bill Basis</th>
                             <th style="width:7%;">Unit Price <span style="color:#dc2626;">*</span></th>
                             <th style="width:6%; background:#e0e7ff; color:#3730a3;" title="Discount % per item">Disc%</th>
@@ -4939,9 +4940,31 @@ let sarvItemCatalog=[];     // Global item master cache for auto-fill
 let sarvEmployeeCatalog=[]; // Global employee cache for PR form auto-fill
 let sarvSupplierCatalog=[]; // Global supplier master cache for auto-fill
 
+/* Resolves whatever is sitting in an Item Name box to ONE Item Master row.
+
+   The dropdown gives same-named rows an "NAME [ITEM_CODE]" value (see
+   itemDropdownValue) because that is the only way a <datalist> can say WHICH
+   of them was picked — so that tagged form is tried first, and it is what
+   stops a duplicate name from always resolving to the first row.
+   A bare name still works (unique names, a hand-typed name, a saved PR/PO
+   line being reloaded), and so does a bare item_code. */
 function lookupItem(name){
-  const n=(name||'').trim().toLowerCase();
-  return sarvItemCatalog.find(it=>(it.name||'').toLowerCase()===n)||null;
+  const raw=String(name||'').trim();
+  if(!raw)return null;
+  const n=raw.toLowerCase();
+  const eq=(a,b)=>String(a||'').trim().toLowerCase()===b;
+  // "NAME [CODE]" — the exact row the user picked out of the popup.
+  const tagged=raw.match(/^(.*)\s*\[([^\[\]]+)\]$/);
+  if(tagged){
+    const tName=tagged[1].trim().toLowerCase(),tCode=tagged[2].trim().toLowerCase();
+    const exact=sarvItemCatalog.find(it=>eq(it.item_code,tCode)&&eq(it.name,tName));
+    if(exact)return exact;
+    const byTaggedCode=sarvItemCatalog.find(it=>eq(it.item_code,tCode));
+    if(byTaggedCode)return byTaggedCode;
+  }
+  return sarvItemCatalog.find(it=>eq(it.name,n))
+      ||sarvItemCatalog.find(it=>eq(it.item_code,n))
+      ||null;
 }
 function lookupEmployee(code){
   const c=(code||'').trim().toUpperCase();
@@ -5035,7 +5058,13 @@ function onOutEmpCodeInput(val){
   s('outDepartment',   emp.department||'');
   showToast(`✅ ${emp.person_name} — ${emp.designation||''} (${emp.department||''})`, 'success');
 }
-function applyItemAutofill(nameVal,tr,prefix){
+/* lockName: only true once the user has actually COMMITTED a pick (the
+   'change' event — Enter on a dropdown option, clicking one, or leaving the
+   field). It must never be set from the 'input' event: while the Item Name
+   dropdown is open, the browser fires 'input' for every option the user
+   arrows onto, so locking there froze the row on the FIRST option in the list
+   and the real pick (and any further typing) could no longer land. */
+function applyItemAutofill(nameVal,tr,prefix,lockName=false){
   const item=lookupItem(nameVal);
   const g=(cls)=>tr.querySelector(cls);
   const s=(cls,val)=>{const e=g(cls);if(e&&val!=null)e.value=val;};
@@ -5045,8 +5074,18 @@ function applyItemAutofill(nameVal,tr,prefix){
     // Description/Category from whatever was previously selected.
     if(prefix==='inward'){s('.item-desc','');s('.item-cat','');}
     else if(prefix==='outward'){s('.out-item-desc','');s('.out-item-cat','');}
+    // Same for a PR row: the name is no longer locked the instant a match is
+    // seen, so a row CAN now end up with a name that matches nothing (typed
+    // past an option, or cleared by the Master Data check on blur). Its
+    // Description/Category/UOM must not keep the last matched item's values.
+    else if(prefix==='purchase'){s('.col-desc','');s('.col-cat','');s('.col-uom','');}
+    if(tr&&tr.dataset)delete tr.dataset.itemId;
     return;
   }
+  // Pin the row to the exact Item Master row that was resolved. Two rows can
+  // share a name, so the save path must not re-resolve by name later — it
+  // would bind the line back to the first of the duplicates (see ensureItem).
+  if(tr&&tr.dataset)tr.dataset.itemId=item.id||'';
   if(prefix==='inward'){
     s('.item-desc', item.description||'');
     if(!g('.item-make')?.value) s('.item-make', item.make||'');
@@ -5066,12 +5105,24 @@ function applyItemAutofill(nameVal,tr,prefix){
     if(!g('.col-make')?.value) s('.col-make', item.make||'');
     s('.col-cat', item.category||'');
     s('.col-uom', item.uom||'');
-    // Once a real master item is picked, lock the name so it can't be
-    // hand-edited into something else — delete the row and re-add to pick again.
+    // Once a real master item is PICKED (committed, not merely highlighted in
+    // the open dropdown), lock the name so it can't be hand-edited into
+    // something else — delete the row and re-add to pick again.
     const nameEl=g('.col-name');
-    if(nameEl){nameEl.readOnly=true;nameEl.style.background='#f1f5f9';nameEl.style.cursor='not-allowed';nameEl.title='Item locked — delete this row and add a new one to pick a different item';}
+    if(lockName&&nameEl){nameEl.readOnly=true;nameEl.style.background='#f1f5f9';nameEl.style.cursor='not-allowed';nameEl.title='Item locked — delete this row and add a new one to pick a different item';}
     applyCategoryPurchaser(item.category);
     refreshPurchaseTotals();
+  }
+  // A duplicated name arrives here as "NAME [ITEM_CODE]" (that tag is how the
+  // dropdown identifies which of the same-named rows was picked). Now that it
+  // has been resolved, put the plain name back: that is what gets saved and
+  // printed, and the Master Data check on blur only recognises plain names.
+  // Only on a committed pick — rewriting the box mid-typing would fight the
+  // user, and dataset.itemId already holds the identity.
+  if(lockName){
+    const nameSel=prefix==='inward'?'.item-name':(prefix==='outward'?'.out-item-name':'.col-name');
+    const el=g(nameSel);
+    if(el&&item.name&&el.value!==item.name)el.value=item.name;
   }
 }
 
@@ -5814,8 +5865,18 @@ function inwardPoOverrides(rows){
   });
   return out;
 }
-async function ensureItem(name, description='', make='', category='', uom='PCS'){
+/* itemId: the exact Item Master row the user picked, captured on the entry row
+   by applyItemAutofill. It has to be honoured here, because several rows may
+   carry the SAME name — a name lookup alone would bind the saved line back to
+   whichever duplicate comes first, which is the same wrong-row bug the Item
+   Name dropdown had. Falls back to the name lookup (and then to creating the
+   item) when no row was pinned, e.g. a bulk import or an older saved record. */
+async function ensureItem(name, description='', make='', category='', uom='PCS', itemId=''){
   name=(name||'').trim(); if(!name)return null;
+  if(itemId){
+    const byId=await SB.from('items').select('id,item_code,name,uom').eq('id',itemId).maybeSingle();
+    if(!byId.error&&byId.data)return byId.data;
+  }
   let q=await SB.from('items').select('id,item_code,name,uom').ilike('name',name).limit(1).maybeSingle();
   if(q.error)throw q.error; if(q.data)return q.data;
   const code=(name.toUpperCase().replace(/[^A-Z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,32)||'ITEM')+'-'+String(Date.now()).slice(-4);
@@ -5899,9 +5960,11 @@ function addNewRow(){
  // Auto-fill from Item Master when item name is selected
  const niName=tr.querySelector('.item-name');
  if(niName){
-   niName.addEventListener('change',function(){applyItemAutofill(this.value,tr,'inward');});
+   // true = committed pick: resolve the "NAME [ITEM_CODE]" form a duplicated
+   // name comes through as, and put the plain name back in the box.
+   niName.addEventListener('change',function(){applyItemAutofill(this.value,tr,'inward',true);});
    niName.addEventListener('input',function(){if(lookupItem(this.value))applyItemAutofill(this.value,tr,'inward');});
-   lockToMasterList(niName,()=>sarvItemCatalog.map(it=>it.name));
+   lockToMasterList(niName,itemNameMasterValues);
  }
  const niMake=tr.querySelector('.item-make');
  if(niMake)lockToMasterList(niMake,()=>[...new Set(sarvItemCatalog.map(it=>it.make).filter(Boolean))]);
@@ -5921,9 +5984,9 @@ function addOutwardItemRow(){
  // Auto-fill from Item Master when out item name is selected
  const oiName=tr.querySelector('.out-item-name');
  if(oiName){
-   oiName.addEventListener('change',function(){applyItemAutofill(this.value,tr,'outward');});
+   oiName.addEventListener('change',function(){applyItemAutofill(this.value,tr,'outward',true);});
    oiName.addEventListener('input',function(){if(lookupItem(this.value))applyItemAutofill(this.value,tr,'outward');});
-   lockToMasterList(oiName,()=>sarvItemCatalog.map(it=>it.name));
+   lockToMasterList(oiName,itemNameMasterValues);
  }
  updateOutTotals();
 }
@@ -6089,9 +6152,13 @@ function addPurchaseMainRow(){
  // Auto-fill from Item Master
  const pcName=tr.querySelector('.col-name');
  if(pcName){
-   pcName.addEventListener('change',function(){applyItemAutofill(this.value,tr,'purchase');});
+   // 'change' is the committed pick, so that is the only place the name gets
+   // locked. 'input' still fills Description/Make/Category/UOM as you type or
+   // move through the dropdown, but leaves the field editable so the option
+   // you actually choose is the one that sticks.
+   pcName.addEventListener('change',function(){applyItemAutofill(this.value,tr,'purchase',true);});
    pcName.addEventListener('input',function(){if(lookupItem(this.value))applyItemAutofill(this.value,tr,'purchase');});
-   lockToMasterList(pcName,()=>sarvItemCatalog.map(it=>it.name));
+   lockToMasterList(pcName,itemNameMasterValues);
  }
  refreshPurchaseTotals();
 }
@@ -6272,7 +6339,7 @@ window.submitPasswordChange=async function(){
    once logged in; sarvCurrentRole is checked only where a specific
    permission is needed (e.g. isAdmin() for cancelling a PO).
 ================================================================ */
-const SARV_ROLE_LABEL={USER_IC_PIN:'Store In-Charge',USER_GM_PIN:'GM / CEO',USER_MD_PIN:'MD',USER_AC_PIN:'Accountant',USER_GT_PIN:'Gate Man',ADMIN_PIN:'Admin',VENDOR_VERIFY_PIN:'Vendor Verified'};
+const SARV_ROLE_LABEL={USER_IC_PIN:'Store In-Charge',USER_GM_PIN:'GM / CEO',USER_MD_PIN:'MD',USER_AC_PIN:'Accountant',USER_GT_PIN:'Gate Man',ADMIN_PIN:'Admin',VENDOR_VERIFY_PIN:'Vendor Verified',PO_SENDER_PIN:'PO Sender (Mobile)'};
 const SARV_LOGIN_STORAGE_KEY='sarv_active_role';
 let sarvCurrentRole=null;
 function isAdmin(){return sarvCurrentRole==='ADMIN_PIN';}
@@ -6703,12 +6770,54 @@ window.renderItemMasterTable=function(){
     </tr>`;
   tb.innerHTML=totalsRow+bodyRows;
 };
+/* Several Item Master rows are allowed to carry the SAME name (same part,
+   different spec / make / description). A native <datalist> reports which
+   option the user picked ONLY through that option's value, so same-named
+   options must not share one value — otherwise every pick resolved to
+   whichever row happened to come first and filled that row's Description /
+   Spec / Category / UOM, no matter which line was chosen in the popup.
+
+   Duplicated names therefore carry their item_code — "BEARING 6204 [BRG-6204-1]"
+   — which is the unique handle for an Item Master row. A name that appears
+   once stays exactly as it was, so nothing changes for the common case.
+   lookupItem() understands both forms, and applyItemAutofill() puts the clean
+   name back in the field once the pick has been resolved. */
+function itemDropdownValue(it,dupNames){
+  const name=String(it&&it.name||'').trim();
+  const code=String(it&&it.item_code||'').trim();
+  if(!code||!dupNames||!dupNames.has(name.toLowerCase()))return name;
+  return name+' ['+code+']';
+}
+/* Everything an Item Name box is allowed to hold: every master name, plus the
+   "NAME [ITEM_CODE]" form the dropdown uses for duplicated names. Without the
+   tagged forms the Master Data check on blur would wipe a freshly picked
+   duplicate before applyItemAutofill had put the plain name back. */
+function itemNameMasterValues(){
+  const dup=itemDuplicateNames(sarvItemCatalog),out=[];
+  (sarvItemCatalog||[]).forEach(it=>{
+    const name=String(it&&it.name||'').trim();
+    if(name)out.push(name);
+    const tagged=itemDropdownValue(it,dup);
+    if(tagged&&tagged!==name)out.push(tagged);
+  });
+  return out;
+}
+// Lowercased names that occur more than once in the given item list.
+function itemDuplicateNames(items){
+  const seen=new Map();
+  (items||[]).forEach(it=>{
+    const k=String(it&&it.name||'').trim().toLowerCase();
+    if(k)seen.set(k,(seen.get(k)||0)+1);
+  });
+  return new Set([...seen.entries()].filter(([,n])=>n>1).map(([k])=>k));
+}
 function refreshItemDatalist(items){
   sarvItemCatalog=items; // Keep global cache in sync
-  // Inward + Outward item name datalists
+  // Inward + Outward + PR item name datalists
+  const dupNames=itemDuplicateNames(items);
   ['dl-item-name','dl-out-item-name','p_dl-item-names'].forEach(dlId=>{
     const dl=byId(dlId);if(!dl)return;
-    dl.innerHTML=items.map(it=>`<option value="${escText(it.name)}">${escText(it.category||'')} — ${escText(it.description||'')}</option>`).join('');
+    dl.innerHTML=items.map(it=>`<option value="${escText(itemDropdownValue(it,dupNames))}">${escText(it.category||'')} — ${escText(it.description||'')}</option>`).join('');
   });
   const makeSet=[...new Set(items.map(x=>x.make).filter(Boolean))];
   ['dl-item-make','dl-out-item-make'].forEach(dlId=>{const dl=byId(dlId);if(!dl)return;dl.innerHTML=makeSet.map(m=>`<option value="${escText(m)}">`).join('');});
@@ -8287,6 +8396,11 @@ window.addEventListener('DOMContentLoaded',()=>{
  // the PO Build form's default and as the fallback whenever a stored PO has
  // no location_contact of its own (older rows, or a DB without that column).
  const SARV_PO_LOCATION_CONTACT = '+91 90344 40871';
+ // Standing declaration printed under IMPORTANT NOTES on every Purchase Order,
+ // below the GM/CEO and MD remarks. Kept in one constant so STORE.html's two
+ // PO renderers (native jsPDF + HTML fallback) and mobile.html's approval
+ // reprint can never drift apart.
+ const SARV_PO_ANTI_CORRUPTION_NOTE = 'Our company maintains a strict zero-tolerance policy for corruption. If any employee requests a commission, kickback, or unauthorized payment, please report it immediately. Verified reports will be rewarded with Smart prize worth INR 11,000.';
 
  // Company logo printed at the top-right of the Purchase Order PDF.
  // Inlined as a data URI so the PDF renders identically offline and from
@@ -8817,14 +8931,23 @@ window.addEventListener('DOMContentLoaded',()=>{
      make:it.make||'NA', cat:it.category||it.cat||'', machineNo:it.machineNo||it.machine||'',
      qty:pNum(it.qty), issued:pNum(it.issued||it.qtyIssued||0), uom:it.uom||'',
      grossWeight:(it.grossWeight!=null&&it.grossWeight!=='')?pNum(it.grossWeight):null,
-     rates:it.rates||{}, discounts:it.discounts||{}
+     rates:it.rates||{}, discounts:it.discounts||{},
+     approvedVendorIndex:(it.approvedVendorIndex!=null)?pNum(it.approvedVendorIndex):((d.approvedVendorIndex!=null&&d.approvedVendorIndex>=0)?pNum(d.approvedVendorIndex):-1)
    }));
    const totalGW=items.reduce((s,r)=>s+(r.grossWeight!=null?r.grossWeight:0),0);
    const rateTxt=v=>(v!=null&&pNum(v)>0)?nNum_(v):'';
    const discTxt=v=>(v!=null&&pNum(v)>0)?' (-'+pNum(v)+'%)':'';
+   // PR-level field, kept only as the fallback for a PR approved before
+   // per-item vendor assignment existed.
    const approvedIdx=(d.approvedVendorIndex!=null&&d.approvedVendorIndex>=0)?d.approvedVendorIndex:-1;
+   // Every distinct vendor slot an item was actually approved against — one
+   // PR can now be split across several vendors, item by item.
+   const usedVendorIdx=new Set(items.map(r=>r.approvedVendorIndex).filter(v=>v!=null&&v>=0));
+   if(approvedIdx>=0)usedVendorIdx.add(approvedIdx);
    const APPROVED_BG='background:#c5e1a5;font-weight:bold;';
-   const rateCell=(v,disc,vi)=>'<td class="vcol"'+(vi===approvedIdx?' style="'+APPROVED_BG+'"':'')+'>'+pEsc(rateTxt(v)+discTxt(disc))+'</td>';
+   // Highlight follows THAT row's own approved vendor, not one vendor for the
+   // whole sheet, so a split PR shows each item against the vendor it went to.
+   const rateCell=(v,disc,vi,rowIdx)=>'<td class="vcol"'+(vi===rowIdx?' style="'+APPROVED_BG+'"':'')+'>'+pEsc(rateTxt(v)+discTxt(disc))+'</td>';
    const itemRowsHtml=items.map(r=>'<tr>'+
      '<td class="c sr">'+pEsc(r.sr)+'</td>'+
      '<td>'+pEsc(r.name)+'</td>'+
@@ -8836,13 +8959,13 @@ window.addEventListener('DOMContentLoaded',()=>{
      '<td class="c b">'+pEsc(r.issued)+'</td>'+
      '<td class="c">'+pEsc(r.uom)+'</td>'+
      '<td class="c">'+(r.grossWeight!=null?pEsc(r.grossWeight):'')+'</td>'+
-     rateCell(r.rates.V1,r.discounts.V1,0)+rateCell(r.rates.V2,r.discounts.V2,1)+rateCell(r.rates.V3,r.discounts.V3,2)+rateCell(r.rates.V4,r.discounts.V4,3)+
+     rateCell(r.rates.V1,r.discounts.V1,0,r.approvedVendorIndex)+rateCell(r.rates.V2,r.discounts.V2,1,r.approvedVendorIndex)+rateCell(r.rates.V3,r.discounts.V3,2,r.approvedVendorIndex)+rateCell(r.rates.V4,r.discounts.V4,3,r.approvedVendorIndex)+
    '</tr>').join('');
    const vendors=d.vendors||[];
    // The approved V1..V4 row is filled light green end-to-end — including the
    // Sr cell, whose class would otherwise keep the teal header colour — so the
    // HTML fallback matches the native renderer's highlight exactly.
-   const vendorRows=['V1','V2','V3','V4'].map((v,i)=>{const info=vendors[i]||{};const rowStyle=i===approvedIdx?' style="'+APPROVED_BG+'"':'';const srStyle=i===approvedIdx?' style="'+APPROVED_BG+'color:#000;text-align:center;"':'';return '<tr'+rowStyle+'><td class="vsr"'+srStyle+'>'+v+'</td><td'+rowStyle+'>'+pEsc(info.name||'')+'</td><td'+rowStyle+'>'+pEsc(info.email||'')+'</td><td'+rowStyle+'>'+pEsc(info.contact||'')+'</td><td'+rowStyle+'>'+pEsc(info.remarks||'')+'</td></tr>';}).join('');
+   const vendorRows=['V1','V2','V3','V4'].map((v,i)=>{const info=vendors[i]||{};const isUsed=usedVendorIdx.has(i);const rowStyle=isUsed?' style="'+APPROVED_BG+'"':'';const srStyle=isUsed?' style="'+APPROVED_BG+'color:#000;text-align:center;"':'';return '<tr'+rowStyle+'><td class="vsr"'+srStyle+'>'+v+'</td><td'+rowStyle+'>'+pEsc(info.name||'')+'</td><td'+rowStyle+'>'+pEsc(info.email||'')+'</td><td'+rowStyle+'>'+pEsc(info.contact||'')+'</td><td'+rowStyle+'>'+pEsc(info.remarks||'')+'</td></tr>';}).join('');
    const totalQty=items.reduce((s,r)=>s+r.qty,0);
    const css='@page { size: A4 landscape; margin: 8mm; }'
      +'body { font-family: Arial, "Segoe UI", sans-serif; font-size: 11px; margin: 0; color: #000; }'
@@ -8939,7 +9062,8 @@ window.addEventListener('DOMContentLoaded',()=>{
      make:it.make||'NA', cat:it.category||it.cat||'', machineNo:it.machineNo||it.machine||'',
      qty:pNum(it.qty), issued:pNum(it.issued||it.qtyIssued||0), uom:it.uom||'',
      grossWeight:(it.grossWeight!=null&&it.grossWeight!=='')?pNum(it.grossWeight):null,
-     rates:it.rates||{}, discounts:it.discounts||{}
+     rates:it.rates||{}, discounts:it.discounts||{},
+     approvedVendorIndex:(it.approvedVendorIndex!=null)?pNum(it.approvedVendorIndex):((d.approvedVendorIndex!=null&&d.approvedVendorIndex>=0)?pNum(d.approvedVendorIndex):-1)
    }));
    const totalGW=items.reduce((s,r)=>s+(r.grossWeight!=null?r.grossWeight:0),0);
    const totalQty=items.reduce((s,r)=>s+r.qty,0);
@@ -8996,12 +9120,18 @@ window.addEventListener('DOMContentLoaded',()=>{
        {content:totalGW>0?totalGW+' kg':'',styles:{fillColor:SUBTOTAL_BG,textColor:[10,58,94],fontStyle:'bold',halign:'center'}},
        {content:'VENDOR RATE',colSpan:4,styles:{fillColor:SUBTOTAL_BG,textColor:[10,58,94],fontStyle:'bold',halign:'center'}},
      ],
-     ['Sr No','Item Name','Item Description','Make / Brand','Category','Machine','Qty','Qty Issued','UOM','Gross Wt (kg)','V1','V2','V3','V4']
+     ['Sr No','Item Name','Item Description','Make / Brand','Category','Machine','Qty','Qty Issued','UOM','Weight','V1','V2','V3','V4']
    ];
    const rateTxt=v=>(v!=null&&pNum(v)>0)?nNum_(v):'';
    const discTxt=v=>(v!=null&&pNum(v)>0)?' (-'+pNum(v)+'%)':'';
    const body=items.map(r=>[String(r.sr),r.name,r.desc,r.make,r.cat,r.machineNo,String(r.qty),String(r.issued),r.uom,(r.grossWeight!=null?String(r.grossWeight):''),rateTxt(r.rates.V1)+discTxt(r.discounts.V1),rateTxt(r.rates.V2)+discTxt(r.discounts.V2),rateTxt(r.rates.V3)+discTxt(r.discounts.V3),rateTxt(r.rates.V4)+discTxt(r.discounts.V4)]);
+   // PR-level field, kept only as a fallback for a PR approved before
+   // per-item vendor assignment existed.
    const approvedIdx=(d.approvedVendorIndex!=null&&d.approvedVendorIndex>=0)?d.approvedVendorIndex:-1;
+   // Every distinct vendor slot actually used by an item — different items can
+   // now carry different approved vendors on the same PR.
+   const usedVendorIdx=new Set(items.map(r=>r.approvedVendorIndex).filter(v=>v!=null&&v>=0));
+   if(approvedIdx>=0)usedVendorIdx.add(approvedIdx);
    const APPROVED_GREEN=[197,225,165]; // pista green — approved vendor highlight
    doc.autoTable({
      head,body,startY:y,
@@ -9011,7 +9141,9 @@ window.addEventListener('DOMContentLoaded',()=>{
      columnStyles:{0:{cellWidth:9,halign:'center'},6:{cellWidth:12,halign:'center',fontStyle:'bold'},7:{cellWidth:12,halign:'center',fontStyle:'bold'},8:{cellWidth:10,halign:'center'},9:{cellWidth:14,halign:'center'},10:{cellWidth:18},11:{cellWidth:18},12:{cellWidth:18},13:{cellWidth:18}},
      theme:'grid',
      didParseCell:(hook)=>{
-       if(hook.section==='body'&&approvedIdx>=0&&hook.column.index===10+approvedIdx){
+       if(hook.section!=='body')return;
+       const rowIdx=items[hook.row.index]&&items[hook.row.index].approvedVendorIndex;
+       if(rowIdx!=null&&rowIdx>=0&&hook.column.index===10+rowIdx){
          hook.cell.styles.fillColor=APPROVED_GREEN;hook.cell.styles.fontStyle='bold';
        }
      }
@@ -9030,7 +9162,7 @@ window.addEventListener('DOMContentLoaded',()=>{
      columnStyles:{0:{cellWidth:12,halign:'center',fontStyle:'bold',fillColor:TEAL,textColor:[255,255,255]},1:{cellWidth:W*0.30},2:{cellWidth:W*0.20},3:{cellWidth:W*0.15},4:{cellWidth:'auto'}},
      theme:'grid',
      didParseCell:(hook)=>{
-       if(hook.section==='body'&&approvedIdx>=0&&hook.row.index===approvedIdx){
+       if(hook.section==='body'&&usedVendorIdx.has(hook.row.index)){
          hook.cell.styles.fillColor=APPROVED_GREEN;hook.cell.styles.textColor=[0,0,0];hook.cell.styles.fontStyle='bold';
        }
      }
@@ -9163,7 +9295,7 @@ window.addEventListener('DOMContentLoaded',()=>{
     '<td style="'+CELL+'text-align:center;">'+r.sr+'</td>'+
     '<td style="'+CELL+'">'+pEsc(r.desc)+'</td>'+
     '<td style="'+CELL+'text-align:center;">'+pEsc(r.make)+'</td>'+
-    '<td style="'+CELL+'text-align:center;">'+pEsc(r.qty)+' '+pEsc(r.uom)+(r.basis==='WEIGHT'?'<br><span style="font-size:8px;">(billed on wt)</span>':'')+'</td>'+
+    '<td style="'+CELL+'text-align:center;">'+pEsc(r.qty)+' '+pEsc(r.uom)+'</td>'+
     '<td style="'+CELL+'text-align:center;">'+(r.gw!=null?r.gw:'')+'</td>'+
     '<td style="'+CELL+'text-align:right;">'+pMoney(r.up)+'</td>'+
     (hasDisc?'<td style="'+CELL+'text-align:center;">'+(r.disc>0?r.disc+'%':'-')+'</td><td style="'+CELL+'text-align:right;">'+pMoney(r.netUp)+'</td>':'')+
@@ -9177,7 +9309,7 @@ window.addEventListener('DOMContentLoaded',()=>{
   const sumRows=[
     ['Subtotal',pMoney(subtotal)],
     ['Freight / Transport',pMoney(freight)],
-    [pEsc(d.otherExpenseLabel||'Labour/Loading/Ohter Exp.'),pMoney(other)],
+    [pEsc(d.otherExpenseLabel||'Labour/Loading/Other Exp.'),pMoney(other)],
     ['Taxable Value',pMoney(taxable)],
     ['GST (item-wise + freight/other @ '+gstPct+'%)',pMoney(gstAmt)],
   ].map(([l,v])=>'<tr><td style="'+SL+'">'+l+'</td><td style="'+SV+'">'+v+'</td></tr>').join('');
@@ -9259,7 +9391,7 @@ window.addEventListener('DOMContentLoaded',()=>{
     +(hasDisc?'<th style="'+TH+'width:28%;">DESCRIPTION</th>':'<th style="'+TH+'width:36%;">DESCRIPTION</th>')
     +'<th style="'+TH+'width:9%;">MAKE</th>'
     +'<th style="'+TH+'width:10%;">QUANTITY</th>'
-    +'<th style="'+TH+'width:9%;">GROSS WT (kg)</th>'
+    +'<th style="'+TH+'width:9%;">WEIGHT</th>'
     +(hasDisc?'<th style="'+TH+'width:9%;">RATE</th><th style="'+TH+'width:6%;">DISC%</th><th style="'+TH+'width:9%;">NET RATE</th>':'<th style="'+TH+'width:12%;">UNIT PRICE</th>')
     +'<th style="'+TH+'width:6%;">GST%</th>'
     +'<th style="'+TH+'width:12%;">AMOUNT</th>'
@@ -9283,7 +9415,8 @@ window.addEventListener('DOMContentLoaded',()=>{
     +'<div style="font-weight:bold;margin:10px 0 4px;font-size:11px;">IMPORTANT NOTES:</div>'
     +'<div style="background:#fff200;border:1px solid #d4b800;padding:6px 8px;font-weight:700;font-size:11px;white-space:pre-wrap;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
     +'<div style="margin-bottom:3px;">GM / CEO: '+pEsc(sigRemark_(sigs.gmCeo)||'—')+'</div>'
-    +'<div>MD: '+pEsc(sigRemark_(sigs.md)||'—')+'</div>'
+    +'<div style="margin-bottom:3px;">MD: '+pEsc(sigRemark_(sigs.md)||'—')+'</div>'
+    +'<div>'+pEsc(SARV_PO_ANTI_CORRUPTION_NOTE)+'</div>'
     +'</div>'
 
     // ── Signature ─────────────────────────────────────────────
@@ -9413,13 +9546,23 @@ window.addEventListener('DOMContentLoaded',()=>{
    return y;
    };
    let y=drawPoPageHeader();
+   // Every break past page 1 must reprint the full upper block (company header,
+   // party details, shipping / delivery / contact box) so each sheet stands on
+   // its own. The items table already does this via didDrawPage; poNewPage_ is
+   // what the blocks AFTER it (summary, notes, signatures) use, which used to
+   // do a bare addPage() and start a naked page at y=M.
+   const poNewPage_=()=>{doc.addPage();return drawPoPageHeader()};
+   // Reserve `h` mm on the current page, moving to a fresh (fully re-headed)
+   // page when it doesn't fit. BOTTOM keeps clear of the page edge.
+   const BOTTOM=pageH-M-4;
+   const poFit_=h=>{if(y+h>BOTTOM)y=poNewPage_();return y};
 
    // Always render Rate/Disc%/Net Rate/Amount — a fixed column set avoids
    // a PO with 0% discount on every line silently losing the Disc%/Net
    // Rate columns whenever this PDF gets regenerated (e.g. after a
    // GM/CEO/MD approval in mobile.html).
-   const head=[['Sr.','Description','Make','Quantity','Gross Wt (kg)','Rate','Disc%','Net Rate','GST%','Amount']];
-   const body=items.map(r=>[String(r.sr),r.desc,r.make,pNum(r.qty)+' '+r.uom+(r.basis==='WEIGHT'?'\n(billed on wt)':''),r.gw!=null?String(r.gw):'',nNum_(r.up),r.disc>0?r.disc+'%':'-',nNum_(r.netUp),r.gstPct>0?r.gstPct+'%':'-',nNum_(r.total)]);
+   const head=[['Sr.','Description','Make','Quantity','Weight','Rate','Disc%','Net Rate','GST%','Amount']];
+   const body=items.map(r=>[String(r.sr),r.desc,r.make,pNum(r.qty)+' '+r.uom,r.gw!=null?String(r.gw):'',nNum_(r.up),r.disc>0?r.disc+'%':'-',nNum_(r.netUp),r.gstPct>0?r.gstPct+'%':'-',nNum_(r.total)]);
    const columnStyles={0:{cellWidth:9},2:{cellWidth:18},3:{cellWidth:17},4:{cellWidth:16},5:{cellWidth:18},6:{cellWidth:12},7:{cellWidth:18},8:{cellWidth:11},9:{cellWidth:21}};
    const foot=[[{content:'Grand Total (Subtotal)',colSpan:3},String(totalQty),(totalGW>0?totalGW+' kg':''),{content:'',colSpan:4},nNum_(subtotal)]];
    doc.autoTable({
@@ -9437,48 +9580,55 @@ window.addEventListener('DOMContentLoaded',()=>{
      didDrawPage:(data)=>{if(data.pageNumber>1)drawPoPageHeader();}
    });
    y=doc.lastAutoTable.finalY+4;
-   if(y>pageH-90){doc.addPage();y=M;}
-
    const labelW=W*0.7;
    const sumRows=[
      ['Subtotal',nNum_(subtotal)],
      ['Freight / Transport',nNum_(freight)],
-     [String(d.otherExpenseLabel||'Labour/Loading/Ohter Exp.'),nNum_(other)],
+     [String(d.otherExpenseLabel||'Labour/Loading/Other Exp.'),nNum_(other)],
      ['Taxable Value',nNum_(taxable)],
      ['GST (item-wise + freight/other @ '+gstPct+'%)',nNum_(gstAmt)],
    ];
    doc.setFontSize(8.5);
    sumRows.forEach(([l,v])=>{
+     poFit_(5.5);
      doc.setFillColor(249,250,251);doc.rect(M,y,W,5.5,'F');
      doc.setDrawColor(0,0,0);doc.setLineWidth(0.2);doc.rect(M,y,W,5.5);
      doc.setFont(undefined,'bold');
+     doc.setFontSize(8.5);
      doc.text(l,M+labelW-2,y+3.8,{align:'right'});
      doc.text(String(v),M+W-2,y+3.8,{align:'right'});
      y+=5.5;
    });
+   poFit_(7);
    doc.setFillColor(AMBER[0],AMBER[1],AMBER[2]);doc.rect(M,y,W,7,'F');doc.rect(M,y,W,7);
    doc.setFont(undefined,'bold');doc.setFontSize(10.5);
    doc.text('GRAND TOTAL',M+labelW-2,y+5,{align:'right'});
    doc.text(nMoney_(grand),M+W-2,y+5,{align:'right'});
    y+=11;
 
+   doc.setFontSize(8);
+   // GM/CEO and MD approval remarks, one line each, then the standing
+   // anti-corruption declaration (SARV_PO_ANTI_CORRUPTION_NOTE) that must
+   // appear on every PO.
+   const poSigs=d.signatures||{};
+   const notesLines=[]
+     .concat(doc.splitTextToSize('GM / CEO: '+(sigRemark_(poSigs.gmCeo)||'—'),W-4))
+     .concat(doc.splitTextToSize('MD: '+(sigRemark_(poSigs.md)||'—'),W-4))
+     .concat(doc.splitTextToSize(SARV_PO_ANTI_CORRUPTION_NOTE,W-4));
+   const notesH=Math.max(8,notesLines.length*3.6+3);
+   // Heading + box travel together, so the label never ends a page alone.
+   poFit_(4+notesH);
    doc.setFont(undefined,'bold');doc.setFontSize(8.5);
    doc.text('IMPORTANT NOTES:',M,y);
    y+=2;
    doc.setFontSize(8);
-   // GM/CEO and MD approval remarks, one line each.
-   const poSigs=d.signatures||{};
-   const notesLines=[]
-     .concat(doc.splitTextToSize('GM / CEO: '+(sigRemark_(poSigs.gmCeo)||'—'),W-4))
-     .concat(doc.splitTextToSize('MD: '+(sigRemark_(poSigs.md)||'—'),W-4));
-   const notesH=Math.max(8,notesLines.length*3.6+3);
    doc.setFillColor(255,242,0);doc.rect(M,y,W,notesH,'F');
    doc.setDrawColor(212,184,0);doc.setLineWidth(0.3);doc.rect(M,y,W,notesH);
    doc.setFont(undefined,'bold');doc.setTextColor(0,0,0);
    doc.text(notesLines,M+2,y+4.5);
    y+=notesH+6;
 
-   if(y>pageH-42){doc.addPage();y=M;}
+   poFit_(32);
    const sigs=d.signatures||{};
    const sigRoles=[['Store Incharge',sigs.store],['GM / CEO',sigs.gmCeo],['MD',sigs.md],['Vendor Verified',sigs.vendor]];
    const segW=W/4,sigTop=y;
@@ -9518,6 +9668,7 @@ window.addEventListener('DOMContentLoaded',()=>{
    });
    y=sigTop+26+6;
 
+   poFit_(5);
    doc.setFont(undefined,'normal');doc.setFontSize(7.5);doc.setTextColor(71,85,105);
    doc.text(String(SARV_COMPANY.juris||''),pageW/2,y,{align:'center'});
    doc.setTextColor(0,0,0);
@@ -9696,8 +9847,8 @@ window.addEventListener('DOMContentLoaded',()=>{
    }
    return artifact;
  }
- function rowDataInward(){return pRows('#itemTableBody tr:not(.po-info-row)').map(r=>({name:r.querySelector('.item-name')?.value||'',desc:r.querySelector('.item-desc')?.value||'',make:r.querySelector('.item-make')?.value||'',cat:r.querySelector('.item-cat')?.value||'',qty:pNum(r.querySelector('.qty-field')?.value),uom:r.querySelector('.item-uom')?.value||'',weight:pNum(r.querySelector('.weight-field')?.value),wunit:r.querySelector('.item-wunit')?.value||'',listPrice:pNum(r.querySelector('.list-price-field')?.value),discountPct:pNum(r.querySelector('.discount-field')?.value),rate:pNum(r.querySelector('.rate-field')?.value),tax:pNum(r.querySelector('.item-gst-field')?.value),billBasis:r.querySelector('.bill-basis-field')?.value||'QTY',poLineId:r.dataset.poLineId||'',poOrderedQty:pNum(r.dataset.poOrderedQty),poReceivedQty:pNum(r.dataset.poReceivedQty),poNo:r.dataset.poNo||'',poUnitPrice:r.dataset.poUnitPrice,repairOutNo:r.dataset.repairOutNo||''})).filter(x=>x.name&&x.qty>0).map(x=>({...x,total:pRound(x.rate*(x.billBasis==='WEIGHT'?x.weight:x.qty))}))}
- function rowDataOutward(){return pRows('#outwardItemTableBody tr').map(r=>({itemName:r.querySelector('.out-item-name')?.value||'',itemDesc:r.querySelector('.out-item-desc')?.value||'',make:r.querySelector('.out-item-make')?.value||'',category:r.querySelector('.out-item-cat')?.value||'',machineName:r.querySelector('.out-machine-name')?.value||'',machineNo:r.querySelector('.out-machine-no')?.value||'',qty:pNum(r.querySelector('.out-qty')?.value),qtyUom:r.querySelector('.out-qty-uom')?.value||'',weight:pNum(r.querySelector('.out-weight')?.value),wUnit:r.querySelector('.out-wunit')?.value||''})).filter(x=>x.itemName&&x.qty>0)}
+ function rowDataInward(){return pRows('#itemTableBody tr:not(.po-info-row)').map(r=>({name:r.querySelector('.item-name')?.value||'',desc:r.querySelector('.item-desc')?.value||'',make:r.querySelector('.item-make')?.value||'',cat:r.querySelector('.item-cat')?.value||'',qty:pNum(r.querySelector('.qty-field')?.value),uom:r.querySelector('.item-uom')?.value||'',weight:pNum(r.querySelector('.weight-field')?.value),wunit:r.querySelector('.item-wunit')?.value||'',listPrice:pNum(r.querySelector('.list-price-field')?.value),discountPct:pNum(r.querySelector('.discount-field')?.value),rate:pNum(r.querySelector('.rate-field')?.value),tax:pNum(r.querySelector('.item-gst-field')?.value),billBasis:r.querySelector('.bill-basis-field')?.value||'QTY',poLineId:r.dataset.poLineId||'',poOrderedQty:pNum(r.dataset.poOrderedQty),poReceivedQty:pNum(r.dataset.poReceivedQty),poNo:r.dataset.poNo||'',poUnitPrice:r.dataset.poUnitPrice,repairOutNo:r.dataset.repairOutNo||'',itemId:r.dataset.itemId||''})).filter(x=>x.name&&x.qty>0).map(x=>({...x,total:pRound(x.rate*(x.billBasis==='WEIGHT'?x.weight:x.qty))}))}
+ function rowDataOutward(){return pRows('#outwardItemTableBody tr').map(r=>({itemName:r.querySelector('.out-item-name')?.value||'',itemDesc:r.querySelector('.out-item-desc')?.value||'',make:r.querySelector('.out-item-make')?.value||'',category:r.querySelector('.out-item-cat')?.value||'',machineName:r.querySelector('.out-machine-name')?.value||'',machineNo:r.querySelector('.out-machine-no')?.value||'',qty:pNum(r.querySelector('.out-qty')?.value),qtyUom:r.querySelector('.out-qty-uom')?.value||'',weight:pNum(r.querySelector('.out-weight')?.value),wUnit:r.querySelector('.out-wunit')?.value||'',itemId:r.dataset.itemId||''})).filter(x=>x.itemName&&x.qty>0)}
  function highlightRequiredField(id){
    const e=byId(id);if(!e)return;
    e.style.border='2px solid #dc2626';e.style.background='#fef2f2';
@@ -9773,7 +9924,7 @@ window.addEventListener('DOMContentLoaded',()=>{
        if(h.error&&/column/i.test(h.error.message||''))h=await SB.from('inward_entries').insert(slim).select().single();
        if(h.error)throw h.error;
      }
-     let ls=[];for(const r of rows){const it=await ensureItem(r.name,r.desc,r.make,r.cat,r.uom);ls.push({inward_id:h.data.id,item_id:it.id,qty:r.qty,uom:r.uom||it.uom,weight:r.weight,rate:r.rate,gst_pct:r.tax,line_total:r.total,po_line_id:r.poLineId||null,repair_outward_no:r.repairOutNo||null})}
+     let ls=[];for(const r of rows){const it=await ensureItem(r.name,r.desc,r.make,r.cat,r.uom,r.itemId);ls.push({inward_id:h.data.id,item_id:it.id,qty:r.qty,uom:r.uom||it.uom,weight:r.weight,rate:r.rate,gst_pct:r.tax,line_total:r.total,po_line_id:r.poLineId||null,repair_outward_no:r.repairOutNo||null})}
      // repair_outward_no is what credits each outward when one repair return
      // covers several — gate_pass_no can only ever name one. Dropped on DBs
      // without the column (multi-select is disabled there anyway).
@@ -9912,7 +10063,7 @@ window.addEventListener('DOMContentLoaded',()=>{
        if(h.error&&/nature_of_dispatch|lot_no|column/i.test(h.error.message||''))h=await SB.from('outward_entries').insert(outBase).select().single();
        if(h.error)throw h.error;
      }
-     const ls=[];for(const r of rows){const it=await ensureItem(r.itemName,r.itemDesc,r.make,r.category,r.qtyUom);ls.push({outward_id:h.data.id,item_id:it.id,qty:r.qty,uom:r.qtyUom||it.uom,weight:r.weight})}const ins=await SB.from('outward_lines').insert(ls);if(ins.error)throw ins.error;
+     const ls=[];for(const r of rows){const it=await ensureItem(r.itemName,r.itemDesc,r.make,r.category,r.qtyUom,r.itemId);ls.push({outward_id:h.data.id,item_id:it.id,qty:r.qty,uom:r.qtyUom||it.uom,weight:r.weight})}const ins=await SB.from('outward_lines').insert(ls);if(ins.error)throw ins.error;
      if(msgEl)msgEl.textContent='Generating PDF…';
      const d=collectOutwardData(no),pdfs=await generateStorePdfs('OUTWARD',d,rows,h.data.id,'outPhotoGalleryInput');
      {const b=pdfs.SINGLE?.blob||pdfs.TWO_PAGE?.blob;showSarvPdfPreview(b,pdfs.SINGLE?.name||storePdfFilename_('OUTWARD',d,'SINGLE'),b?'':(pdfs.SINGLE?.html||pdfs.TWO_PAGE?.html||''));}
@@ -9934,7 +10085,7 @@ window.addEventListener('DOMContentLoaded',()=>{
  }
  async function saveRequirementWithPdf(){
    if(!SB_READY)return showToast('Supabase URL/key configure karein','warn');
-   const rows=pRows('#p_itemTableBody tr').map(r=>({name:r.querySelector('.col-name')?.value||'',description:r.querySelector('.col-desc')?.value||'',make:r.querySelector('.col-make')?.value||'',category:r.querySelector('.col-cat')?.value||'',machine:r.querySelector('.col-machine')?.value||'',qty:pNum(r.querySelector('.col-qty')?.value),uom:r.querySelector('.col-uom')?.value||'',grossWeight:pNum(r.querySelector('.col-grossweight')?.value),specification:r.querySelector('.col-rem')?.value||''})).filter(x=>x.name&&x.qty>0);
+   const rows=pRows('#p_itemTableBody tr').map(r=>({name:r.querySelector('.col-name')?.value||'',description:r.querySelector('.col-desc')?.value||'',make:r.querySelector('.col-make')?.value||'',category:r.querySelector('.col-cat')?.value||'',machine:r.querySelector('.col-machine')?.value||'',qty:pNum(r.querySelector('.col-qty')?.value),uom:r.querySelector('.col-uom')?.value||'',grossWeight:pNum(r.querySelector('.col-grossweight')?.value),specification:r.querySelector('.col-rem')?.value||'',itemId:r.dataset.itemId||''})).filter(x=>x.name&&x.qty>0);
    if(!rows.length)return showToast('At least one item required','warn');
    const missingMachineRows=pRows('#p_itemTableBody tr').filter(r=>{
      const name=r.querySelector('.col-name')?.value||'',qty=pNum(r.querySelector('.col-qty')?.value);
@@ -9971,8 +10122,13 @@ window.addEventListener('DOMContentLoaded',()=>{
      }else{
        no=await nextNo('REQ');h=await SB.from('purchase_requirements').insert({...payload,req_no:no}).select().single();if(h.error)throw h.error;
      }
-     const ls=[];for(const r of rows){const it=await ensureItem(r.name,r.description,r.make,r.category,r.uom);ls.push({requirement_id:h.data.id,item_id:it.id,specification:r.specification||r.description,requested_qty:r.qty,uom:r.uom||it.uom})}
-     const ins=await SB.from('purchase_requirement_lines').insert(ls);if(ins.error)throw ins.error;
+     // gross_weight and machine belong on the LINE, not only inside
+     // pdf_snapshot: the Build-PO panel reads its Gross Wt (kg) column straight
+     // off these rows, so a weight typed on the PR was previously lost the
+     // moment the PR was saved. A database without those columns simply has
+     // them dropped by the retry helper (snapshot still carries the values).
+     const ls=[];for(const r of rows){const it=await ensureItem(r.name,r.description,r.make,r.category,r.uom,r.itemId);ls.push({requirement_id:h.data.id,item_id:it.id,specification:r.specification||r.description,requested_qty:r.qty,uom:r.uom||it.uom,gross_weight:pNum(r.grossWeight)||null,machine:r.machine||null})}
+     const ins=await sbSaveDroppingMissingColumns_(ls,lineRows=>SB.from('purchase_requirement_lines').insert(lineRows),['requirement_id','requested_qty']);if(ins.error)throw ins.error;
      setMsg('Generating PR PDF...');
      const d=collectRequirementData(no,rows),pdf=await generateRequirementPdf(d,h.data.id);
      showSarvPdfPreview(pdf?.blob,no+'_Requester.pdf',pdf?.html||'');sarvEditingRequirementId=null;
@@ -10156,8 +10312,10 @@ window.addEventListener('DOMContentLoaded',()=>{
    sarvPendingRequirements=[];
    (rq.data||[]).forEach(req=>{
      const snapshot=req.pdf_snapshot||{};
+     // PR-level vendor pick. Since mobile.html lets the Purchaser approve a
+     // vendor PER ITEM, this is only the fallback for a PR approved before
+     // that existed — each line resolves its OWN vendor below.
      const approvedIdx=(snapshot.approvedVendorIndex!=null)?snapshot.approvedVendorIndex:-1;
-     const approvedVendor=approvedIdx>=0?(snapshot.vendors&&snapshot.vendors[approvedIdx])||null:null;
      // Has anyone put quotes on this PR yet — from STORE.html's popup or the
      // Purchaser's mobile form? Drives the Vendor Info button's colour, so a
      // PR still waiting for rates is distinguishable at a glance from one
@@ -10172,10 +10330,24 @@ window.addEventListener('DOMContentLoaded',()=>{
        // order (see saveVendorInfo / approvePR), so index correspondence
        // is safe here.
        const snapItem=(snapshot.items||[])[index];
-       const approvedRate=(approvedVendor&&snapItem&&snapItem.rates)?pNum(snapItem.rates['V'+(approvedIdx+1)])||null:null;
-       const approvedDiscount=(approvedVendor&&snapItem&&snapItem.discounts)?pNum(snapItem.discounts['V'+(approvedIdx+1)])||0:0;
+       // THIS item's own approved vendor — the Purchaser can send different
+       // items of one PR to different vendors, so the rate that gets locked
+       // into the PO has to come from the vendor that item was approved
+       // against, not from one vendor for the whole PR.
+       const itemApprovedIdx=(snapItem&&snapItem.approvedVendorIndex!=null)?pNum(snapItem.approvedVendorIndex):approvedIdx;
+       const approvedVendor=itemApprovedIdx>=0?(snapshot.vendors&&snapshot.vendors[itemApprovedIdx])||null:null;
+       const approvedRate=(approvedVendor&&snapItem&&snapItem.rates)?pNum(snapItem.rates['V'+(itemApprovedIdx+1)])||null:null;
+       const approvedDiscount=(approvedVendor&&snapItem&&snapItem.discounts)?pNum(snapItem.discounts['V'+(itemApprovedIdx+1)])||0:0;
        const poEligible=['GM/CEO Approved','MD Approved','Vendor Verified'].includes(req.status);
-       if(available>0&&String(req.status||'')!=='Cancelled')sarvPendingRequirements.push({req,line,item,name,requested,inPo,available,sr:index+1,prPdfUrl:prPdfMap[req.req_no]||'',approvedVendor,approvedRate,approvedDiscount,poEligible,vendorInfoFilled});
+       // Gross weight the requester typed on the PR. Prefer the line column,
+       // but fall back to the same-position snapshot entry so PRs saved before
+       // the line column was written (or on a database that doesn't have it)
+       // still autofill the Build-PO panel's Gross Wt (kg) cell.
+       const lineGw=(line.gross_weight!=null&&line.gross_weight!=='')?pNum(line.gross_weight):null;
+       const snapGw=(snapItem&&snapItem.grossWeight!=null&&snapItem.grossWeight!=='')?pNum(snapItem.grossWeight):null;
+       const grossWeight=lineGw!=null?lineGw:(snapGw!=null?snapGw:0);
+       const machine=line.machine||(snapItem&&snapItem.machine)||'';
+       if(available>0&&String(req.status||'')!=='Cancelled')sarvPendingRequirements.push({req,line,item,name,requested,inPo,available,grossWeight,machine,sr:index+1,prPdfUrl:prPdfMap[req.req_no]||'',approvedVendor,approvedRate,approvedDiscount,poEligible,vendorInfoFilled});
      });
    });
    renderPendingRequirementsTable();
@@ -10420,15 +10592,18 @@ window.addEventListener('DOMContentLoaded',()=>{
        purpose:base.purpose||state.req.purpose,
        overallRemarks:base.overallRemarks||state.req.notes,
        status:state.req.status,
-       items:state.lines.map(line=>({
+       items:state.lines.map((line,li)=>({
          name:line.item_name||line.items?.name||'',
          desc:line.specification||line.items?.description||'',
          make:line.items?.make||'',
          category:line.items?.category||'',
-         machine:line.machine||'',
+         machine:line.machine||(base.items||[])[li]?.machine||'',
          qty:line.requested_qty,
          uom:line.uom||line.items?.uom||'',
-         grossWeight:line.gross_weight||0,
+         // Keep the weight the requester entered: on a PR saved before the
+         // line column carried it, the value only exists in the old snapshot,
+         // so reading the line alone would silently zero it on regenerate.
+         grossWeight:(line.gross_weight!=null&&line.gross_weight!=='')?pNum(line.gross_weight):pNum((base.items||[])[li]?.grossWeight||0),
          rates:rateByLineId[line.id]||{},
          discounts:discByLineId[line.id]||{},
        })),
@@ -10469,8 +10644,16 @@ window.addEventListener('DOMContentLoaded',()=>{
    set('p_reqGeneratedBy',req.purchaser_name||(req.pdf_snapshot&&req.pdf_snapshot.generatedBy)||'');
    renderReqEmpDetails();
    const tb=byId('p_itemTableBody');if(tb)tb.innerHTML='';
-   const lines=sarvPendingRequirements.filter(y=>y.req.id===req.id).map(y=>({...y.line,item_name:y.name,item:y.item}));
-   lines.forEach(line=>{addPurchaseMainRow();const tr=tb?.lastElementChild;if(!tr)return;const setRow=(s,v)=>{const e=tr.querySelector(s);if(e)e.value=v??''};setRow('.col-name',line.item_name);setRow('.col-desc',line.specification||line.item?.description||'');setRow('.col-make',line.item?.make||'');setRow('.col-cat',line.item?.category||'General');setRow('.col-machine',line.machine||'');setRow('.col-qty',line.requested_qty);setRow('.col-uom',line.uom||'Pcs');setRow('.col-rem',line.specification||'')});
+   const lines=sarvPendingRequirements.filter(y=>y.req.id===req.id).map(y=>({...y.line,item_name:y.name,item:y.item,grossWeight:y.grossWeight,machine:y.machine||y.line.machine||''}));
+   // Gross Weight and Machine come from the resolved pending row (line column,
+   // with the PR's PDF snapshot as fallback) — reading them straight off the
+   // raw line used to blank both columns whenever a PR was reopened to edit.
+   lines.forEach(line=>{addPurchaseMainRow();const tr=tb?.lastElementChild;if(!tr)return;
+     // Pin the row back to the exact Item Master row this line was saved
+     // against. Without it, re-saving an edited PR would re-resolve by name and
+     // could bind the line to a different item that happens to share the name.
+     if(line.item_id)tr.dataset.itemId=line.item_id;
+     const setRow=(s,v)=>{const e=tr.querySelector(s);if(e)e.value=v??''};setRow('.col-name',line.item_name);setRow('.col-desc',line.specification||line.item?.description||'');setRow('.col-make',line.item?.make||'');setRow('.col-cat',line.item?.category||'General');setRow('.col-machine',line.machine||'');setRow('.col-qty',line.requested_qty);setRow('.col-uom',line.uom||'Pcs');setRow('.col-grossweight',pNum(line.grossWeight)||'');setRow('.col-rem',line.specification||'')});
    refreshPurchaseTotals();const btn=byId('p_submitBtn');if(btn)btn.textContent='💾 Update Requirement';showToast('PR '+req.req_no+' edit ke liye open hai');
  }
  // Plain wa.me links can only pre-fill text — WhatsApp's click-to-chat API
@@ -10691,11 +10874,20 @@ window.addEventListener('DOMContentLoaded',()=>{
    const h=await SB.from('purchase_orders').select('*').eq('po_no',poNo).single();if(h.error)return dbError(h.error);
    const po=h.data;
    const l=await SB.from('purchase_order_lines').select('*').eq('purchase_order_id',po.id).order('line_no');if(l.error)return dbError(l.error);
+   // Start from a clean sheet. Without this, the Build-PO modal still carries
+   // the previous session's leftovers — the Other-expense label, the Store
+   // Incharge signature already drawn on the pad, the attachments picked for
+   // the last PO, and the yellow read-only "approved vendor" lock — so an Edit
+   // showed a mix of this PO's data and the last one's.
+   resetPoBuildForm();
    const set=(id,v)=>{const e=byId(id);if(e)e.value=v??''};
    set('p_poNoField',po.po_no);set('p_poDateField',po.po_date);set('p_poDeliveryField',po.delivery_date);
    set('p_poVendorField',po.vendor_name);set('p_poVendorMailField',po.vendor_mail);set('p_poVendorContactField',po.vendor_contact);
    set('p_poVendorAddressField',po.vendor_address);set('p_poGstPctField',po.gst_percent||0);set('p_poFreightField',po.freight||0);
    set('p_poOtherExpField',po.other_expense||0);
+   // Saved label, not the hardcoded default — otherwise the summary line this
+   // PO was generated with silently changes on every edit.
+   if(po.other_expense_label)set('p_poOtherLabelField',po.other_expense_label);
    set('p_poLocationContactField',po.location_contact||SARV_PO_LOCATION_CONTACT);
    const tb=byId('p_poBuildBody');
    if(tb){
@@ -10703,16 +10895,59 @@ window.addEventListener('DOMContentLoaded',()=>{
      (l.data||[]).forEach((x,i)=>{
        const tr=document.createElement('tr');
        const basisSel=(x.bill_basis==='WEIGHT')?'<option value="QTY">QTY</option><option value="WEIGHT" selected>WEIGHT</option>':'<option value="QTY" selected>QTY</option><option value="WEIGHT">WEIGHT</option>';
-       tr.innerHTML='<td style="text-align:center;">'+(i+1)+'</td><td><input class="table-input po-req-no" value="'+pEsc(x.req_no||'')+'" readonly></td><td><input class="table-input po-item-name" value="'+pEsc(x.item_name||'')+'"></td><td><input class="table-input po-item-desc" value="'+pEsc(x.item_description||'')+'"></td><td><input class="table-input po-make" value="'+pEsc(x.make||'')+'"></td><td class="po-req-qty" style="text-align:center;">'+pNum(x.ordered_qty)+'</td><td class="po-available">-</td><td><input type="number" class="table-input po-qty" min="0" value="'+pNum(x.ordered_qty)+'"></td><td><input type="number" class="table-input po-cancel" min="0" value="0"></td><td><input class="table-input po-uom" value="'+pEsc(x.uom||'')+'"></td><td><input type="number" class="table-input po-grossweight" min="0" value="'+pNum(x.gross_weight||0)+'"></td><td><select class="table-input chip-select po-billbasis">'+basisSel+'</select></td><td><input type="number" class="table-input po-unitprice" min="0" step=".01" value="'+pNum(x.unit_price)+'"></td><td><input type="number" class="table-input po-discount" min="0" max="100" step=".01" value="'+pNum(x.discount_pct||0)+'" readonly style="background:#f1f5f9;cursor:not-allowed;" title="Discount was fixed during Vendor Rate approval — cannot change here"></td><td><input type="number" class="table-input po-gst" min="0" max="100" step=".01" value="'+pNum(x.tax_pct||18)+'" title="GST % for this item"></td><td class="po-line-total">'+pMoney(x.line_total)+'</td>';
+       // REQ QTY must stay the PR's ORIGINAL requirement (that is what its
+       // header says), not this PO's ordered qty, and Avail is what is still
+       // un-ordered plus this PO's own qty (which it is free to keep). Falls
+       // back to the ordered qty when the PR line is no longer pending.
+       const pend=sarvPendingRequirements.find(p=>String(p.req?.req_no||'').trim()===String(x.req_no||'').trim()&&String(p.name||'').trim().toLowerCase()===String(x.item_name||'').trim().toLowerCase());
+       const reqQty=pend?pNum(pend.requested):pNum(x.ordered_qty);
+       const availQty=pNum(x.ordered_qty)+(pend?pNum(pend.available):0);
+       tr.innerHTML='<td style="text-align:center;">'+(i+1)+'</td><td><input class="table-input po-req-no" value="'+pEsc(x.req_no||'')+'" readonly></td><td><input class="table-input po-item-name" value="'+pEsc(x.item_name||'')+'"></td><td><input class="table-input po-item-desc" value="'+pEsc(x.item_description||'')+'"></td><td><input class="table-input po-make" value="'+pEsc(x.make||'')+'"></td><td class="po-req-qty" style="text-align:center;font-weight:800;color:#854d0e;background:#fef9c3;">'+reqQty+'</td><td class="po-available">'+availQty+'</td><td><input type="number" class="table-input po-qty" min="0" max="'+availQty+'" value="'+pNum(x.ordered_qty)+'"></td><td><input type="number" class="table-input po-cancel" min="0" value="0"></td><td><input class="table-input po-uom" value="'+pEsc(x.uom||'')+'"></td><td><input type="number" class="table-input po-grossweight" min="0" step="any" value="'+pNum(x.gross_weight||0)+'"></td><td><select class="table-input chip-select po-billbasis">'+basisSel+'</select></td><td><input type="number" class="table-input po-unitprice" min="0" step=".01" value="'+pNum(x.unit_price)+'"></td><td><input type="number" class="table-input po-discount" min="0" max="100" step=".01" value="'+pNum(x.discount_pct||0)+'" readonly style="background:#f1f5f9;cursor:not-allowed;" title="Discount was fixed during Vendor Rate approval — cannot change here"></td><td><input type="number" class="table-input po-gst" min="0" max="100" step=".01" value="'+pNum(x.tax_pct||18)+'" title="GST % for this item"></td><td class="po-line-total">'+pMoney(x.line_total)+'</td>';
        tb.appendChild(tr);
        const recalc=()=>{tr.querySelector('.po-line-total').textContent=pMoney(poLineAmount(tr));recomputePoBuildTotals();};
        tr.querySelectorAll('input,select').forEach(e=>e.addEventListener('input',recalc));
        tr.querySelector('.po-billbasis')?.addEventListener('change',recalc);
      });
    }
+   const title=byId('p_poBuildModalTitle');if(title)title.textContent='✏️ Edit Purchase Order '+po.po_no;
    const modal=byId('p_poBuildModal');if(modal)modal.classList.add('active');
    recomputePoBuildTotals();
    showToast('Editing PO '+po.po_no+' — badlaav karke Generate PO dabayein');
+ }
+ // Supabase answers "Could not find the 'X' column of 'T' in the schema cache"
+ // (or "column T.X does not exist") when a migration hasn't been run yet. Pull
+ // that column's name out of the message so a save can drop exactly that field
+ // and retry. The old retries instead matched /<one_column>|column/i, so ANY
+ // missing-column error hit the FIRST branch and stripped the wrong field —
+ // which is how bill_basis / gross_weight quietly stopped reaching the database
+ // on PO lines, and then came back wrong when the PO was reopened for Edit.
+ function sbMissingColumn_(err){
+   const m=String(err&&err.message||'');
+   const hit=m.match(/Could not find the '([^']+)' column/i)
+     ||m.match(/column "([^"]+)" of relation/i)
+     ||m.match(/column ([A-Za-z0-9_]+\.)?([A-Za-z0-9_]+) does not exist/i);
+   if(!hit)return '';
+   const name=(hit[2]===undefined||hit[2]===null)?hit[1]:hit[2];
+   return String(name||'').replace(/^.*\./,'');
+ }
+ // Runs attempt(payload) and, each time Supabase rejects it for a column this
+ // database doesn't have, drops that one column and retries. Handles a single
+ // row object or an array of rows. Columns in `required` are never dropped, so
+ // a genuinely broken payload still surfaces its real error.
+ async function sbSaveDroppingMissingColumns_(payload,attempt,required=[]){
+   let body=payload,res=await attempt(body);
+   const dropped=[];
+   for(let i=0;i<10&&res.error;i++){
+     const col=sbMissingColumn_(res.error);
+     if(!col||required.indexOf(col)>=0)break;
+     const strip=row=>{const out={...row};delete out[col];return out};
+     const next=Array.isArray(body)?body.map(strip):strip(body);
+     if(JSON.stringify(next)===JSON.stringify(body))break;
+     body=next;dropped.push(col);
+     res=await attempt(body);
+   }
+   if(dropped.length)console.warn('[SARV] Saved without column(s) this database does not have:',dropped.join(', '));
+   return res;
  }
  async function persistPurchaseOrder(d){
    if(!SB_READY)return null;
@@ -10728,31 +10963,27 @@ window.addEventListener('DOMContentLoaded',()=>{
    // so far. Editing an existing PO must not reset a status the approval
    // chain has already advanced past.
    const mergedApprovals={...(existing.data?.approvals||{}),store:d.signatures?.store};
-   const payload={po_no:d.poNo,po_date:d.poDate||null,vendor_name:d.vendorName||null,vendor_mail:d.vendorMail||null,vendor_address:d.vendorAddress||null,vendor_contact:d.vendorContact||null,delivery_date:d.deliveryDate||null,payment_terms:d.paymentTerms||null,location_contact:d.locationContact||null,total_items:d.items.length,total_qty:d.items.reduce((s,x)=>s+pNum(x.qty),0),subtotal:d.subtotal||0,gst_percent:d.gstPercent||0,gst_amount:d.gstAmount||0,freight:d.freight||0,other_expense:d.otherExpense||0,grand_total:d.grandTotal||0,important_notes:d.importantNotes||null,status:existing.data?.status||'Generated',approvals:mergedApprovals,linked_req_nos:[...new Set(d.items.map(x=>x.reqNo).filter(Boolean))].join(', ')};
+   const payload={po_no:d.poNo,po_date:d.poDate||null,vendor_name:d.vendorName||null,vendor_mail:d.vendorMail||null,vendor_address:d.vendorAddress||null,vendor_contact:d.vendorContact||null,delivery_date:d.deliveryDate||null,payment_terms:d.paymentTerms||null,location_contact:d.locationContact||null,total_items:d.items.length,total_qty:d.items.reduce((s,x)=>s+pNum(x.qty),0),subtotal:d.subtotal||0,gst_percent:d.gstPercent||0,gst_amount:d.gstAmount||0,freight:d.freight||0,other_expense:d.otherExpense||0,other_expense_label:d.otherExpenseLabel||null,grand_total:d.grandTotal||0,important_notes:d.importantNotes||null,status:existing.data?.status||'Generated',approvals:mergedApprovals,linked_req_nos:[...new Set(d.items.map(x=>x.reqNo).filter(Boolean))].join(', ')};
    // location_contact is what the PO PDF's "Contact For Location & query" box
    // prints. Persisting it is what lets mobile.html reprint that box after an
-   // approval; a DB without the column just drops it and falls back to the
-   // SARV_PO_LOCATION_CONTACT default, same as the PO line-column retries below.
-   const withoutLocationContact=()=>{const {location_contact,...rest}=payload;return rest};
-   const missingCol=err=>err&&/location_contact|column/i.test(err.message||'');
+   // approval; a DB without the column just has it dropped by the retry helper
+   // and falls back to the SARV_PO_LOCATION_CONTACT default.
    let row;
    if(existing.data?.id){
-     let u=await SB.from('purchase_orders').update(payload).eq('id',existing.data.id).select().single();
-     if(missingCol(u.error))u=await SB.from('purchase_orders').update(withoutLocationContact()).eq('id',existing.data.id).select().single();
+     const u=await sbSaveDroppingMissingColumns_(payload,p=>SB.from('purchase_orders').update(p).eq('id',existing.data.id).select().single(),['po_no']);
      if(u.error){console.warn('[SARV] PO database update skipped:',u.error.message);return null}
      row=u.data;
    }else{
-     let ins=await SB.from('purchase_orders').insert(payload).select().single();
-     if(missingCol(ins.error))ins=await SB.from('purchase_orders').insert(withoutLocationContact()).select().single();
+     const ins=await sbSaveDroppingMissingColumns_(payload,p=>SB.from('purchase_orders').insert(p).select().single(),['po_no']);
      if(ins.error){console.warn('[SARV] PO database save skipped:',ins.error.message);return null}
      row=ins.data;
    }
    await SB.from('purchase_order_lines').delete().eq('purchase_order_id',row.id);
    let lines=d.items.map((x,i)=>({purchase_order_id:row.id,line_no:i+1,req_no:x.reqNo||null,item_id:x.itemId||null,item_name:x.itemName||x.name||'Item',item_description:x.itemDesc||x.description||null,make:x.make||null,department:x.department||null,ordered_qty:pNum(x.qty),received_qty:0,uom:x.uom||null,unit_price:pNum(x.unitPrice),discount_pct:pNum(x.discountPercent||x.discPct||0),tax_pct:pNum(x.taxPct||x.tax),line_total:pNum(x.total),gross_weight:(x.grossWeight!=null&&x.grossWeight!=='')?pNum(x.grossWeight):null,bill_basis:x.billBasis||'QTY'}));
-   let ins2=await SB.from('purchase_order_lines').insert(lines);
-   if(ins2.error&&/bill_basis|column/i.test(ins2.error.message||'')){lines=lines.map(({bill_basis,...rest})=>rest);ins2=await SB.from('purchase_order_lines').insert(lines);}
-   if(ins2.error&&/gross_weight|column/i.test(ins2.error.message||'')){lines=lines.map(({gross_weight,...rest})=>rest);ins2=await SB.from('purchase_order_lines').insert(lines);}
-   if(ins2.error&&/discount_pct|column/i.test(ins2.error.message||'')){lines=lines.map(({discount_pct,...rest})=>rest);ins2=await SB.from('purchase_order_lines').insert(lines);}
+   // Drops only the columns this database genuinely lacks (see
+   // sbSaveDroppingMissingColumns_) instead of guessing at bill_basis /
+   // gross_weight / discount_pct in a fixed order.
+   const ins2=await sbSaveDroppingMissingColumns_(lines,rows=>SB.from('purchase_order_lines').insert(rows),['purchase_order_id','item_name','ordered_qty']);
    if(ins2.error)console.warn('[SARV] PO line save skipped:',ins2.error.message);return row;
  }
  /* Outward panel: picking a Party fills Location from that supplier's saved
@@ -10821,7 +11052,12 @@ window.addEventListener('DOMContentLoaded',()=>{
    // enter the real negotiated discount instead of being stuck at 0.
    const discAttrs=locked?' readonly style="background:#fef9c3;font-weight:800;color:#854d0e;"':' style="background:#f1f5f9;"';
    const discTitle=locked?'Approved discount — GM/CEO chosen vendor, cannot change':'Enter discount %';
-   tr.innerHTML='<td style="text-align:center;">'+(tb.children.length+1)+'</td><td><input class="table-input po-req-no" value="'+pEsc(x.req.req_no)+'" readonly></td><td><input class="table-input po-item-name" value="'+pEsc(x.name)+'" readonly></td><td><input class="table-input po-item-desc" value="'+pEsc(x.line.specification||x.item.description||'')+'" readonly></td><td><input class="table-input po-make" value="'+pEsc(x.item.make||'')+'" readonly></td><td class="po-req-qty" style="text-align:center;font-weight:800;color:#854d0e;background:#fef9c3;">'+pNum(x.line.requested_qty)+'</td><td class="po-available">'+pNum(x.available)+'</td><td><input type="number" class="table-input po-qty" min="0" max="'+pNum(x.available)+'" value="'+pNum(x.available)+'"></td><td><input type="number" class="table-input po-cancel" min="0" value="0"></td><td><input class="table-input po-uom" value="'+pEsc(x.line.uom||x.item.uom||'')+'" readonly style="background:#f1f5f9;cursor:not-allowed;" title="UOM Item Master se locked hai"></td><td><input type="number" class="table-input po-grossweight" min="0" value="'+pNum(x.line.gross_weight||0)+'"></td><td><select class="table-input chip-select po-billbasis"><option value="QTY">QTY</option><option value="WEIGHT">WEIGHT</option></select></td><td><input type="number" class="table-input po-unitprice" min="0" step=".01" value="'+pNum(x.approvedRate||0)+'"'+rateAttrs+' title="'+(locked?'Approved rate — GM/CEO chosen vendor, cannot change':'')+'"></td><td><input type="number" class="table-input po-discount" min="0" max="100" step=".01" value="'+pNum(x.approvedDiscount||0)+'"'+discAttrs+' title="'+discTitle+'"></td><td><input type="number" class="table-input po-gst" min="0" max="100" step=".01" value="'+pNum(x.line.tax_pct||18)+'" title="GST % for this item"></td><td class="po-line-total">₹0.00</td>';
+   // Gross Wt (kg) carries over from the PR the requester raised (line column,
+   // or that PR's PDF snapshot for older records) — it stays editable because
+   // the actual weight can differ from what was estimated on the PR.
+   const prGw=(x.grossWeight!=null&&x.grossWeight!=='')?pNum(x.grossWeight):pNum(x.line.gross_weight||0);
+   const gwAttrs=prGw>0?' style="background:#fef9c3;font-weight:700;color:#854d0e;" title="PR se auto-filled Gross Weight — change kar sakte hain"':' title="Gross weight (kg) — WEIGHT bill basis par isi se amount banega"';
+   tr.innerHTML='<td style="text-align:center;">'+(tb.children.length+1)+'</td><td><input class="table-input po-req-no" value="'+pEsc(x.req.req_no)+'" readonly></td><td><input class="table-input po-item-name" value="'+pEsc(x.name)+'" readonly></td><td><input class="table-input po-item-desc" value="'+pEsc(x.line.specification||x.item.description||'')+'" readonly></td><td><input class="table-input po-make" value="'+pEsc(x.item.make||'')+'" readonly></td><td class="po-req-qty" style="text-align:center;font-weight:800;color:#854d0e;background:#fef9c3;">'+pNum(x.line.requested_qty)+'</td><td class="po-available">'+pNum(x.available)+'</td><td><input type="number" class="table-input po-qty" min="0" max="'+pNum(x.available)+'" value="'+pNum(x.available)+'"></td><td><input type="number" class="table-input po-cancel" min="0" value="0"></td><td><input class="table-input po-uom" value="'+pEsc(x.line.uom||x.item.uom||'')+'" readonly style="background:#f1f5f9;cursor:not-allowed;" title="UOM Item Master se locked hai"></td><td><input type="number" class="table-input po-grossweight" min="0" step="any" value="'+prGw+'"'+gwAttrs+'></td><td><select class="table-input chip-select po-billbasis"><option value="QTY">QTY</option><option value="WEIGHT">WEIGHT</option></select></td><td><input type="number" class="table-input po-unitprice" min="0" step=".01" value="'+pNum(x.approvedRate||0)+'"'+rateAttrs+' title="'+(locked?'Approved rate — GM/CEO chosen vendor, cannot change':'')+'"></td><td><input type="number" class="table-input po-discount" min="0" max="100" step=".01" value="'+pNum(x.approvedDiscount||0)+'"'+discAttrs+' title="'+discTitle+'"></td><td><input type="number" class="table-input po-gst" min="0" max="100" step=".01" value="'+pNum(x.line.tax_pct||18)+'" title="GST % for this item"></td><td class="po-line-total">₹0.00</td>';
    tb.appendChild(tr);
    if(x.approvedVendor)tr.dataset.approvedVendor=JSON.stringify(x.approvedVendor);
    const recalc=()=>{tr.querySelector('.po-line-total').textContent=pMoney(poLineAmount(tr));recomputePoBuildTotals();};
@@ -10832,8 +11068,22 @@ window.addEventListener('DOMContentLoaded',()=>{
  }
  function applyApprovedVendorLock(){
    let vendor=null;
+   // A PO is raised on ONE vendor, but a PR's items can each be approved
+   // against a different one (mobile.html's per-item vendor assignment). So
+   // collect every approved vendor across the picked rows: if they disagree,
+   // this selection cannot become a single PO and the user is told to raise
+   // one PO per vendor instead of silently getting the first row's vendor on
+   // everything.
+   const vendorNames=new Set();
    for(const r of pRows('#p_poBuildBody tr')){
-     if(r.dataset.approvedVendor){try{vendor=JSON.parse(r.dataset.approvedVendor);}catch(e){}break;}
+     if(!r.dataset.approvedVendor)continue;
+     let v=null;try{v=JSON.parse(r.dataset.approvedVendor);}catch(e){continue;}
+     if(!v)continue;
+     if(!vendor)vendor=v;
+     vendorNames.add(String(v.name||'').trim().toUpperCase());
+   }
+   if(vendorNames.size>1){
+     showToast('⚠️ Selected items ke approved vendor alag-alag hain ('+[...vendorNames].join(' / ')+') — ek PO sirf ek vendor ka ban sakta hai. Vendor-wise alag PO banayein.','warn');
    }
    const lockFields=['p_poVendorField','p_poVendorMailField','p_poVendorContactField'];
    if(vendor){
@@ -11019,9 +11269,10 @@ window.addEventListener('DOMContentLoaded',()=>{
    if(byId('p_poLocationContactField'))byId('p_poLocationContactField').value=SARV_PO_LOCATION_CONTACT;
    if(byId('p_poGstPctField'))byId('p_poGstPctField').value='18';
    if(byId('p_poFreightField'))byId('p_poFreightField').value='0';
-   if(byId('p_poOtherLabelField'))byId('p_poOtherLabelField').value='Labour/Loading/Ohter Exp.';
+   if(byId('p_poOtherLabelField'))byId('p_poOtherLabelField').value='Labour/Loading/Other Exp.';
    if(byId('p_poOtherExpField'))byId('p_poOtherExpField').value='0';
    const tb=byId('p_poBuildBody');if(tb)tb.innerHTML='';
+   const buildTitle=byId('p_poBuildModalTitle');if(buildTitle)buildTitle.textContent='🛒 Build New Purchase Order';
    applyApprovedVendorLock();
    ['p_poSubtotalView','p_poGstAmtView','p_poFreightView','p_poOtherView','p_poGrandTotalView'].forEach(id=>{const e=byId(id);if(e)e.textContent='0.00';});
    const canvas=byId('p_poStoreSignCanvas');if(canvas)canvas.getContext('2d')?.clearRect(0,0,canvas.width,canvas.height);
