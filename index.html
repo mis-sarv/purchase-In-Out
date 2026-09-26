@@ -5072,7 +5072,61 @@ function applyItemAutofill(nameVal,tr,prefix){
     // hand-edited into something else — delete the row and re-add to pick again.
     const nameEl=g('.col-name');
     if(nameEl){nameEl.readOnly=true;nameEl.style.background='#f1f5f9';nameEl.style.cursor='not-allowed';nameEl.title='Item locked — delete this row and add a new one to pick a different item';}
+    applyCategoryPurchaser(item.category);
     refreshPurchaseTotals();
+  }
+}
+
+/* ── Category → Purchaser auto-select ─────────────────────────────
+   Purchaser Name is a header field but the category comes off an item row, so
+   the two only line up when every row belongs to the same buyer. The rule:
+   fill it from the first mapped category, then leave it alone. A later row
+   mapping to a DIFFERENT purchaser is flagged rather than silently
+   overwritten — one PR cannot belong to two buyers, and quietly changing a
+   field the user already saw is how a requirement reaches the wrong person.
+   Manual selection always wins; this never overwrites a hand-picked name. */
+let sarvCategoryPurchasers={};          // UPPER(category) -> purchaser name
+let sarvPurchaserAutoFilled=false;      // did WE set the field, or did a person?
+
+async function loadCategoryPurchasers(){
+  if(!SB_READY)return;
+  try{
+    const q=await SB.from('category_purchasers').select('category,purchaser_name');
+    if(q.error)throw q.error;
+    const map={};
+    (q.data||[]).forEach(r=>{
+      const c=String(r.category||'').trim().toUpperCase();
+      const p=String(r.purchaser_name||'').trim();
+      if(c&&p)map[c]=p;
+    });
+    sarvCategoryPurchasers=map;
+  }catch(e){
+    // Missing table or blocked read must not break the PR form — the field
+    // simply stays manual.
+    console.warn('[SARV] category_purchasers load skipped:',e.message||e);
+  }
+}
+
+function applyCategoryPurchaser(category){
+  const sel=byId('p_reqGeneratedBy');if(!sel)return;
+  const want=sarvCategoryPurchasers[String(category||'').trim().toUpperCase()];
+  if(!want)return;                       // category has no purchaser mapped yet
+  // Name must exist in the dropdown, otherwise assigning it silently selects
+  // nothing and the field looks empty for no visible reason.
+  if(![...sel.options].some(o=>o.value===want)){
+    console.warn('[SARV] "'+want+'" category_purchasers me hai par Purchaser dropdown me nahi');
+    return;
+  }
+  if(!sel.value){
+    sel.value=want;sarvPurchaserAutoFilled=true;
+    showToast('👤 Purchaser auto-select: '+want+' ('+category+')');
+    return;
+  }
+  if(sel.value===want)return;            // already right
+  if(sarvPurchaserAutoFilled){
+    // We filled it from an earlier row and this row disagrees. Keep the first
+    // one and say so — the user decides which is right.
+    showToast('⚠️ "'+category+'" ka Purchaser "'+want+'" hai, par PR par "'+sel.value+'" laga hai. Zaroorat ho to khud badlein.','warn');
   }
 }
 /* ── PO Number picker ────────────────────────────────────────────
@@ -7928,6 +7982,10 @@ window.addEventListener('DOMContentLoaded',()=>{
     fetchAllRows('employees','*','emp_code')
       .then(data=>{if(data&&data.length)refreshEmployeeDatalist(data);})
       .catch(()=>{});
+    // Category -> Purchaser map, so the PR form can fill Purchaser Name as
+    // soon as an item's category is known. Failing silently is fine — the
+    // field just stays manual.
+    loadCategoryPurchasers().catch(()=>{});
     // Pre-load supplier catalog for Supplier/Party/Vendor name auto-fill
     fetchAllRows('suppliers','*','supplier_name')
       .then(data=>{if(data&&data.length)refreshSupplierDatalist(data);})
@@ -9900,6 +9958,10 @@ window.addEventListener('DOMContentLoaded',()=>{
  }
  function clearPrForm(){
    ['p_requiredByDate','p_reqPersonName','p_reqEmpCode','p_reqDesignation','p_reqDepartment','p_reqContact','p_reqGeneratedBy','p_overallRemarks'].forEach(id=>{const e=byId(id);if(e)e.value='';});
+   // Purchaser Name is blank again, so the next item's category is free to
+   // fill it — without this reset a fresh PR would still count as "already
+   // auto-filled" and warn instead of filling.
+   sarvPurchaserAutoFilled=false;
    renderReqEmpDetails();
    // Request Date is locked to today — reset it rather than blanking it out.
    if(byId('p_reqDate'))byId('p_reqDate').value=today();
