@@ -3171,8 +3171,7 @@ body {
                                      that is what a PR is booked against and what the mobile
                                      Purchaser login filters on. -->
                                 <optgroup label="&#128230; Purchaser PINs (Mobile Login)">
-                                   <option value="PURCHASER::VISHAL JI">Purchaser &mdash; VISHAL JI</option>
-                                    <option value="PURCHASER::SUVDESH JI">Purchaser &mdash; SUVDESH JI</option>
+                                    <option value="PURCHASER::KHUSHBOO">Purchaser &mdash; KHUSHBOO</option>
                                     <option value="PURCHASER::SATINDER JI">Purchaser &mdash; SATINDER JI</option>
                                     <option value="PURCHASER::ANKUR JI">Purchaser &mdash; ANKUR JI</option>
                                     <option value="PURCHASER::PARKASH JI">Purchaser &mdash; PARKASH JI</option>
@@ -3703,9 +3702,8 @@ body {
                     <div class="form-group">
                         <label>Purchaser Name <span class="req">*</span></label>
                         <select class="form-control" id="p_reqGeneratedBy">
-                           <option value="">-- Select Purchaser --</option>
-                            <option value="VISHAL JI">VISHAL JI</option>
-                            <option value="SUVDESH JI">SUVDESH JI</option>
+                            <option value="">-- Select Purchaser --</option>
+                            <option value="KHUSHBOO">KHUSHBOO</option>
                             <option value="SATINDER JI">SATINDER JI</option>
                             <option value="ANKUR JI">ANKUR JI</option>
                             <option value="PARKASH JI">PARKASH JI</option>
@@ -8851,13 +8849,20 @@ window.addEventListener('DOMContentLoaded',()=>{
      const by=String((sign&&sign.signedBy)||'').trim();
      return by||'GM / CEO';
    };
+   // Store Incharge + GM/CEO (or Purchaser) = 2 cells on a PR, so each takes
+   // half the width. Declared before sigCellHtml so the value is in scope
+   // however the builder is reached.
+   const PR_SIG_CELL_W='50%';
    const sigCellHtml=(label,sign)=>{
      const data=String((sign&&sign.name)||'').trim(),time=(sign&&sign.time)||'';
      let inner;
      if(data.indexOf('data:image/')===0){inner='<img src="'+data+'" style="max-width:120px;max-height:32px;display:block;margin:0 auto 2px;">'+(time?'<div style="font-size:8px;color:#6b7280;">'+pEsc(time)+'</div>':'');}
      else if(data){inner='<div style="color:#047857;font-weight:bold;font-size:10px;">'+pEsc(data)+'</div>'+(time?'<div style="font-size:8px;color:#6b7280;">'+pEsc(time)+'</div>':'');}
      else{inner='<div style="color:#b45309;font-style:italic;font-size:9px;font-weight:bold;">PENDING APPROVAL</div>';}
-     return '<td style="border:none;width:25%;text-align:center;vertical-align:bottom;padding-top:6px;height:56px;">'+inner+'<div style="border-top:1px solid #000;padding-top:3px;font-weight:bold;margin-top:4px;">'+label+'</div></td>';
+     // Width follows the number of columns actually printed. Hardcoding 25%
+     // left the two PR signature cells crammed into the left half of the page
+     // once MD / Vendor Verified were dropped.
+     return '<td style="border:none;width:'+PR_SIG_CELL_W+';text-align:center;vertical-align:bottom;padding-top:6px;height:56px;">'+inner+'<div style="border-top:1px solid #000;padding-top:3px;font-weight:bold;margin-top:4px;">'+label+'</div></td>';
    };
    return '<!DOCTYPE html><html><head><meta charset="utf-8"><style>'+css+'</style></head><body>'
      +'<div class="title-bar">'+pEsc(SARV_COMPANY.fullName)+' UNIT-2</div>'
@@ -8879,10 +8884,10 @@ window.addEventListener('DOMContentLoaded',()=>{
      +'</thead><tbody>'+itemRowsHtml+'</tbody></table>'
      +'<table class="vendor-table"><thead><tr><th style="width:5%;">Sr No</th><th style="width:30%;">VENDOR NAME</th><th style="width:20%;">EMAIL_ID</th><th style="width:15%;">CONTACT</th><th style="width:30%;">REMARKS</th></tr></thead><tbody>'+vendorRows+'</tbody></table>'
      +'<table style="margin-top:26px;border-collapse:collapse;width:100%;"><tr>'
+     // A PURCHASE REQUIREMENT is signed off by the store and the buyer only.
+     // MD / Vendor Verified belong to the PO chain and are not printed here.
      +sigCellHtml('Store Incharge',sigs.store)
      +sigCellHtml(prGmCeoLabel_(sigs.gmCeo),sigs.gmCeo)
-     +sigCellHtml('MD',sigs.md)
-     +sigCellHtml('Vendor Verified',sigs.vendor)
      +'</tr></table>'
      +'<div style="margin-top:8px;text-align:center;font-size:9px;color:#475569;">'+pEsc(SARV_COMPANY.juris)+'</div>'
      +'</body></html>';
@@ -9007,16 +9012,18 @@ window.addEventListener('DOMContentLoaded',()=>{
    // same shape/convention as the PO's signature footer so mobile.html's
    // approval chain feeds both PDFs identically.
    const sigs=d.signatures||(d.vendorSignature?{store:d.vendorSignature}:{});
-   const segW=W/4;
    // A Purchaser signing from mobile.html puts their own name on the GM/CEO
    // column — same rule as the HTML variant, see prGmCeoLabel_ there.
    const gmCeoLabel=String((sigs.gmCeo&&sigs.gmCeo.signedBy)||'').trim()||'GM / CEO';
+   // A PURCHASE REQUIREMENT is signed off by the store and the buyer only.
+   // MD / Vendor Verified belong to the PO chain and are not printed here;
+   // their signatures stay in `signatures` untouched either way.
    const sigCols=[
      {label:'Store Incharge',sign:sigs.store},
      {label:gmCeoLabel,sign:sigs.gmCeo},
-     {label:'MD',sign:sigs.md},
-     {label:'Vendor Verified',sign:sigs.vendor},
    ];
+   // Half the width each, not a quarter — see the HTML variant's note.
+   const segW=W/sigCols.length;
    doc.setDrawColor(0,0,0);doc.setLineWidth(0.3);
    sigCols.forEach((col,i)=>{
      const cx=M+segW*i;
