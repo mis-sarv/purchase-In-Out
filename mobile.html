@@ -816,17 +816,21 @@
         if(y>pageH-20){doc.addPage();y=M+16;}
 
         const sigs=d.signatures||{};
-        const segW=W/4;
         // A Purchaser signs the PR's GM/CEO stage, so the column carries their
         // own name — sig.signedBy is set in approveEntry() when that happens.
         // Printing "GM / CEO" there would credit a signature nobody gave.
         const gmCeoLabel=String((sigs.gmCeo&&sigs.gmCeo.signedBy)||'').trim()||'GM / CEO';
+        // A PURCHASE REQUIREMENT is signed off by the store and the buyer only.
+        // MD and Vendor Verified belong to the PO chain and are not printed
+        // here. Their signatures, if any exist in `signatures`, are left in the
+        // record untouched — this only changes what the PR sheet shows.
         const sigCols=[
             {label:'Store Incharge',sign:sigs.store},
             {label:gmCeoLabel,sign:sigs.gmCeo},
-            {label:'MD',sign:sigs.md},
-            {label:'Vendor Verified',sign:sigs.vendor},
         ];
+        // Two columns now, so each one takes half the width instead of a
+        // quarter — otherwise both would huddle in the left half of the page.
+        const segW=W/sigCols.length;
         doc.setDrawColor(0,0,0);doc.setLineWidth(0.3);
         sigCols.forEach((col,i)=>{
             const cx=M+segW*i;
@@ -1243,14 +1247,35 @@
     /* A Purchaser deals only in Purchase Requirements, so the Purchase Orders
        module button is removed rather than just hidden — nothing can switch to
        a module whose button isn't there. Called on login and on restore. */
+    /* Each login sees exactly one module, so there is no tab to get lost on:
+         Purchaser                  -> Purchase Requirements only
+         GM/CEO, MD, Vendor Verified -> Purchase Orders only
+       Purchase Requirements are approved by the Purchaser now, which is why
+       the other roles no longer need that tab at all. Buttons are hidden
+       rather than left disabled — a tab that cannot be used should not be
+       there to tap. */
     function applyPurchaserScope(){
+        const prBtn = document.getElementById('moduleBtnPR');
         const poBtn = document.getElementById('moduleBtnPO');
-        if(poBtn) poBtn.style.display = myPurchaserName ? 'none' : '';
-        if(myPurchaserName){
+        const loggedIn = !!myStage;
+        const prOnly = !!myPurchaserName;
+
+        if(!loggedIn){
+            // Logged out: leave both in place so the next login can pick.
+            if(prBtn){ prBtn.style.display=''; prBtn.classList.add('active'); }
+            if(poBtn){ poBtn.style.display=''; poBtn.classList.remove('active'); }
             currentModule = 'PR';
-            const prBtn = document.getElementById('moduleBtnPR');
-            if(prBtn) prBtn.classList.add('active');
-            if(poBtn) poBtn.classList.remove('active');
+            return;
+        }
+
+        currentModule = prOnly ? 'PR' : 'PO';
+        if(prBtn){
+            prBtn.style.display = prOnly ? '' : 'none';
+            prBtn.classList.toggle('active', prOnly);
+        }
+        if(poBtn){
+            poBtn.style.display = prOnly ? 'none' : '';
+            poBtn.classList.toggle('active', !prOnly);
         }
     }
     function logoutRole(){
@@ -1299,9 +1324,11 @@
 
     // ── Module / tab switching ───────────────────────────────────
     function switchModule(module) {
-        // Belt and braces: the PO button is removed for a Purchaser, but a
-        // stale click target must not be able to open that module either.
-        if(myPurchaserName && module !== 'PR') return;
+        // Belt and braces: the unusable button is hidden, but a stale click
+        // target must not be able to open that module either. A Purchaser is
+        // PR-only, every other role is PO-only.
+        const allowed = myPurchaserName ? 'PR' : 'PO';
+        if(myStage && module !== allowed) return;
         currentModule = module;
         document.querySelectorAll('.module-btn').forEach(btn => btn.classList.remove('active'));
         event.target.classList.add('active');
